@@ -44,7 +44,10 @@ def use_gemfile(extra_setup_cmd: nil)
   setup_cmds(["bundle check 2> /dev/null || bundle install", extra_setup_cmd].compact)
 
   # Need to be in the appropriate directory for this...
-  require "bundler/setup"
+  require "bundler"
+  # Use Bundler.setup instead of require 'bundler/setup' to avoid bundler's autoswitch restarting the
+  # process and messing with LOAD_PATH.
+  Bundler.setup
 end
 
 # This returns its best estimate of the Resident Set Size in bytes.
