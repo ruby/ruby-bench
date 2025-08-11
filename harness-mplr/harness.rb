@@ -10,7 +10,7 @@ MAX_BENCH_SECONDS = Integer(ENV.fetch('MAX_BENCH_SECONDS', 60 * 60))
 puts RUBY_DESCRIPTION
 
 # Takes a block as input
-def run_benchmark(_num_itrs_hint)
+def run_benchmark(_num_itrs_hint, **, &blk)
   times = []
   total_time = 0
   num_itrs = 0
