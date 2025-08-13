@@ -58,6 +58,7 @@ blurhash:
   ractor: true
 erubi:
   desc: erubi compiles a simple Erb template into a method with erubi, then times evaluating that method.
+  ractor: true
 etanni:
   desc: etanni is an older, extremely simple template-lang format that basically turns your template into an "eval" with a lot of heredocs.
 fannkuchredux:
