@@ -174,15 +174,17 @@ def free_file_no(prefix)
   end
 end
 
-def benchmark_category(name)
+def benchmark_categories(name)
   metadata = benchmarks_metadata.find { |benchmark, _metadata| benchmark == name }&.last || {}
-  metadata.fetch('category', 'other')
+  categories = [metadata.fetch('category', 'other')]
+  categories << 'ractor' if metadata['ractor']
+  categories
 end
 
 # Check if the name matches any of the names in a list of filters
 def match_filter(entry, categories:, name_filters:)
   name = entry.sub(/\.rb\z/, '')
-  (categories.empty? || categories.include?(benchmark_category(name))) &&
+  (categories.empty? || benchmark_categories(name).any? { |cat| categories.include?(cat) }) &&
     (name_filters.empty? || name_filters.include?(name))
 end
 
@@ -237,8 +239,16 @@ def run_benchmarks(ruby:, ruby_description:, categories:, name_filters:, out_pat
   bench_data = {}
   bench_failures = {}
 
+  bench_dir = "benchmarks"
+
+  if categories == ['ractor-only']
+    bench_dir = File.join(bench_dir, "ractor")
+    harness = "harness-ractor"
+    categories = []
+  end
+
   # Get the list of benchmark files/directories matching name filters
-  bench_files = Dir.children('benchmarks').sort.filter do |entry|
+  bench_files = Dir.children(bench_dir).sort.filter do |entry|
     match_filter(entry, categories: categories, name_filters: name_filters)
   end
 
@@ -252,7 +262,7 @@ def run_benchmarks(ruby:, ruby_description:, categories:, name_filters:, out_pat
     puts("Running benchmark \"#{bench_name}\" (#{idx+1}/#{bench_files.length})")
 
     # Path to the benchmark runner script
-    script_path = File.join('benchmarks', entry)
+    script_path = File.join(bench_dir, entry)
 
     if !script_path.end_with?('.rb')
       script_path = File.join(script_path, 'benchmark.rb')
@@ -369,12 +379,19 @@ OptionParser.new do |opts|
     args.out_override = v
   end
 
-  opts.on("--category=headline,other,micro", "when given, only benchmarks with specified categories will run") do |v|
+  opts.on("--category=headline,other,micro,ractor", "when given, only benchmarks with specified categories will run") do |v|
     args.categories += v.split(",")
+    if args.categories == ['ractor']
+      args.harness = 'harness-ractor'
+    end
   end
 
   opts.on("--headline", "when given, headline benchmarks will be run") do |v|
     args.categories += ["headline"]
+  end
+
+  opts.on("--ractor-only", "ractor-only benchmarks (benchmarks/ractor/*.rb) will be run") do |v|
+    args.categories = ["ractor-only"]
   end
 
   opts.on("--name_filters=x,y,z", Array, "when given, only benchmarks with names that contain one of these strings will run") do |list|
