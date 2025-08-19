@@ -27,9 +27,14 @@ unless Ractor.method_defined?(:join)
   end
 end
 
+MAX_ITERS = Integer(ENV.fetch("MAX_BENCH_ITRS", 5))
+
 def run_benchmark(num_itrs_hint, ractor_args: [], &block)
-  warmup_itrs = Integer(ENV.fetch('WARMUP_ITRS', 10))
+  warmup_itrs = Integer(ENV.fetch('WARMUP_ITRS', 5))
   bench_itrs = Integer(ENV.fetch('MIN_BENCH_ITRS', num_itrs_hint))
+  if bench_itrs > MAX_ITERS
+    bench_itrs = MAX_ITERS
+  end
   # { num_ractors => [itr_in_ms, ...] }
   stats = Hash.new { |h,k| h[k] = [] }
 
