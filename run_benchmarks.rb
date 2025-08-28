@@ -183,9 +183,28 @@ end
 
 # Check if the name matches any of the names in a list of filters
 def match_filter(entry, categories:, name_filters:)
+  name_filters = process_name_filters(name_filters)
   name = entry.sub(/\.rb\z/, '')
   (categories.empty? || benchmark_categories(name).any? { |cat| categories.include?(cat) }) &&
-    (name_filters.empty? || name_filters.include?(name))
+    (name_filters.empty? || name_filters.any? { |filter| filter === name })
+end
+
+# process "/my_benchmark/i" into /my_benchmark/i
+def process_name_filters(name_filters)
+  name_filters.map do |name_filter|
+    if name_filter[0] == "/"
+      regexp_str = name_filter[1..-1].reverse.sub(/\A(\w*)\//, "")
+      regexp_opts = $1.to_s
+      regexp_str.reverse!
+      r = /#{regexp_str}/
+      if !regexp_opts.empty?
+        r = Regexp.compile(r.to_s, regexp_opts)
+      end
+      r
+    else
+      name_filter
+    end
+  end
 end
 
 # Resolve the pre_init file path into a form that can be required
@@ -341,6 +360,7 @@ args = OpenStruct.new({
   graph: false,
   no_pinning: false,
   turbo: false,
+  skip_yjit: false,
 })
 
 OptionParser.new do |opts|
@@ -381,21 +401,25 @@ OptionParser.new do |opts|
 
   opts.on("--category=headline,other,micro,ractor", "when given, only benchmarks with specified categories will run") do |v|
     args.categories += v.split(",")
-    if args.categories == ['ractor']
-      args.harness = 'harness-ractor'
+    if args.categories == ["ractor"]
+      args.harness = "harness-ractor"
     end
   end
 
-  opts.on("--headline", "when given, headline benchmarks will be run") do |v|
+  opts.on("--headline", "when given, headline benchmarks will be run") do
     args.categories += ["headline"]
   end
 
-  opts.on("--ractor-only", "ractor-only benchmarks (benchmarks/ractor/*.rb) will be run") do |v|
+  opts.on("--ractor-only", "ractor-only benchmarks (benchmarks/ractor/*.rb) will be run") do
     args.categories = ["ractor-only"]
   end
 
   opts.on("--name_filters=x,y,z", Array, "when given, only benchmarks with names that contain one of these strings will run") do |list|
     args.name_filters = list
+  end
+
+  opts.on("--skip-yjit", "Don't run with yjit after interpreter") do
+    args.skip_yjit = true
   end
 
   opts.on("--harness=HARNESS_DIR", "which harness to use") do |v|
@@ -459,7 +483,7 @@ end
 
 # If -e is not specified, benchmark the current Ruby. Compare it with YJIT if available.
 if args.executables.empty?
-  if have_yjit?(RbConfig.ruby)
+  if have_yjit?(RbConfig.ruby) && !args.skip_yjit
     args.executables["interp"] = [RbConfig.ruby]
     args.executables["yjit"] = [RbConfig.ruby, "--yjit", *args.yjit_opts.shellsplit]
   else

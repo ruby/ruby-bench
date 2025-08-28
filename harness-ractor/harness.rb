@@ -27,6 +27,14 @@ unless Ractor.method_defined?(:join)
   end
 end
 
+def use_ractor_gemfile(filename)
+  filename = File.expand_path("Gemfile_#{filename}.rb", "benchmarks/ractor/gemfiles")
+  raise "Gemfile #{filename} doesn't exist" unless  File.exist?(filename)
+  use_inline_gemfile do
+    instance_eval File.read(filename), filename, 1
+  end
+end
+
 MAX_ITERS = Integer(ENV.fetch("MAX_BENCH_ITRS", 5))
 
 def run_benchmark(num_itrs_hint, ractor_args: [], &block)
@@ -98,4 +106,4 @@ def ractor_deep_dup(args)
   end
 end
 
-Ractor.make_shareable(self)
+Ractor.make_shareable(self) # until we get Ractor.shareable_proc

@@ -1,0 +1,13 @@
+GEM
+  specs:
+    json (2.13.2)
+
+PLATFORMS
+  arm64-darwin-24
+  ruby
+
+DEPENDENCIES
+  json (= 2.13.2)
+
+BUNDLED WITH
+   2.8.0.dev
