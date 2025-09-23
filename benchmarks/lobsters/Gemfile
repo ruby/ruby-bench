@@ -61,7 +61,7 @@ gem 'rack-attack' # rate-limiting
 
 # Avoid using v0.5.7 ~ v0.5.10 that have bad use of Ractor.make_sharable.
 # TODO: Use v0.5.11+ once it's released with https://github.com/ruby/net-imap/pull/525.
-gem "net-imap", "< 0.5.7"
+gem "net-imap", "< 0.5.8"
 
 group :test, :development do
   gem 'capybara'
