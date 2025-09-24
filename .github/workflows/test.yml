@@ -16,7 +16,8 @@ jobs:
           - ruby: ruby
           - ruby: head
           - ruby: truffleruby
-            skip: protoboeuf-encode ruby-lsp shipit hexapdf mail rubocop
+            # TruffleRuby has randomly failed on different benchmarks
+            continue-on-error: true
     if: ${{ github.event_name != 'schedule' || github.repository == 'ruby/ruby-bench' }}
     steps:
       - uses: actions/checkout@v3
@@ -29,16 +30,12 @@ jobs:
         run: ruby test/benchmarks_test.rb
 
       - name: Test run_benchmarks.rb
-        run: |
-          for benchmark in $SKIP_BENCHMARKS; do
-            rm -rf "benchmarks/${benchmark}.rb" "benchmarks/${benchmark}/"
-          done
-          ./run_benchmarks.rb
+        run: ./run_benchmarks.rb
         env:
           WARMUP_ITRS: '1'
           MIN_BENCH_ITRS: '1'
           MIN_BENCH_TIME: '0'
-          SKIP_BENCHMARKS: ${{ matrix.skip }}
+        continue-on-error: ${{ matrix.continue-on-error || false }}
 
       - name: Test run_benchmarks.rb --graph
         run: |
