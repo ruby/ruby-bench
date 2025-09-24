@@ -16,7 +16,7 @@ jobs:
           - ruby: ruby
           - ruby: head
           - ruby: truffleruby
-            skip: protoboeuf-encode ruby-lsp shipit
+            skip: protoboeuf-encode ruby-lsp shipit hexapdf mail rubocop
     if: ${{ github.event_name != 'schedule' || github.repository == 'ruby/ruby-bench' }}
     steps:
       - uses: actions/checkout@v3
