@@ -424,6 +424,12 @@ OptionParser.new do |opts|
   opts.on("--turbo", "don't disable CPU turbo boost") do
     args.turbo = true
   end
+
+  opts.on("--show-debug-counters", "Show debug counters (if available) after each benchmark has run") do
+    # disable showing debug counters for any subprocesses of ruby that we run except the benchmark scripts themselves
+    ENV["RUBY_DEBUG_COUNTER_DISABLE"] = "1"
+    ENV["YJIT_BENCH_SHOW_DEBUG_COUNTERS"] = "1"
+  end
 end.parse!
 
 # Remaining arguments are treated as benchmark name filters
