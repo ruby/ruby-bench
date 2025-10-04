@@ -185,6 +185,12 @@ def return_results(warmup_iterations, bench_iterations)
   end
 
   write_json_file(yjit_bench_results)
+
+  if ENV["YJIT_BENCH_SHOW_DEBUG_COUNTERS"]=="1"
+    ENV["RUBY_DEBUG_COUNTER_DISABLE"] = "0"
+    RubyVM.show_debug_counters if defined?(RubyVM.show_debug_counters)
+    ENV["RUBY_DEBUG_COUNTER_DISABLE"] = "1"
+  end
 end
 
 def write_json_file(yjit_bench_results)
