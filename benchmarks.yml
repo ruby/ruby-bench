@@ -71,6 +71,9 @@ graphql:
   ractor: true
 graphql-native:
   desc: GraphQL gem parsing a large file, but using a native parser
+knucleotide:
+  desc: k-nucleotide from the Computer Language Benchmarks Game - counts nucleotide frequencies using hash tables
+  ractor: true
 lee:
   desc: lee is a circuit-board layout solver, deployed in a plausibly reality-like way
 matmul:
