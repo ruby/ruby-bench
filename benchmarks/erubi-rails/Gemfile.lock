@@ -262,4 +262,4 @@ DEPENDENCIES
   webpacker (~> 5.0)
 
 BUNDLED WITH
-   2.8.0.dev
+   4.0.0.dev
