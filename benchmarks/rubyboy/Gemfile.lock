@@ -17,5 +17,9 @@ PLATFORMS
 DEPENDENCIES
   rubyboy!
 
+CHECKSUMS
+  ffi (1.17.2) sha256=297235842e5947cc3036ebe64077584bff583cd7a4e94e9a02fdec399ef46da6
+  rubyboy (1.5.1)
+
 BUNDLED WITH
    4.0.0.dev

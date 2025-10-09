@@ -10,5 +10,8 @@ PLATFORMS
 DEPENDENCIES
   tinygql
 
+CHECKSUMS
+  tinygql (0.3.1) sha256=b9323feecaf6a12e3bc480f4bb501c4a84ea7b9f54de0e5abfc2c08c50ee755c
+
 BUNDLED WITH
    4.0.0.dev
