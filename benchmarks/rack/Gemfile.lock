@@ -12,5 +12,9 @@ DEPENDENCIES
   cgi
   rack
 
+CHECKSUMS
+  cgi (0.5.0) sha256=fe99f65bb2c146e294372ebb27602adbc3b4c008e9ea7038c6bd48c1ec9759da
+  rack (3.2.0) sha256=79cd21514d696c59d61fae02e62900f087aac2d053fdc77d45f4e91b94fb3612
+
 BUNDLED WITH
    4.0.0.dev

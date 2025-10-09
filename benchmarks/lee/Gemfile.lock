@@ -12,5 +12,9 @@ DEPENDENCIES
   benchmark-ips (~> 2.8.3)
   victor (~> 0.3.2)
 
+CHECKSUMS
+  benchmark-ips (2.8.4) sha256=eb36669c7e66809be3b6be9ede9012769adcff4ba7672e91eec344f4e8d79a8d
+  victor (0.3.4) sha256=c0b947699e96d88b5f285e2833e8b6430e87afcd393488a70f7385ee27ea2168
+
 BUNDLED WITH
    4.0.0.dev

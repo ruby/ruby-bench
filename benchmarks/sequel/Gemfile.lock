@@ -18,5 +18,11 @@ DEPENDENCIES
   sequel (~> 5.63)
   sqlite3 (~> 1.4)
 
+CHECKSUMS
+  bigdecimal (3.2.2) sha256=39085f76b495eb39a79ce07af716f3a6829bc35eb44f2195e2753749f2fa5adc
+  mini_portile2 (2.8.9) sha256=0cd7c7f824e010c072e33f68bc02d85a00aeb6fce05bb4819c03dfd3c140c289
+  sequel (5.94.0) sha256=dfb13a6da870a060f7f8ac47969944281b51419181dc695c810ec7177d0e2e59
+  sqlite3 (1.7.3) sha256=fa77f63c709548f46d4e9b6bb45cda52aa3881aa12cc85991132758e8968701c
+
 BUNDLED WITH
    4.0.0.dev

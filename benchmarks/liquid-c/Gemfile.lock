@@ -23,5 +23,11 @@ DEPENDENCIES
   liquid!
   liquid-c (= 4.2.0)
 
+CHECKSUMS
+  base64 (0.3.0) sha256=27337aeabad6ffae05c265c450490628ef3ebd4b67be58257393227588f5a97b
+  bigdecimal (3.2.2) sha256=39085f76b495eb39a79ce07af716f3a6829bc35eb44f2195e2753749f2fa5adc
+  liquid (5.4.0)
+  liquid-c (4.2.0) sha256=1741ecef2948deafd79361ad443b98eb799605e02039fe072df5821ee8d51810
+
 BUNDLED WITH
    4.0.0.dev

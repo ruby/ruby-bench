@@ -12,5 +12,9 @@ PLATFORMS
 DEPENDENCIES
   psych (~> 4.0.0)
 
+CHECKSUMS
+  psych (4.0.6) sha256=f70425c3dca8d8fbe4c1de7270d921e35eb6eb44cf2b2e4f961dc8031330b876
+  stringio (3.1.7) sha256=5b78b7cb242a315fb4fca61a8255d62ec438f58da2b90be66048546ade4507fa
+
 BUNDLED WITH
    4.0.0.dev
