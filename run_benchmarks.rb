@@ -222,6 +222,16 @@ def sort_benchmarks(bench_names)
   headline_names.sort + other_names.sort + micro_names.sort
 end
 
+def setarch_prefix
+  # Disable address space randomization (for determinism)
+  prefix = ["setarch", `uname -m`.strip, "-R"]
+
+  # Abort if we don't have permission (perhaps in a docker container).
+  return [] unless system(*prefix, "true")
+
+  prefix
+end
+
 # Run all the benchmarks and record execution times
 def run_benchmarks(ruby:, ruby_description:, categories:, name_filters:, out_path:, harness:, pre_init:, no_pinning:)
   bench_data = {}
@@ -255,8 +265,7 @@ def run_benchmarks(ruby:, ruby_description:, categories:, name_filters:, out_pat
     # Set up the benchmarking command
     cmd = []
     if os == :linux
-      # Disable address space randomization (for determinism)
-      cmd += ["setarch", `uname -m`.strip, "-R"]
+      cmd += setarch_prefix
 
       # Pin the process to one given core to improve caching and reduce variance on CRuby
       # Other Rubies need to use multiple cores, e.g., for JIT threads
