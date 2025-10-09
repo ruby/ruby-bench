@@ -125,7 +125,7 @@ GEM
     prettyprint (0.2.0)
     psych (3.3.4)
     racc (1.8.1)
-    rack (3.1.16)
+    rack (3.1.17)
     rack-session (2.1.1)
       base64 (>= 0.1.0)
       rack (>= 3.0.0)
@@ -254,7 +254,7 @@ CHECKSUMS
   prettyprint (0.2.0) sha256=2bc9e15581a94742064a3cc8b0fb9d45aae3d03a1baa6ef80922627a0766f193
   psych (3.3.4) sha256=f0aae8574d0c86b711472e6a57cc036655e2549f02390ca7266f3b6d1814d1a0
   racc (1.8.1) sha256=4a7f6929691dbec8b5209a0b373bc2614882b55fc5d2e447a21aaa691303d62f
-  rack (3.1.16) sha256=efb5606c351efc56b85b10c3493055d0d35209d23f44792ec4e1183eb0234635
+  rack (3.1.17) sha256=99b718e98f2cc4a68a08078ec4f0b64bc3f76f67a51785cb0044cc30429d05d1
   rack-session (2.1.1) sha256=0b6dc07dea7e4b583f58a48e8b806d4c9f1c6c9214ebc202ec94562cbea2e4e9
   rack-test (2.2.0) sha256=005a36692c306ac0b4a9350355ee080fd09ddef1148a5f8b2ac636c720f5c463
   rackup (2.2.1) sha256=f737191fd5c5b348b7f0a4412a3b86383f88c43e13b8217b63d4c8d90b9e798d
