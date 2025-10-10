@@ -30,10 +30,12 @@ def ruby_xor!(a, b)
   a
 end
 
-a = 'this is a long string with no useful contents yada yada yada yada'
-b = 'this is also a long string with no useful contents yada yada daaaaaa'
+A = 'this is a long string with no useful contents yada yada yada yada'.freeze
+B = 'this is also a long string with no useful contents yada yada daaaaaa'.freeze
 
 run_benchmark(20) do
+  a = A
+  b = B
   for i in 0...20_000
     ruby_xor!(a.dup, b)
   end

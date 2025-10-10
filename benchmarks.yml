@@ -31,6 +31,7 @@ mail:
 psych-load:
   desc: psych-load repeatedly loads a small selection of YAML files taken from various OSS projects.
   category: headline
+  ractor: true
 railsbench:
   desc: railsbench is a read-only tiny SQLite-backed Rails app, querying a small selection of .html.erb routes and JSON routes.
   category: headline
@@ -54,6 +55,7 @@ binarytrees:
   desc: binarytrees from the Computer Language Benchmarks Game.
 blurhash:
   desc: blurhash (blurred preview image) calculation
+  ractor: true
 erubi:
   desc: erubi compiles a simple Erb template into a method with erubi, then times evaluating that method.
 etanni:
@@ -64,6 +66,7 @@ fluentd:
   desc: fluentd is a log collector, which parses logs in a server and forwards them to various destinations.
 graphql:
   desc: GraphQL gem parsing a large file, uses Racc which has some Ruby->native->Ruby calls
+  ractor: true
 graphql-native:
   desc: GraphQL gem parsing a large file, but using a native parser
 lee:
@@ -72,8 +75,12 @@ matmul:
   desc: matrix multiplication benchmark
 nbody:
   desc: nbody from the Computer Language Benchmarks Game.
+<<<<<<< HEAD
 nqueens:
   desc: solver for the N-Queens problem
+=======
+  ractor: true
+>>>>>>> 607cd5b (Update some benchmarks to be ractor compatible)
 optcarrot:
   desc: optcarrot is a functional headless NES emulator, run on a specific game cartridge for a specific number of frames.
 protoboeuf:
@@ -84,14 +91,36 @@ rack:
   desc: test the performance of the Rack framework with barely any routing.
 ruby-json:
   desc: an optimized version of the json_pure gem's pure Ruby JSON parser.
+  ractor: true
 rubyboy:
   desc: Rubyboy is a functional headless GameBoy emulator, run on a specific game cartridge for a specific number of frames.
 rubykon:
   desc: Ruby solver for Go (the boardgame.) Runs many iterations forward from an initial starting board.
+<<<<<<< HEAD
 sudoku:
   desc: sudoku solver
 tinygql:
   desc: TinyGQL gem parsing a large file in pure Ruby
+=======
+tinygql:
+  desc: TinyGQL gem parsing a large file in pure Ruby
+nqueens:
+  desc: solver for the N-Queens problem
+  ractor: true
+sudoku:
+  desc: sudoku solver
+  ractor: true
+matmul:
+  desc: matrix multiplication benchmark
+  ractor: true
+blurhash:
+  desc: blurhash (blurred preview image) calculation
+  ractor: true
+protoboeuf:
+  desc: protoboeuf (pure-Ruby protobuf) message decoding
+protoboeuf-encode:
+  desc: protoboeuf (pure-Ruby protobuf) message encoding
+>>>>>>> 607cd5b (Update some benchmarks to be ractor compatible)
 
 #
 # MicroBenchmarks
@@ -100,6 +129,7 @@ tinygql:
   desc: 30k_ifelse tests thousands of nested methods containing simple if/else statements.
   category: micro
   single_file: true
+  ractor: true
 30k_methods:
   desc: 30k_methods tests thousands of nested method calls that mostly just call out to other single-call methods.
   category: micro
@@ -112,18 +142,29 @@ cfunc_itself:
   desc: cfunc_itself just calls the 'itself' method many, many times.
   category: micro
   single_file: true
+  ractor: true
 fib:
   desc: Fib is a simple exponential-time recursive Fibonacci number generator.
   category: micro
   single_file: true
+  ractor: true
 getivar:
   desc: getivar tests the performance of getting instance variable values.
   category: micro
   single_file: true
+<<<<<<< HEAD
+=======
+  ractor: true
+attr_accessor:
+  desc: attr_accessor tests the performance of getting instance variable values via an attr_accessor imemo.
+  category: micro
+  single_file: true
+>>>>>>> 607cd5b (Update some benchmarks to be ractor compatible)
 keyword_args:
   desc: keyword_args tests the performance of method calls with keyword arguments.
   category: micro
   single_file: true
+<<<<<<< HEAD
 loops-times:
   desc: nested loop Integer#times and array access microbenchmark
   category: micro
@@ -132,14 +173,24 @@ object-new:
   desc: instantiate a new object in a loop to test allocation performance
   category: micro
   single_file: true
+=======
+  ractor: true
+>>>>>>> 607cd5b (Update some benchmarks to be ractor compatible)
 respond_to:
   desc: respond_to tests the performance of the respond_to? method.
   category: micro
   single_file: true
+<<<<<<< HEAD
 ruby-xor:
   desc: pure-Ruby string XOR microbenchmark, analogous to xorcist C extension.
+=======
+  ractor: true
+object-new:
+  desc: instantiate a new object in a loop to test allocation performance
+>>>>>>> 607cd5b (Update some benchmarks to be ractor compatible)
   category: micro
   single_file: true
+  ractor: true
 setivar:
   desc: setivar tests the performance of setting instance variable values.
   category: micro
@@ -152,11 +203,27 @@ setivar_young:
   desc: setivar_object tests the performance of setting instance variables to an object, to test write barrier speed on young objects.
   category: micro
   single_file: true
+  ractor: true
 str_concat:
   desc: str_concat tests the performance of string concatenation in multiple different encodings.
   category: micro
   single_file: true
+  ractor: true
 throw:
   desc: microbenchmark for the throw instruction and stack unwinding.
   category: micro
   single_file: true
+<<<<<<< HEAD
+=======
+  ractor: true
+ruby-xor:
+  desc: pure-Ruby string XOR microbenchmark, analogous to xorcist C extension.
+  category: micro
+  single_file: true
+  ractor: true
+loops-times:
+  desc: nested loop Integer#times and array access microbenchmark
+  category: micro
+  single_file: true
+  ractor: true
+>>>>>>> 607cd5b (Update some benchmarks to be ractor compatible)

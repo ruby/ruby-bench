@@ -46,7 +46,7 @@ module Blurhash
       end
     end
 
-    CHARACTERS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz#$%*+,-.:;=?@[]^_{|}~".bytes
+    CHARACTERS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz#$%*+,-.:;=?@[]^_{|}~".bytes.freeze
 
     def self.sRGBToLinear(value)
       v = value.to_f / 255
@@ -176,8 +176,8 @@ require_relative "../../harness/loader"
 
 FILE = File.join(__dir__, "test.bin")
 
-array = File.read(FILE).bytes
+Ractor.make_shareable(ARRAY = File.read(FILE).bytes)
 
 run_benchmark(10) do
-  Blurhash.encode_rb(204, 204, array)
+  Blurhash.encode_rb(204, 204, ARRAY)
 end
