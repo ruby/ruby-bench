@@ -39,6 +39,7 @@ def run_benchmark(_num_itrs_hint, &block)
   header = "itr:   time"
 
   RubyVM::YJIT.reset_stats! if defined?(RubyVM::YJIT) && RubyVM::YJIT.enabled?
+  RubyVM.reset_debug_counters if defined?(RubyVM.reset_debug_counters)
 
   # If $YJIT_BENCH_STATS or $ZJIT_BENCH_STATS is given, print the diff of these stats at each iteration.
   if yjit_stats = ENV["YJIT_BENCH_STATS"]
