@@ -260,7 +260,7 @@ def run_benchmarks(ruby:, ruby_description:, categories:, name_filters:, out_pat
 
   bench_dir = "benchmarks"
 
-  if categories == ['ractor-only']
+  if categories == ["ractor-only"]
     bench_dir = File.join(bench_dir, "ractor")
     harness = "harness-ractor"
     categories = []

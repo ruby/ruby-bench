@@ -1,7 +1,9 @@
-require_relative "../../harness/loader"
+require_relative "../../../harness/loader"
 
-use_ractor_gemfile("json_parse")
-puts "JSON #{JSON::VERSION}"
+Dir.chdir(__dir__)
+use_gemfile
+require "json"
+puts "json v#{JSON::VERSION}"
 
 ELEMENTS = 300_000
 list = ELEMENTS.times.map do |i|

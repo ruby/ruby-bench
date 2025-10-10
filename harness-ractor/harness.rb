@@ -6,7 +6,7 @@ ENV["YJIT_BENCH_RACTOR_HARNESS"] = "1"
 
 default_ractors = [
   0, # without ractor
-  1, 2, 4, 6, 8, 12, 16, 32
+  1, 2, 4, 6, 8#, 12, 16, 32
 ]
 if rs = ENV["YJIT_BENCH_RACTORS"]
   rs = rs.split(",").map(&:to_i) # If you want to include 0, you have to specify
@@ -31,6 +31,7 @@ def use_ractor_gemfile(filename)
   filename = File.expand_path("Gemfile_#{filename}.rb", "benchmarks/ractor/gemfiles")
   raise "Gemfile #{filename} doesn't exist" unless  File.exist?(filename)
   use_inline_gemfile do
+    gem "fiddle" # for maxrss
     instance_eval File.read(filename), filename, 1
   end
 end
@@ -70,7 +71,7 @@ def run_benchmark(num_itrs_hint, ractor_args: [], &block)
       else
         rs_list = []
         rs.times do
-          rs_list << Ractor.new(*([rs] + ractor_args), &block)
+          rs_list << Ractor.new(*([rs] + ractor_args), &block) # ractor_args are copied
         end
         while rs_list.any?
           r, _obj = Ractor.select(*rs_list)
@@ -88,6 +89,10 @@ def run_benchmark(num_itrs_hint, ractor_args: [], &block)
   return_results([], stats.values.flatten)
 end
 
+# NOTE: we use `ractor_deep_dup` instead of `Ractor.make_shareable(copy: true)` for the case of
+# sending args to the block without a ractor because the arguments passed to `run_benchmark` are
+# sometimes modified, and we want to allow that because it improves compatibility. We don't want
+# it to be deeply frozen.
 def ractor_deep_dup(args)
   if Array === args
     ret = []
