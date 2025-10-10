@@ -2,7 +2,7 @@ GEM
   remote: https://rubygems.org/
   specs:
     cgi (0.5.0)
-    rack (3.2.0)
+    rack (3.2.3)
 
 PLATFORMS
   ruby
@@ -14,7 +14,7 @@ DEPENDENCIES
 
 CHECKSUMS
   cgi (0.5.0) sha256=fe99f65bb2c146e294372ebb27602adbc3b4c008e9ea7038c6bd48c1ec9759da
-  rack (3.2.0) sha256=79cd21514d696c59d61fae02e62900f087aac2d053fdc77d45f4e91b94fb3612
+  rack (3.2.3) sha256=239a373da6584574f25f042d8ed4ba21e691c9799f1d2b5c8920bbbc23ca3d41
 
 BUNDLED WITH
    4.0.0.dev
