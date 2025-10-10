@@ -44,18 +44,26 @@ template = File.read TEMPLATE_FILE
 source = generate_source(template)
 
 # Create a method with the generated source
-eval "# frozen_string_literal: true\ndef run_erb; #{source}; end"
+eval <<RUBY
+# frozen_string_literal: true
+class ErbRenderer
+  def initialize(values)
+    @values = values
+  end
+  def run_erb
+    #{source}
+  end
+end
+RUBY
 
 # This is taken from actual "gem server" data
-@values = JSON.load(File.read "gem_specs.json")
-result = run_erb
-check_result_size(result)
+VALUES = JSON.load(File.read "gem_specs.json")
+Ractor.make_shareable(VALUES)
+check_result_size(ErbRenderer.new(VALUES).run_erb)
 
 run_benchmark(50) do
   250.times do
-    #result = eval source
-    result = run_erb
-    #check_result_size(result)
-
+    ErbRenderer.new(VALUES).run_erb
+    #.then { |result| check_result_size(result) }
   end
 end

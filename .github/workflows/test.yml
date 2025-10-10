@@ -37,6 +37,14 @@ jobs:
           MIN_BENCH_TIME: '0'
         continue-on-error: ${{ matrix.continue-on-error || false }}
 
+      - name: Test run_benchmarks.rb --ractor-only
+        run: ./run_benchmarks.rb --ractor-only
+        env:
+          WARMUP_ITRS: '1'
+          MIN_BENCH_ITRS: '1'
+          MIN_BENCH_TIME: '0'
+        continue-on-error: ${{ matrix.continue-on-error || false }}
+
       - name: Test run_benchmarks.rb --graph
         run: |
           sudo apt-get update

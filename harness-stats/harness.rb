@@ -3,7 +3,7 @@ require_relative '../harness/harness'
 # Using Module#prepend to enable TracePoint right before #run_benchmark
 # while also reusing the original implementation.
 self.singleton_class.prepend Module.new {
-  def run_benchmark(*)
+  def run_benchmark(n, **, &block)
     frames = []
     c_calls = Hash.new { 0 }
     c_blocks = Hash.new { 0 }
@@ -43,7 +43,7 @@ self.singleton_class.prepend Module.new {
 
     method_trace.enable
     block_trace.enable
-    super
+    super(n, &block)
   ensure
     block_trace.disable
     method_trace.disable

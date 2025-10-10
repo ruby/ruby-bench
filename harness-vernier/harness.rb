@@ -12,12 +12,12 @@ require_relative "../harness/harness-extra"
 ensure_global_gem("vernier")
 ensure_global_gem_exe("profile-viewer")
 
-def run_benchmark(n, &block)
+def run_benchmark(n, **kwargs, &block)
   require "vernier"
 
   out = output_file_path(ext: "json")
   Vernier.profile(out: out) do
-    run_enough_to_profile(n, &block)
+    run_enough_to_profile(n, **kwargs, &block)
   end
 
   puts "Vernier profile:\n#{out}"

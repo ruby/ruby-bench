@@ -32,8 +32,8 @@ class TheClass
   end
 end
 
-obj = TheClass.new
+OBJ = TheClass.new.freeze
 
 run_benchmark(850) do
-  obj.get_value_loop
+ OBJ.get_value_loop
 end

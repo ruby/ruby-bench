@@ -20,7 +20,7 @@ require_relative "../harness/harness-common"
 # the number of benchmark iterations. For example, if the default harness runs
 # 10 benchmark iterations (after 15 warmup iterations) for a benchmark with
 # the default MIN_BENCH_TIME, the benchmark should have 10 as `num_itrs_hint`.
-def run_benchmark(num_itrs_hint)
+def run_benchmark(num_itrs_hint, **, &blk)
   warmup_itrs = Integer(ENV.fetch('WARMUP_ITRS', 10))
   bench_itrs = Integer(ENV.fetch('MIN_BENCH_ITRS', num_itrs_hint))
 

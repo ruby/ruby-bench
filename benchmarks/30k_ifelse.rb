@@ -1,3 +1,11 @@
+require_relative '../harness/loader'
+if ENV["YJIT_BENCH_RACTOR_HARNESS"]
+  eval_recv = Object.new
+  eval_meth = :instance_eval
+else
+  eval_recv = nil
+end
+
 def fun_l0_n0(x)
   if (x < 1)
     fun_l1_n310(x)
@@ -239998,23 +240006,29 @@ def fun_l29_n999(x)
   end
 end
 
-@a = 0
-@b = 0
-@c = 0
-@d = 0
-
-@count = 0
 def inc(x)
   @count += 1
 end
 
-@x = 0
-
-require_relative '../harness/loader'
-
 INTERNAL_ITRS = Integer(ENV.fetch("INTERNAL_ITRS", 200))
 
-run_benchmark(30) do
+main_obj = ENV["YJIT_BENCH_RACTOR_HARNESS"] ? eval_recv : nil
+run_benchmark(30, ractor_args: [main_obj]) do |num_rs,  selv|
+  if selv
+    recv = selv
+    recv_meth = :instance_eval
+  else
+    recv = 1
+    recv_meth = :times
+  end
+  recv.send(recv_meth) do
+  @a = 0
+  @b = 0
+  @c = 0
+  @d = 0
+
+  @count = 0
+  @x = 0
   INTERNAL_ITRS.times do
     @x = (@x < 1)? 1:0
     fun_l0_n0(@x)
@@ -241017,5 +241031,6 @@ run_benchmark(30) do
     fun_l0_n997(@x)
     fun_l0_n998(@x)
     fun_l0_n999(@x)
+    end
   end
 end
