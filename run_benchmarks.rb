@@ -268,6 +268,8 @@ def run_benchmarks(ruby:, ruby_description:, categories:, name_filters:, out_pat
 
   # Get the list of benchmark files/directories matching name filters
   bench_files = Dir.children(bench_dir).sort.filter do |entry|
+    # Skip the ractor directory when in the main benchmarks dir
+    next false if bench_dir == "benchmarks" && entry == "ractor"
     match_filter(entry, categories: categories, name_filters: name_filters)
   end
 
