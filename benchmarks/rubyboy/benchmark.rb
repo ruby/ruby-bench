@@ -11,18 +11,21 @@ use_gemfile
 require 'rubyboy/emulator_headless'
 
 # The rom is included in the gem in a sibling directory to the rubyboy code.
-rom_path = File.expand_path("../../roms/tobu.gb", $".detect { |x| x.end_with?("/rubyboy/emulator_headless.rb") })
+ROM_PATH = File.expand_path("../../roms/tobu.gb", $".detect { |x| x.end_with?("/rubyboy/emulator_headless.rb") }).freeze
 
 # A count of 500 produces results similar to our optcarrot benchmark.
 # It's possible there is a number that produces a consistent benchmark without
 # needing to re-initialize but not sure how to determine that.
-count = 500
+COUNT = 500
+
+Ractor.make_shareable(Rubyboy::ApuChannels::Channel1::WAVE_DUTY)
+Ractor.make_shareable(Rubyboy::ApuChannels::Channel2::WAVE_DUTY)
 
 run_benchmark(200) do
   # Results are much more consistent if we re-initialize each time.
   # Reusing the same eumlator increases stddev by 65x.
-  emulator = Rubyboy::EmulatorHeadless.new(rom_path)
-  count.times do
+  emulator = Rubyboy::EmulatorHeadless.new(ROM_PATH)
+  COUNT.times do
     emulator.step
   end
 end

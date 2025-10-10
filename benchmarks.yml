@@ -62,6 +62,7 @@ etanni:
   desc: etanni is an older, extremely simple template-lang format that basically turns your template into an "eval" with a lot of heredocs.
 fannkuchredux:
   desc: fannkuchredux from the Computer Language Benchmarks Game.
+  ractor: true
 fluentd:
   desc: fluentd is a log collector, which parses logs in a server and forwards them to various destinations.
 graphql:
@@ -73,20 +74,20 @@ lee:
   desc: lee is a circuit-board layout solver, deployed in a plausibly reality-like way
 matmul:
   desc: matrix multiplication benchmark
+  ractor: true
 nbody:
   desc: nbody from the Computer Language Benchmarks Game.
-<<<<<<< HEAD
 nqueens:
   desc: solver for the N-Queens problem
-=======
   ractor: true
->>>>>>> 607cd5b (Update some benchmarks to be ractor compatible)
 optcarrot:
   desc: optcarrot is a functional headless NES emulator, run on a specific game cartridge for a specific number of frames.
 protoboeuf:
   desc: protoboeuf (pure-Ruby protobuf) message decoding
+  ractor: true
 protoboeuf-encode:
   desc: protoboeuf (pure-Ruby protobuf) message encoding
+  ractor: true
 rack:
   desc: test the performance of the Rack framework with barely any routing.
 ruby-json:
@@ -94,33 +95,15 @@ ruby-json:
   ractor: true
 rubyboy:
   desc: Rubyboy is a functional headless GameBoy emulator, run on a specific game cartridge for a specific number of frames.
+  ractor: true
 rubykon:
   desc: Ruby solver for Go (the boardgame.) Runs many iterations forward from an initial starting board.
-<<<<<<< HEAD
-sudoku:
-  desc: sudoku solver
-tinygql:
-  desc: TinyGQL gem parsing a large file in pure Ruby
-=======
-tinygql:
-  desc: TinyGQL gem parsing a large file in pure Ruby
-nqueens:
-  desc: solver for the N-Queens problem
-  ractor: true
 sudoku:
   desc: sudoku solver
   ractor: true
-matmul:
-  desc: matrix multiplication benchmark
+tinygql:
+  desc: TinyGQL gem parsing a large file in pure Ruby
   ractor: true
-blurhash:
-  desc: blurhash (blurred preview image) calculation
-  ractor: true
-protoboeuf:
-  desc: protoboeuf (pure-Ruby protobuf) message decoding
-protoboeuf-encode:
-  desc: protoboeuf (pure-Ruby protobuf) message encoding
->>>>>>> 607cd5b (Update some benchmarks to be ractor compatible)
 
 #
 # MicroBenchmarks
@@ -152,42 +135,27 @@ getivar:
   desc: getivar tests the performance of getting instance variable values.
   category: micro
   single_file: true
-<<<<<<< HEAD
-=======
   ractor: true
-attr_accessor:
-  desc: attr_accessor tests the performance of getting instance variable values via an attr_accessor imemo.
-  category: micro
-  single_file: true
->>>>>>> 607cd5b (Update some benchmarks to be ractor compatible)
 keyword_args:
   desc: keyword_args tests the performance of method calls with keyword arguments.
   category: micro
   single_file: true
-<<<<<<< HEAD
 loops-times:
   desc: nested loop Integer#times and array access microbenchmark
   category: micro
   single_file: true
+  ractor: true
 object-new:
   desc: instantiate a new object in a loop to test allocation performance
   category: micro
   single_file: true
-=======
   ractor: true
->>>>>>> 607cd5b (Update some benchmarks to be ractor compatible)
 respond_to:
   desc: respond_to tests the performance of the respond_to? method.
   category: micro
   single_file: true
-<<<<<<< HEAD
 ruby-xor:
   desc: pure-Ruby string XOR microbenchmark, analogous to xorcist C extension.
-=======
-  ractor: true
-object-new:
-  desc: instantiate a new object in a loop to test allocation performance
->>>>>>> 607cd5b (Update some benchmarks to be ractor compatible)
   category: micro
   single_file: true
   ractor: true
@@ -213,17 +181,4 @@ throw:
   desc: microbenchmark for the throw instruction and stack unwinding.
   category: micro
   single_file: true
-<<<<<<< HEAD
-=======
   ractor: true
-ruby-xor:
-  desc: pure-Ruby string XOR microbenchmark, analogous to xorcist C extension.
-  category: micro
-  single_file: true
-  ractor: true
-loops-times:
-  desc: nested loop Integer#times and array access microbenchmark
-  category: micro
-  single_file: true
-  ractor: true
->>>>>>> 607cd5b (Update some benchmarks to be ractor compatible)

@@ -10,9 +10,17 @@ require_relative 'lib/rubykon'
 # return the same stable best_move, even for identical initial board state and number of iterations.
 
 ITERATIONS = 100
-game_state = Rubykon::GameState.new Rubykon::Game.new(19)
-mcts = MCTS::MCTS.new
 
-run_benchmark(10) do
-  mcts.start game_state, ITERATIONS
+if ENV["YJIT_BENCH_RACTOR_HARNESS"]
+  run_benchmark(10) do
+    state = Rubykon::GameState.new Rubykon::Game.new(19)
+    m = MCTS::MCTS.new
+    m.start state, ITERATIONS
+  end
+else
+  game_state = Rubykon::GameState.new Rubykon::Game.new(19)
+  mcts = MCTS::MCTS.new
+  run_benchmark(10) do
+    mcts.start game_state, ITERATIONS
+  end
 end
