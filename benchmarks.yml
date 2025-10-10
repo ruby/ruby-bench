@@ -121,6 +121,7 @@ attr_accessor:
   desc: attr_accessor tests the performance of getting instance variable values via an attr_accessor imemo.
   category: micro
   single_file: true
+  ractor: true
 cfunc_itself:
   desc: cfunc_itself just calls the 'itself' method many, many times.
   category: micro
