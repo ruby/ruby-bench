@@ -1,4 +1,4 @@
-require_relative '../../../harness/loader'
+require_relative '../../harness/loader'
 require_relative "lib/optcarrot"
 
 ROM_PATH = File.join(__dir__, "examples/Lan_Master.nes").freeze

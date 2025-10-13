@@ -4,7 +4,7 @@
 # k-nucleotide benchmark - Ractor implementation
 # Mirrors the Process.fork version structure as closely as possible
 
-require_relative "../../../harness/loader"
+require_relative "../../harness/loader"
 
 def frequency(seq, length)
   frequencies = Hash.new(0)
