@@ -259,18 +259,26 @@ def run_benchmarks(ruby:, ruby_description:, categories:, name_filters:, out_pat
   bench_failures = {}
 
   bench_dir = "benchmarks"
+  ractor_bench_dir = "benchmarks-ractor"
 
   if categories == ["ractor-only"]
-    bench_dir = File.join(bench_dir, "ractor")
+    bench_dir = ractor_bench_dir
     harness = "harness-ractor"
     categories = []
   end
 
   # Get the list of benchmark files/directories matching name filters
   bench_files = Dir.children(bench_dir).sort.filter do |entry|
-    # Skip the ractor directory when in the main benchmarks dir
-    next false if bench_dir == "benchmarks" && entry == "ractor"
     match_filter(entry, categories: categories, name_filters: name_filters)
+  end
+
+  if categories == ["ractor"]
+    # We ignore the category filter here because everything in the
+    # benchmarks-ractor directory should be included when we're benchmarking the
+    # Ractor category
+    bench_files += Dir.children(ractor_bench_dir).sort.filter do |entry|
+      match_filter(entry, categories: [], name_filters: [])
+    end
   end
 
   if pre_init
