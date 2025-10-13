@@ -59,9 +59,16 @@ def free_file_path(parent_dir, name_prefix)
   end
 end
 
-def run_benchmark(bench_name, no_yjit, logs_path, run_time, ruby_version)
+def run_benchmark(bench_id, no_yjit, logs_path, run_time, ruby_version)
   # Determine the path to the benchmark script
-  script_path = File.join('benchmarks', bench_name, 'benchmark.rb')
+  bench_name = bench_id.sub('ractor/', '')
+  bench_dir, harness = if bench_name == bench_id
+    ['benchmarks', 'harness']
+  else
+    ['benchmarks-ractor', 'harness-ractor']
+  end
+
+  script_path = File.join(bench_dir, bench_name, 'benchmark.rb')
   if not File.exist?(script_path)
     script_path = File.join('benchmarks', bench_name + '.rb')
   end
@@ -101,7 +108,7 @@ def run_benchmark(bench_name, no_yjit, logs_path, run_time, ruby_version)
   cmd = [
     'ruby',
     *test_options,
-    "-Iharness",
+    "-I#{harness}",
     script_path,
   ].compact
   cmd_str = cmd.shelljoin
@@ -133,7 +140,7 @@ def run_benchmark(bench_name, no_yjit, logs_path, run_time, ruby_version)
     puts "ERROR"
 
     # Write command executed and output
-    out_path = free_file_path(logs_path, "error_#{bench_name}")
+    out_path = free_file_path(logs_path, "error_#{bench_name.gsub('/', '_')}")
     puts "writing output file #{out_path}"
     contents = ruby_version + "\n\n" + "pid #{status.pid}\n" + user_cmd_str + "\n\n" + output
     File.write(out_path, contents)
