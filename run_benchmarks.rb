@@ -425,10 +425,6 @@ OptionParser.new do |opts|
     args.categories += ["headline"]
   end
 
-  opts.on("--ractor-only", "ractor-only benchmarks (benchmarks/ractor/*.rb) will be run") do
-    args.categories = ["ractor-only"]
-  end
-
   opts.on("--name_filters=x,y,z", Array, "when given, only benchmarks with names that contain one of these strings will run") do |list|
     args.name_filters = list
   end
