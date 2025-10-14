@@ -267,8 +267,10 @@ def run_benchmarks(ruby:, ruby_description:, categories:, name_filters:, out_pat
     categories = []
   end
 
+  bench_file_grouping = {}
+
   # Get the list of benchmark files/directories matching name filters
-  bench_files = Dir.children(bench_dir).sort.filter do |entry|
+  bench_file_grouping[bench_dir] = Dir.children(bench_dir).sort.filter do |entry|
     match_filter(entry, categories: categories, name_filters: name_filters)
   end
 
@@ -276,7 +278,7 @@ def run_benchmarks(ruby:, ruby_description:, categories:, name_filters:, out_pat
     # We ignore the category filter here because everything in the
     # benchmarks-ractor directory should be included when we're benchmarking the
     # Ractor category
-    bench_files += Dir.children(ractor_bench_dir).sort.filter do |entry|
+    bench_file_grouping[ractor_bench_dir] = Dir.children(ractor_bench_dir).sort.filter do |entry|
       match_filter(entry, categories: [], name_filters: [])
     end
   end
@@ -285,73 +287,76 @@ def run_benchmarks(ruby:, ruby_description:, categories:, name_filters:, out_pat
     pre_init = expand_pre_init(pre_init)
   end
 
-  bench_files.each_with_index do |entry, idx|
-    bench_name = entry.gsub('.rb', '')
 
-    puts("Running benchmark \"#{bench_name}\" (#{idx+1}/#{bench_files.length})")
+  bench_file_grouping.each do |bench_dir, bench_files|
+    bench_files.each_with_index do |entry, idx|
+      bench_name = entry.gsub('.rb', '')
 
-    # Path to the benchmark runner script
-    script_path = File.join(bench_dir, entry)
+      puts("Running benchmark \"#{bench_name}\" (#{idx+1}/#{bench_files.length})")
 
-    if !script_path.end_with?('.rb')
-      script_path = File.join(script_path, 'benchmark.rb')
-    end
+      # Path to the benchmark runner script
+      script_path = File.join(bench_dir, entry)
 
-    # Set up the environment for the benchmarking command
-    result_json_path = File.join(out_path, "temp#{Process.pid}.json")
-    ENV["RESULT_JSON_PATH"] = result_json_path
-
-    # Set up the benchmarking command
-    cmd = []
-    if os == :linux
-      cmd += setarch_prefix
-
-      # Pin the process to one given core to improve caching and reduce variance on CRuby
-      # Other Rubies need to use multiple cores, e.g., for JIT threads
-      if ruby_description.start_with?('ruby ') && !no_pinning
-        # The last few cores of Intel CPU may be slow E-Cores, so avoid using the last one.
-        cpu = [(Etc.nprocessors / 2) - 1, 0].max
-        cmd += ["taskset", "-c", "#{cpu}"]
+      if !script_path.end_with?('.rb')
+        script_path = File.join(script_path, 'benchmark.rb')
       end
-    end
 
-    # Fix for jruby/jruby#7394 in JRuby 9.4.2.0
-    script_path = File.expand_path(script_path)
+      # Set up the environment for the benchmarking command
+      result_json_path = File.join(out_path, "temp#{Process.pid}.json")
+      ENV["RESULT_JSON_PATH"] = result_json_path
 
-    cmd += [
-      *ruby,
-      "-I", harness,
-      *pre_init,
-      script_path,
-    ].compact
+      # Set up the benchmarking command
+      cmd = []
+      if os == :linux
+        cmd += setarch_prefix
 
-    # When the Ruby running this script is not the first Ruby in PATH, shell commands
-    # like `bundle install` in a child process will not use the Ruby being benchmarked.
-    # It overrides PATH to guarantee the commands of the benchmarked Ruby will be used.
-    env = {}
-    ruby_path = `#{ruby.shelljoin} -e 'print RbConfig.ruby' 2> #{File::NULL}`
-    if ruby_path != RbConfig.ruby
-      env["PATH"] = "#{File.dirname(ruby_path)}:#{ENV["PATH"]}"
-
-      # chruby sets GEM_HOME and GEM_PATH in your shell. We have to unset it in the child
-      # process to avoid installing gems to the version that is running run_benchmarks.rb.
-      ["GEM_HOME", "GEM_PATH"].each do |var|
-        env[var] = nil if ENV.key?(var)
+        # Pin the process to one given core to improve caching and reduce variance on CRuby
+        # Other Rubies need to use multiple cores, e.g., for JIT threads
+        if ruby_description.start_with?('ruby ') && !no_pinning
+          # The last few cores of Intel CPU may be slow E-Cores, so avoid using the last one.
+          cpu = [(Etc.nprocessors / 2) - 1, 0].max
+          cmd += ["taskset", "-c", "#{cpu}"]
+        end
       end
-    end
 
-    # Do the benchmarking
-    result = check_call(cmd.shelljoin, env: env, raise_error: false)
+      # Fix for jruby/jruby#7394 in JRuby 9.4.2.0
+      script_path = File.expand_path(script_path)
 
-    if result[:success]
-      bench_data[bench_name] = JSON.parse(File.read(result_json_path)).tap do |json|
-        json["command_line"] = cmd.shelljoin
-        File.unlink(result_json_path)
+      cmd += [
+        *ruby,
+        "-I", harness,
+        *pre_init,
+        script_path,
+      ].compact
+
+      # When the Ruby running this script is not the first Ruby in PATH, shell commands
+      # like `bundle install` in a child process will not use the Ruby being benchmarked.
+      # It overrides PATH to guarantee the commands of the benchmarked Ruby will be used.
+      env = {}
+      ruby_path = `#{ruby.shelljoin} -e 'print RbConfig.ruby' 2> #{File::NULL}`
+      if ruby_path != RbConfig.ruby
+        env["PATH"] = "#{File.dirname(ruby_path)}:#{ENV["PATH"]}"
+
+        # chruby sets GEM_HOME and GEM_PATH in your shell. We have to unset it in the child
+        # process to avoid installing gems to the version that is running run_benchmarks.rb.
+        ["GEM_HOME", "GEM_PATH"].each do |var|
+          env[var] = nil if ENV.key?(var)
+        end
       end
-    else
-      bench_failures[bench_name] = result[:status].exitstatus
-    end
 
+      # Do the benchmarking
+      result = check_call(cmd.shelljoin, env: env, raise_error: false)
+
+      if result[:success]
+        bench_data[bench_name] = JSON.parse(File.read(result_json_path)).tap do |json|
+          json["command_line"] = cmd.shelljoin
+          File.unlink(result_json_path)
+        end
+      else
+        bench_failures[bench_name] = result[:status].exitstatus
+      end
+
+    end
   end
 
   [bench_data, bench_failures]
