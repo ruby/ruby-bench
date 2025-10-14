@@ -107,7 +107,6 @@ sudoku:
   ractor: true
 tinygql:
   desc: TinyGQL gem parsing a large file in pure Ruby
-  ractor: true
 
 #
 # MicroBenchmarks
