@@ -18,7 +18,14 @@ EXPECTED_SIZE = 569797
 
 Dir["/tmp/hexapdf-result*.pdf"].each { |file| FileUtils.rm file }
 
-index = 0
+if ENV["YJIT_BENCH_RACTOR_HARNESS"]
+  Ractor.make_shareable(HexaPDF::DefaultDocumentConfiguration)
+  Ractor.make_shareable(HexaPDF::GlobalConfiguration)
+  # TODO... still doesn't work
+end
+
+iter = 0
+
 run_benchmark(10) do
   ## TTF benchmark (v. slow)
   #HexaPDF::Composer.create(OUT_FILENAME, page_size: [0, 0, WIDTH, HEIGHT], margin: 0) do |pdf|
@@ -28,8 +35,8 @@ run_benchmark(10) do
   #end
 
   # Non-TTF benchmark
-  index += 1
-  out_filename = "/tmp/hexapdf-result-#{ "%03d" % index }.pdf"
+  iter += 1
+  out_filename = "/tmp/hexapdf-result-#{ "%03d" % iter }.pdf"
 
 
   composer = HexaPDF::Composer.new(page_size: [0, 0, WIDTH, HEIGHT], margin: 0)
