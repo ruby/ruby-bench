@@ -279,7 +279,7 @@ def run_benchmarks(ruby:, ruby_description:, categories:, name_filters:, out_pat
     # benchmarks-ractor directory should be included when we're benchmarking the
     # Ractor category
     bench_file_grouping[ractor_bench_dir] = Dir.children(ractor_bench_dir).sort.filter do |entry|
-      match_filter(entry, categories: [], name_filters: [])
+      match_filter(entry, categories: [], name_filters: name_filters)
     end
   end
 
