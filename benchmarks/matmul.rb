@@ -37,10 +37,11 @@ if ARGV.length > 0
   n = ARGV[0].to_i
 end
 n = n / 2 * 2
+N = n
 
 run_benchmark(20) do
-  a = matgen(n)
-  b = matgen(n)
+  a = matgen(N)
+  b = matgen(N)
   c = matmul(a, b)
   # puts c[n / 2][n / 2]
 end

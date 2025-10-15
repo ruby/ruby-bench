@@ -5,6 +5,8 @@
 # modified by Jesse Millikan
 # modified by Yusuke Endoh 
 
+require_relative '../../harness/loader'
+
 SOLAR_MASS = 4 * Math::PI**2
 DAYS_PER_YEAR = 365.24
 
@@ -129,18 +131,27 @@ BODIES = [
 
 offset_momentum(BODIES)
 
-n = 20000
-nbodies = BODIES.size
-dt = 0.01
-
-require_relative '../../harness/loader'
+N = 20000
+NBODIES = BODIES.size
+if ENV["YJIT_BENCH_RACTOR_HARNESS"]
+  Ractor.make_shareable(BODIES)
+end
+DT = 0.01
 
 run_benchmark(200) do
+  nbodies = NBODIES
+  n = N
+  dt = DT
+  if ENV["YJIT_BENCH_RACTOR_HARNESS"]
+    bodies = ractor_deep_dup(BODIES)
+  else
+    bodies = BODIES
+  end
   n.times do
     i = 0
     while i < nbodies
-      b = BODIES[i]
-      b.move_from_i(BODIES, nbodies, dt, i + 1)
+      b = bodies[i]
+      b.move_from_i(bodies, nbodies, dt, i + 1)
       i += 1
     end
   end
