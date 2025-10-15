@@ -66,6 +66,8 @@ graphql:
   desc: GraphQL gem parsing a large file, uses Racc which has some Ruby->native->Ruby calls
 graphql-native:
   desc: GraphQL gem parsing a large file, but using a native parser
+knucleotide:
+  desc: k-nucleotide from the Computer Language Benchmarks Game - counts nucleotide frequencies using hash tables in parallel using Process.fork
 lee:
   desc: lee is a circuit-board layout solver, deployed in a plausibly reality-like way
 matmul:
@@ -175,6 +177,8 @@ throw:
 #
 # Ractor-only benchmarks
 #
+ractor/knucleotide:
+  desc: k-nucleotide from the Computer Language Benchmarks Game - counts nucleotide frequencies using hash tables. Counts groups in parallel using Ractors.
 ractor/gvl_release_acquire:
   desc: microbenchmark designed to test how fast the gvl can be acquired and released between ractors.
 ractor/json_parse_float:
