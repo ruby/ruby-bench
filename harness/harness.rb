@@ -32,7 +32,7 @@ def realtime
 end
 
 # Takes a block as input
-def run_benchmark(_num_itrs_hint, &block)
+def run_benchmark(_num_itrs_hint, **, &block)
   times = []
   total_time = 0
   num_itrs = 0

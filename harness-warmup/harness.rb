@@ -33,7 +33,7 @@ def print_stats(bench, elapsed)
 end
 
 # Takes a block as input
-def run_benchmark(num_itrs_hint)
+def run_benchmark(num_itrs_hint, **)
   start = monotonic_time
   times = []
 
