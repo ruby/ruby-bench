@@ -172,3 +172,14 @@ throw:
   desc: microbenchmark for the throw instruction and stack unwinding.
   category: micro
   single_file: true
+#
+# Ractor-only benchmarks
+#
+ractor/gvl_release_acquire:
+  desc: microbenchmark designed to test how fast the gvl can be acquired and released between ractors.
+ractor/json_parse_float:
+  desc: test the performance of parsing multiple lists of json floats with ractors.
+ractor/json_parse_string:
+  desc: test the performance of parsing multiple lists of strings with ractors.
+ractor/optcarrot:
+  desc: The NES emulator optcarrot, refactored to run inside multiple ractors.
