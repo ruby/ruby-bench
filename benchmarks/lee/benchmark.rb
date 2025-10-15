@@ -87,29 +87,34 @@ require_relative "../../harness/loader"
 Dir.chdir __dir__
 use_gemfile
 
+BOARD = Ractor.make_shareable(board)
+OBSTRUCTED = Ractor.make_shareable(obstructed)
+OUTPUT_FILENAME = Ractor.make_shareable(output_filename)
+EXPANSIONS_DIR = Ractor.make_shareable(expansions_dir)
+
 run_benchmark(10) do
-  depth = Lee::Matrix.new(board.height, board.width)
+  depth = Lee::Matrix.new(BOARD.height, BOARD.width)
 
   solutions = {}
 
-  board.routes.each do |route|
-    cost = expand(board, obstructed, depth, route)
-    solution = solve(board, route, cost)
+  BOARD.routes.each do |route|
+    cost = expand(BOARD, OBSTRUCTED, depth, route)
+    solution = solve(BOARD, route, cost)
 
-    if expansions_dir
-      Lee.draw board, solutions.values, [[cost.keys, solution]], File.join(expansions_dir, "expansion-#{route.object_id}.svg")
+    if EXPANSIONS_DIR
+      Lee.draw BOARD, solutions.values, [[cost.keys, solution]], File.join(EXPANSIONS_DIR, "expansion-#{route.object_id}.svg")
     end
 
     lay depth, solution
     solutions[route] = solution
   end
 
-  raise 'invalid solution' unless Lee.solution_valid?(board, solutions)
+  raise 'invalid solution' unless Lee.solution_valid?(BOARD, solutions)
 
-  cost, depth = Lee.cost_solutions(board, solutions)
-  #puts "routes: #{board.routes.size}"
+  cost, depth = Lee.cost_solutions(BOARD, solutions)
+  #puts "routes: #{BOARD.routes.size}"
   #puts "cost:   #{cost}"
   #puts "depth:  #{depth}"
 
-  Lee.draw board, solutions.values, output_filename if output_filename
+  Lee.draw BOARD, solutions.values, OUTPUT_FILENAME if OUTPUT_FILENAME
 end

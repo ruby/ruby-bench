@@ -61,7 +61,7 @@ def stackprof_opts
   opts
 end
 
-def run_benchmark(n, &block)
+def run_benchmark(n, **, &block)
   require "stackprof"
 
   opts = stackprof_opts

@@ -174,16 +174,37 @@ def free_file_no(prefix)
   end
 end
 
-def benchmark_category(name)
+def benchmark_categories(name)
   metadata = benchmarks_metadata.find { |benchmark, _metadata| benchmark == name }&.last || {}
-  metadata.fetch('category', 'other')
+  categories = [metadata.fetch('category', 'other')]
+  categories << 'ractor' if metadata['ractor']
+  categories
 end
 
 # Check if the name matches any of the names in a list of filters
 def match_filter(entry, categories:, name_filters:)
+  name_filters = process_name_filters(name_filters)
   name = entry.sub(/\.rb\z/, '')
-  (categories.empty? || categories.include?(benchmark_category(name))) &&
-    (name_filters.empty? || name_filters.include?(name))
+  (categories.empty? || benchmark_categories(name).any? { |cat| categories.include?(cat) }) &&
+    (name_filters.empty? || name_filters.any? { |filter| filter === name })
+end
+
+# process "/my_benchmark/i" into /my_benchmark/i
+def process_name_filters(name_filters)
+  name_filters.map do |name_filter|
+    if name_filter[0] == "/"
+      regexp_str = name_filter[1..-1].reverse.sub(/\A(\w*)\//, "")
+      regexp_opts = $1.to_s
+      regexp_str.reverse!
+      r = /#{regexp_str}/
+      if !regexp_opts.empty?
+        r = Regexp.compile(r.to_s, regexp_opts)
+      end
+      r
+    else
+      name_filter
+    end
+  end
 end
 
 # Resolve the pre_init file path into a form that can be required
@@ -237,82 +258,105 @@ def run_benchmarks(ruby:, ruby_description:, categories:, name_filters:, out_pat
   bench_data = {}
   bench_failures = {}
 
+  bench_dir = "benchmarks"
+  ractor_bench_dir = "benchmarks-ractor"
+
+  if categories == ["ractor-only"]
+    bench_dir = ractor_bench_dir
+    harness = "harness-ractor"
+    categories = []
+  end
+
+  bench_file_grouping = {}
+
   # Get the list of benchmark files/directories matching name filters
-  bench_files = Dir.children('benchmarks').sort.filter do |entry|
+  bench_file_grouping[bench_dir] = Dir.children(bench_dir).sort.filter do |entry|
     match_filter(entry, categories: categories, name_filters: name_filters)
+  end
+
+  if categories == ["ractor"]
+    # We ignore the category filter here because everything in the
+    # benchmarks-ractor directory should be included when we're benchmarking the
+    # Ractor category
+    bench_file_grouping[ractor_bench_dir] = Dir.children(ractor_bench_dir).sort.filter do |entry|
+      match_filter(entry, categories: [], name_filters: name_filters)
+    end
   end
 
   if pre_init
     pre_init = expand_pre_init(pre_init)
   end
 
-  bench_files.each_with_index do |entry, idx|
-    bench_name = entry.gsub('.rb', '')
 
-    puts("Running benchmark \"#{bench_name}\" (#{idx+1}/#{bench_files.length})")
+  bench_file_grouping.each do |bench_dir, bench_files|
+    bench_files.each_with_index do |entry, idx|
+      bench_name = entry.gsub('.rb', '')
 
-    # Path to the benchmark runner script
-    script_path = File.join('benchmarks', entry)
+      puts("Running benchmark \"#{bench_name}\" (#{idx+1}/#{bench_files.length})")
 
-    if !script_path.end_with?('.rb')
-      script_path = File.join(script_path, 'benchmark.rb')
-    end
+      # Path to the benchmark runner script
+      script_path = File.join(bench_dir, entry)
 
-    # Set up the environment for the benchmarking command
-    result_json_path = File.join(out_path, "temp#{Process.pid}.json")
-    ENV["RESULT_JSON_PATH"] = result_json_path
-
-    # Set up the benchmarking command
-    cmd = []
-    if os == :linux
-      cmd += setarch_prefix
-
-      # Pin the process to one given core to improve caching and reduce variance on CRuby
-      # Other Rubies need to use multiple cores, e.g., for JIT threads
-      if ruby_description.start_with?('ruby ') && !no_pinning
-        # The last few cores of Intel CPU may be slow E-Cores, so avoid using the last one.
-        cpu = [(Etc.nprocessors / 2) - 1, 0].max
-        cmd += ["taskset", "-c", "#{cpu}"]
+      if !script_path.end_with?('.rb')
+        script_path = File.join(script_path, 'benchmark.rb')
       end
-    end
 
-    # Fix for jruby/jruby#7394 in JRuby 9.4.2.0
-    script_path = File.expand_path(script_path)
+      # Set up the environment for the benchmarking command
+      result_json_path = File.join(out_path, "temp#{Process.pid}.json")
+      ENV["RESULT_JSON_PATH"] = result_json_path
 
-    cmd += [
-      *ruby,
-      "-I", harness,
-      *pre_init,
-      script_path,
-    ].compact
+      # Set up the benchmarking command
+      cmd = []
+      if os == :linux
+        cmd += setarch_prefix
 
-    # When the Ruby running this script is not the first Ruby in PATH, shell commands
-    # like `bundle install` in a child process will not use the Ruby being benchmarked.
-    # It overrides PATH to guarantee the commands of the benchmarked Ruby will be used.
-    env = {}
-    ruby_path = `#{ruby.shelljoin} -e 'print RbConfig.ruby' 2> #{File::NULL}`
-    if ruby_path != RbConfig.ruby
-      env["PATH"] = "#{File.dirname(ruby_path)}:#{ENV["PATH"]}"
-
-      # chruby sets GEM_HOME and GEM_PATH in your shell. We have to unset it in the child
-      # process to avoid installing gems to the version that is running run_benchmarks.rb.
-      ["GEM_HOME", "GEM_PATH"].each do |var|
-        env[var] = nil if ENV.key?(var)
+        # Pin the process to one given core to improve caching and reduce variance on CRuby
+        # Other Rubies need to use multiple cores, e.g., for JIT threads
+        if ruby_description.start_with?('ruby ') && !no_pinning
+          # The last few cores of Intel CPU may be slow E-Cores, so avoid using the last one.
+          cpu = [(Etc.nprocessors / 2) - 1, 0].max
+          cmd += ["taskset", "-c", "#{cpu}"]
+        end
       end
-    end
 
-    # Do the benchmarking
-    result = check_call(cmd.shelljoin, env: env, raise_error: false)
+      # Fix for jruby/jruby#7394 in JRuby 9.4.2.0
+      script_path = File.expand_path(script_path)
 
-    if result[:success]
-      bench_data[bench_name] = JSON.parse(File.read(result_json_path)).tap do |json|
-        json["command_line"] = cmd.shelljoin
-        File.unlink(result_json_path)
+      cmd += [
+        *ruby,
+        "-I", harness,
+        *pre_init,
+        script_path,
+      ].compact
+
+      # When the Ruby running this script is not the first Ruby in PATH, shell commands
+      # like `bundle install` in a child process will not use the Ruby being benchmarked.
+      # It overrides PATH to guarantee the commands of the benchmarked Ruby will be used.
+      env = {}
+      ruby_path = `#{ruby.shelljoin} -e 'print RbConfig.ruby' 2> #{File::NULL}`
+      if ruby_path != RbConfig.ruby
+        env["PATH"] = "#{File.dirname(ruby_path)}:#{ENV["PATH"]}"
+
+        # chruby sets GEM_HOME and GEM_PATH in your shell. We have to unset it in the child
+        # process to avoid installing gems to the version that is running run_benchmarks.rb.
+        ["GEM_HOME", "GEM_PATH"].each do |var|
+          env[var] = nil if ENV.key?(var)
+        end
       end
-    else
-      bench_failures[bench_name] = result[:status].exitstatus
-    end
 
+      # Do the benchmarking
+      result = check_call(cmd.shelljoin, env: env, raise_error: false)
+
+      if result[:success]
+        bench_data[bench_name] = JSON.parse(File.read(result_json_path)).tap do |json|
+          json["command_line"] = cmd.shelljoin
+          File.unlink(result_json_path)
+        end
+      else
+        bench_failures[bench_name] = result[:status].exitstatus
+      end
+
+    end
   end
 
   [bench_data, bench_failures]
@@ -331,6 +375,7 @@ args = OpenStruct.new({
   graph: false,
   no_pinning: false,
   turbo: false,
+  skip_yjit: false,
 })
 
 OptionParser.new do |opts|
@@ -369,16 +414,23 @@ OptionParser.new do |opts|
     args.out_override = v
   end
 
-  opts.on("--category=headline,other,micro", "when given, only benchmarks with specified categories will run") do |v|
+  opts.on("--category=headline,other,micro,ractor", "when given, only benchmarks with specified categories will run") do |v|
     args.categories += v.split(",")
+    if args.categories == ["ractor"]
+      args.harness = "harness-ractor"
+    end
   end
 
-  opts.on("--headline", "when given, headline benchmarks will be run") do |v|
+  opts.on("--headline", "when given, headline benchmarks will be run") do
     args.categories += ["headline"]
   end
 
   opts.on("--name_filters=x,y,z", Array, "when given, only benchmarks with names that contain one of these strings will run") do |list|
     args.name_filters = list
+  end
+
+  opts.on("--skip-yjit", "Don't run with yjit after interpreter") do
+    args.skip_yjit = true
   end
 
   opts.on("--harness=HARNESS_DIR", "which harness to use") do |v|
@@ -442,7 +494,7 @@ end
 
 # If -e is not specified, benchmark the current Ruby. Compare it with YJIT if available.
 if args.executables.empty?
-  if have_yjit?(RbConfig.ruby)
+  if have_yjit?(RbConfig.ruby) && !args.skip_yjit
     args.executables["interp"] = [RbConfig.ruby]
     args.executables["yjit"] = [RbConfig.ruby, "--yjit", *args.yjit_opts.shellsplit]
   else

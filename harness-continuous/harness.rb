@@ -2,14 +2,12 @@ require_relative "../harness/harness-common"
 
 puts RUBY_DESCRIPTION
 
-def run_benchmark(_)
+def run_benchmark(n, **, &blk)
   iterations = 1
   start_time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
 
   loop do
-    iterations.times do
-      yield
-    end
+    iterations.times(&blk)
 
     end_time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
     round_time = end_time - start_time
