@@ -7,7 +7,7 @@
 
 require_relative '../harness/harness-common'
 
-def run_benchmark(_hint)
+def run_benchmark(_hint, **)
   yield
   return_results([], [0.001]) # bogus timing
 end
