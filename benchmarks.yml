@@ -85,6 +85,7 @@ nqueens:
   ractor: true
 optcarrot:
   desc: optcarrot is a functional headless NES emulator, run on a specific game cartridge for a specific number of frames.
+  ractor: true
 protoboeuf:
   desc: protoboeuf (pure-Ruby protobuf) message decoding
   ractor: true
