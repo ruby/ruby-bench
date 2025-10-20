@@ -112,6 +112,18 @@ cfunc_itself:
   desc: cfunc_itself just calls the 'itself' method many, many times.
   category: micro
   single_file: true
+send_cfunc_block:
+  desc: send_cfunc_block just calls a known C function with a block many, many times.
+  category: micro
+  single_file: true
+send_rubyfunc_block:
+  desc: send_rubyfunc_block just calls a known Ruby function with a block many, many times.
+  category: micro
+  single_file: true
+send_bmethod:
+  desc: send_bmethod just calls known Ruby bmethods many, many times.
+  category: micro
+  single_file: true
 fib:
   desc: Fib is a simple exponential-time recursive Fibonacci number generator.
   category: micro
