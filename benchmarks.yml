@@ -121,7 +121,7 @@ send_rubyfunc_block:
   category: micro
   single_file: true
 send_bmethod:
-  desc: send_bmethod just calls a known Ruby bmethod many, many times.
+  desc: send_bmethod just calls known Ruby bmethods many, many times.
   category: micro
   single_file: true
 fib:

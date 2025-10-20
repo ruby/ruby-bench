@@ -1,5 +1,6 @@
 require_relative '../harness/loader'
 
+# Call with and without args
 define_method(:zero) { :b }
 define_method(:one) { |arg| arg }
 
