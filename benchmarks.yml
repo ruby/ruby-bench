@@ -120,6 +120,10 @@ send_rubyfunc_block:
   desc: send_rubyfunc_block just calls a known Ruby function with a block many, many times.
   category: micro
   single_file: true
+send_bmethod:
+  desc: send_bmethod just calls a known Ruby bmethod many, many times.
+  category: micro
+  single_file: true
 fib:
   desc: Fib is a simple exponential-time recursive Fibonacci number generator.
   category: micro
