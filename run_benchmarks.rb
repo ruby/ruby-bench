@@ -11,6 +11,7 @@ require 'rbconfig'
 require 'etc'
 require 'yaml'
 require_relative 'misc/stats'
+require_relative 'misc/benchmark_mode'
 
 # Check which OS we are running
 def os
@@ -58,7 +59,7 @@ def have_yjit?(ruby)
 end
 
 # Disable Turbo Boost while running benchmarks. Maximize the CPU frequency.
-def set_bench_config(turbo:)
+def set_bench_config(turbo:, benchmark_mode:)
   # sudo requires the flag '-S' in order to take input from stdin
   if File.exist?('/sys/devices/system/cpu/intel_pstate') # Intel
     unless intel_no_turbo? || turbo
@@ -73,6 +74,13 @@ def set_bench_config(turbo:)
       at_exit { check_call("sudo -S sh -c 'echo 1 > /sys/devices/system/cpu/cpufreq/boost'", quiet: true) }
     end
     check_call("sudo -S cpupower frequency-set -g performance") unless performance_governor?
+  end
+
+  if os == :linux && benchmark_mode
+    BenchmarkMode.engage!&.then do |cpu|
+      ENV["YJIT_BENCH_CPU"] = cpu.to_s
+    end
+    at_exit { BenchmarkMode.disengage! }
   end
 end
 
@@ -270,8 +278,10 @@ def run_benchmarks(ruby:, ruby_description:, categories:, name_filters:, out_pat
       # Pin the process to one given core to improve caching and reduce variance on CRuby
       # Other Rubies need to use multiple cores, e.g., for JIT threads
       if ruby_description.start_with?('ruby ') && !no_pinning
-        # The last few cores of Intel CPU may be slow E-Cores, so avoid using the last one.
-        cpu = [(Etc.nprocessors / 2) - 1, 0].max
+        cpu = ENV.fetch("YJIT_BENCH_CPU") do
+          # The last few cores of Intel CPU may be slow E-Cores, so avoid using the last one.
+          [(Etc.nprocessors / 2) - 1, 0].max
+        end
         cmd += ["taskset", "-c", "#{cpu}"]
       end
     end
@@ -329,6 +339,7 @@ args = OpenStruct.new({
   name_filters: [],
   rss: false,
   graph: false,
+  benchmark_mode: true,
   no_pinning: false,
   turbo: false,
 })
@@ -426,6 +437,10 @@ OptionParser.new do |opts|
     args.graph = true
   end
 
+  opts.on("--no-benchmark-mode", "Disable cpusets, niceness, hyper-threading toggling") do
+    args.benchmark_mode = false
+  end
+
   opts.on("--no-pinning", "don't pin ruby to a specific CPU core") do
     args.no_pinning = true
   end
@@ -450,8 +465,8 @@ if args.executables.empty?
   end
 end
 
-# Disable CPU frequency scaling
-set_bench_config(turbo: args.turbo)
+# Disable CPU frequency scaling, enable cpusets, etc
+set_bench_config(turbo: args.turbo, benchmark_mode: args.benchmark_mode)
 
 # Check pstate status
 check_pstate(turbo: args.turbo)
