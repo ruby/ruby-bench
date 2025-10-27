@@ -7,7 +7,7 @@ require "graphql"
 
 DATA = Ractor.make_shareable(File.read "negotiate.gql")
 
-if ENV["YJIT_BENCH_RACTOR_HARNESS"]
+if ENV["RUBY_BENCH_RACTOR_HARNESS"]
   GraphQL.default_parser
   Ractor.make_shareable(GraphQL::Tracing::NullTrace)
   GraphQL::Language::Lexer.constants.each do |constant|

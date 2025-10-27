@@ -30,7 +30,7 @@ end
 
 obj = TheClass.new
 
-if ENV["YJIT_BENCH_RACTOR_HARNESS"]
+if ENV["RUBY_BENCH_RACTOR_HARNESS"]
   # same code as below, just pass obj as a ractor arg
   run_benchmark(1000, ractor_args: [obj]) do |_, object|
     object.set_value_loop

@@ -1,5 +1,5 @@
 require_relative '../harness/loader'
-if ENV["YJIT_BENCH_RACTOR_HARNESS"]
+if ENV["RUBY_BENCH_RACTOR_HARNESS"]
   eval_recv = Object.new
   eval_meth = :instance_eval
 else
@@ -240012,7 +240012,7 @@ end
 
 INTERNAL_ITRS = Integer(ENV.fetch("INTERNAL_ITRS", 200))
 
-main_obj = ENV["YJIT_BENCH_RACTOR_HARNESS"] ? eval_recv : nil
+main_obj = ENV["RUBY_BENCH_RACTOR_HARNESS"] ? eval_recv : nil
 run_benchmark(30, ractor_args: [main_obj]) do |num_rs,  selv|
   if selv
     recv = selv

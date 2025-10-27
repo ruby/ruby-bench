@@ -24,7 +24,7 @@ def concat_single_test(n, encoding, str_to_add)
   s
 end
 
-if ENV["YJIT_BENCH_RACTOR_HARNESS"]
+if ENV["RUBY_BENCH_RACTOR_HARNESS"]
   def concat_test
     # So far, binary versus UTF-8 encoding makes effectively no
     # difference in speed here. Observed diff is around 69.5 vs 68.9
@@ -46,7 +46,7 @@ run_benchmark(100) do
   100.times { concat_test }
 end
 
-unless ENV["YJIT_BENCH_RACTOR_HARNESS"]
+unless ENV["RUBY_BENCH_RACTOR_HARNESS"]
   if OUTPUT[:one] != EXPECTED_OUTPUT
     raise "Incorrect output for UTF-8 encoding!"
   end

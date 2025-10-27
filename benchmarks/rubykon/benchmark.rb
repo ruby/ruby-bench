@@ -11,7 +11,7 @@ require_relative 'lib/rubykon'
 
 ITERATIONS = 100
 
-if ENV["YJIT_BENCH_RACTOR_HARNESS"]
+if ENV["RUBY_BENCH_RACTOR_HARNESS"]
   run_benchmark(10) do
     state = Rubykon::GameState.new Rubykon::Game.new(19)
     m = MCTS::MCTS.new

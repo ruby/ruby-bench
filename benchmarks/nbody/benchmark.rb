@@ -133,7 +133,7 @@ offset_momentum(BODIES)
 
 N = 20000
 NBODIES = BODIES.size
-if ENV["YJIT_BENCH_RACTOR_HARNESS"]
+if ENV["RUBY_BENCH_RACTOR_HARNESS"]
   Ractor.make_shareable(BODIES)
 end
 DT = 0.01
@@ -142,7 +142,7 @@ run_benchmark(200) do
   nbodies = NBODIES
   n = N
   dt = DT
-  if ENV["YJIT_BENCH_RACTOR_HARNESS"]
+  if ENV["RUBY_BENCH_RACTOR_HARNESS"]
     bodies = ractor_deep_dup(BODIES)
   else
     bodies = BODIES

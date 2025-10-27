@@ -2,13 +2,13 @@
 require_relative '../harness/harness-common'
 
 Warning[:experimental] = false
-ENV["YJIT_BENCH_RACTOR_HARNESS"] = "1"
+ENV["RUBY_BENCH_RACTOR_HARNESS"] = "1"
 
 default_ractors = [
   0, # without ractor
   1, 2, 4, 6, 8#, 12, 16, 32
 ]
-if rs = ENV["YJIT_BENCH_RACTORS"]
+if rs = ENV["RUBY_BENCH_RACTORS"]
   rs = rs.split(",").map(&:to_i) # If you want to include 0, you have to specify
   rs = rs.sort.uniq
   if rs.any?
