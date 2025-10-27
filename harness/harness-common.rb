@@ -13,6 +13,13 @@ GC.auto_compact = !!ENV["RUBY_GC_AUTO_COMPACT"]
 # Seed the global random number generator for repeatability between runs
 Random.srand(1337)
 
+if !Ractor.respond_to?(:make_shareable)
+  class Ractor
+    #noop
+    def make_shareable(obj, copy: false); obj; end
+  end
+end
+
 def format_number(num)
   num.to_s.split(".").tap do |a|
     # Insert comma separators but only in the whole number portion (a[0]).
