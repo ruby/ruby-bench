@@ -16,9 +16,10 @@ if test_yaml_files.size < 1
   raise "Not loading any YAML files!"
 end
 
-test_yaml = test_yaml_files.map { |p| File.read(p) }
+TEST_YAML = Ractor.make_shareable(test_yaml_files.map { |p| File.read(p) })
 
 run_benchmark(10) do
+  test_yaml = TEST_YAML
   100.times do
     test_yaml.each do |yaml_content|
       y = Psych.load(yaml_content)

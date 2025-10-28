@@ -34,8 +34,9 @@ class TheClass
   end
 end
 
-obj = TheClass.new
+OBJ = TheClass.new
+Ractor.make_shareable(OBJ)
 
-run_benchmark(850) do
-  obj.get_value_loop
+run_benchmark(10) do
+  OBJ.get_value_loop
 end

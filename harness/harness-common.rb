@@ -13,6 +13,13 @@ GC.auto_compact = !!ENV["RUBY_GC_AUTO_COMPACT"]
 # Seed the global random number generator for repeatability between runs
 Random.srand(1337)
 
+if !Ractor.respond_to?(:make_shareable)
+  class Ractor
+    #noop
+    def make_shareable(obj, copy: false); obj; end
+  end
+end
+
 def format_number(num)
   num.to_s.split(".").tap do |a|
     # Insert comma separators but only in the whole number portion (a[0]).
@@ -44,7 +51,12 @@ def use_gemfile(extra_setup_cmd: nil)
   setup_cmds(["bundle check 2> /dev/null || bundle install", extra_setup_cmd].compact)
 
   # Need to be in the appropriate directory for this...
-  require "bundler/setup"
+  require "bundler"
+  # Use Bundler.setup instead of require 'bundler/setup' to avoid bundler's autoswitch restarting the
+  # process and messing with LOAD_PATH. Autoswitching occurs when the BUNDLED_WITH in the Gemfile.lock
+  # is a different version than the loaded version of bundler. This can happen in development when
+  # switching between ruby versions.
+  Bundler.setup
 end
 
 # This returns its best estimate of the Resident Set Size in bytes.

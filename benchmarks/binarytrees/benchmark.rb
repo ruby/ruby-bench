@@ -16,15 +16,18 @@ def bottom_up_tree(depth)
   [bottom_up_tree(depth), bottom_up_tree(depth)]
 end
 
-max_depth = 14
-min_depth = 4
+MAX_DEPTH = 14
+MIN_DEPTH = 4
 
-max_depth = min_depth + 2 if min_depth + 2 > max_depth
-stretch_depth = max_depth + 1
+MAX_DEPTH = MIN_DEPTH + 2 if MIN_DEPTH + 2 > MAX_DEPTH
+STRETCH_DEPTH = MAX_DEPTH + 1
 
 require_relative '../../harness/loader'
 
 run_benchmark(60) do
+  max_depth = MAX_DEPTH
+  min_depth = MIN_DEPTH
+  stretch_depth = STRETCH_DEPTH
   stretch_tree = bottom_up_tree(stretch_depth)
   stretch_tree = nil
 

@@ -1,10 +1,12 @@
 require_relative '../harness/loader'
 
 # Fix these values for determinism
-u = 5
-r = 7
+U = 5
+R = 7
 
 run_benchmark(10) do
+  u = U
+  r = R
   a = Array.new(10000, 0)
 
   4_000.times do |i|

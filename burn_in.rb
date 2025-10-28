@@ -41,7 +41,7 @@ OptionParser.new do |opts|
     args.num_long_runs = v.to_i
   end
 
-  opts.on("--category=headline,other,micro", "when given, only benchmarks with specified categories will run") do |v|
+  opts.on("--category=headline,other,micro,ractor,ractor-only", "when given, only benchmarks with specified categories will run") do |v|
     args.categories = v.split(",")
   end
 
@@ -59,11 +59,18 @@ def free_file_path(parent_dir, name_prefix)
   end
 end
 
-def run_benchmark(bench_name, no_yjit, logs_path, run_time, ruby_version)
+def run_benchmark(bench_id, no_yjit, logs_path, run_time, ruby_version)
   # Determine the path to the benchmark script
-  script_path = File.join('benchmarks', bench_name, 'benchmark.rb')
+  bench_name = bench_id.sub('ractor/', '')
+  bench_dir, harness = if bench_name == bench_id
+    ['benchmarks', 'harness']
+  else
+    ['benchmarks-ractor', 'harness-ractor']
+  end
+
+  script_path = File.join(bench_dir, bench_name, 'benchmark.rb')
   if not File.exist?(script_path)
-    script_path = File.join('benchmarks', bench_name + '.rb')
+    script_path = File.join(bench_dir, bench_name + '.rb')
   end
 
   # Assemble random environment variable options to test
@@ -101,7 +108,7 @@ def run_benchmark(bench_name, no_yjit, logs_path, run_time, ruby_version)
   cmd = [
     'ruby',
     *test_options,
-    "-Iharness",
+    "-I#{harness}",
     script_path,
   ].compact
   cmd_str = cmd.shelljoin
@@ -133,7 +140,7 @@ def run_benchmark(bench_name, no_yjit, logs_path, run_time, ruby_version)
     puts "ERROR"
 
     # Write command executed and output
-    out_path = free_file_path(logs_path, "error_#{bench_name}")
+    out_path = free_file_path(logs_path, "error_#{bench_name.gsub('/', '_')}")
     puts "writing output file #{out_path}"
     contents = ruby_version + "\n\n" + "pid #{status.pid}\n" + user_cmd_str + "\n\n" + output
     File.write(out_path, contents)
@@ -191,11 +198,38 @@ end
 
 # Extract the names of benchmarks in the categories we want
 metadata = YAML.load_file('benchmarks.yml')
-metadata = metadata.filter do |bench_name, entry|
-  category = entry.fetch('category', 'other')
-  args.categories.include? category
+bench_names = []
+
+if args.categories.include?('ractor-only')
+  # Only include benchmarks with ractor/ prefix (from benchmarks-ractor directory)
+  bench_names = metadata.keys.select { |name| name.start_with?('ractor/') }
+elsif args.categories.include?('ractor')
+  # Include both ractor/ prefixed benchmarks and those with ractor: true
+  metadata.each do |name, entry|
+    if name.start_with?('ractor/') || entry['ractor']
+      bench_names << name
+    end
+  end
+
+  # Also include regular category benchmarks if other categories are specified
+  if args.categories.any? { |cat| ['headline', 'other', 'micro'].include?(cat) }
+    metadata.each do |name, entry|
+      category = entry.fetch('category', 'other')
+      if args.categories.include?(category) && !bench_names.include?(name)
+        bench_names << name
+      end
+    end
+  end
+else
+  # Regular category filtering
+  metadata.each do |name, entry|
+    category = entry.fetch('category', 'other')
+    if args.categories.include?(category)
+      bench_names << name
+    end
+  end
 end
-bench_names = metadata.map { |name, entry| name }
+
 bench_names.sort!
 
 # Fork the test processes
