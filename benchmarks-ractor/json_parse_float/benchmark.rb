@@ -7,18 +7,10 @@ puts "json v#{JSON::VERSION}"
 
 ELEMENTS = 100_000
 list = ELEMENTS.times.map do
-  {
-    rand => rand,
-    rand => rand,
-    rand => rand,
-    rand => rand,
-    rand => rand,
-    rand => rand,
-    rand => rand,
-    rand => rand,
-    rand => rand,
-    rand => rand,
-  }.to_json
+  [
+    rand, rand, rand, rand, rand, rand, rand, rand, rand, rand,
+    rand, rand, rand, rand, rand, rand, rand, rand, rand, rand,
+  ].to_json
 end
 Ractor.make_shareable(list)
 
