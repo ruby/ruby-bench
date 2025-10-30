@@ -152,6 +152,10 @@ getivar:
   category: micro
   single_file: true
   ractor: true
+structaref:
+  desc: structaref tests the performance of getting struct members
+  category: micro
+  single_file: true
 keyword_args:
   desc: keyword_args tests the performance of method calls with keyword arguments.
   category: micro
