@@ -351,6 +351,7 @@ GEM
       activerecord (>= 5.1)
       state_machines-activemodel (>= 0.8.0)
     stringio (3.1.7)
+    strscan (3.1.5)
     thor (1.4.0)
     thread_safe (0.3.6)
     tilt (2.6.1)
@@ -385,6 +386,7 @@ DEPENDENCIES
   rails (~> 8.0.2)
   shipit-engine (>= 0.40.0)
   sqlite3 (>= 2.1)
+  strscan
   tzinfo-data
 
 CHECKSUMS
@@ -510,6 +512,7 @@ CHECKSUMS
   state_machines-activemodel (0.100.0) sha256=5f32d5176a3fe03e482f29b37b0f60e4f5c5188a20150a4c20d50413b39c72e6
   state_machines-activerecord (0.8.0) sha256=072fb701b8ab03de0608297f6c55dc34ed096e556fa8f77e556f3c461c71aab6
   stringio (3.1.7) sha256=5b78b7cb242a315fb4fca61a8255d62ec438f58da2b90be66048546ade4507fa
+  strscan (3.1.5) sha256=f8413b90ea9395a69609a4414a8c88551bcda64337e234272c24fcd4c83e5947
   thor (1.4.0) sha256=8763e822ccb0f1d7bee88cde131b19a65606657b847cc7b7b4b82e772bcd8a3d
   thread_safe (0.3.6) sha256=9ed7072821b51c57e8d6b7011a8e282e25aeea3a4065eab326e43f66f063b05a
   tilt (2.6.1) sha256=35a99bba2adf7c1e362f5b48f9b581cce4edfba98117e34696dde6d308d84770

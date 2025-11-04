@@ -10,4 +10,8 @@ gem "puma", ">= 5.0"
 # Windows does not include zoneinfo files, so bundle the tzinfo-data gem
 gem "tzinfo-data", platforms: %i[ windows jruby ]
 
+# Exclude https://github.com/ruby/strscan/pull/168 for tzinfo, which still uses `StringScanner#rest?`.
+# TODO: consider using default-gem strscan again if tzinfo is fixed.
+gem "strscan"
+
 gem "shipit-engine", ">= 0.40.0"

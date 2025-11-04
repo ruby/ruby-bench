@@ -295,6 +295,7 @@ GEM
       mini_portile2 (~> 2.8.0)
     stackprof (0.2.27)
     stringio (3.1.7)
+    strscan (3.1.5)
     svg-graph (2.2.2)
     thor (1.4.0)
     timeout (0.4.3)
@@ -370,6 +371,7 @@ DEPENDENCIES
   sprockets-rails (= 2.3.3)
   sqlite3
   stackprof
+  strscan
   svg-graph
   vcr
   webmock
@@ -496,6 +498,7 @@ CHECKSUMS
   sqlite3 (2.7.3) sha256=d2b2fecd9341132f2cea3fde9061ee0fab9c9d532a8ecccfab4fe63d9621bf57
   stackprof (0.2.27) sha256=aff6d28656c852e74cf632cc2046f849033dc1dedffe7cb8c030d61b5745e80c
   stringio (3.1.7) sha256=5b78b7cb242a315fb4fca61a8255d62ec438f58da2b90be66048546ade4507fa
+  strscan (3.1.5) sha256=f8413b90ea9395a69609a4414a8c88551bcda64337e234272c24fcd4c83e5947
   svg-graph (2.2.2) sha256=f928866403055e6539afdfdab5f6268d108b2abc9f002e0fc51b16511809513a
   thor (1.4.0) sha256=8763e822ccb0f1d7bee88cde131b19a65606657b847cc7b7b4b82e772bcd8a3d
   timeout (0.4.3) sha256=9509f079b2b55fe4236d79633bd75e34c1c1e7e3fb4b56cb5fda61f80a0fe30e

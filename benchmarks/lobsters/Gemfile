@@ -58,6 +58,9 @@ gem "ruumba" # tests views
 gem "sitemap_generator" # for better search engine indexing
 gem "svg-graph", require: 'SVG/Graph/TimeSeries' # for charting, note workaround in lib/time_series.rb
 gem 'rack-attack' # rate-limiting
+# Exclude https://github.com/ruby/strscan/pull/168 for tzinfo, which still uses `StringScanner#rest?`.
+# TODO: consider using default-gem strscan again if tzinfo is fixed.
+gem "strscan"
 
 group :test, :development do
   gem 'capybara'
