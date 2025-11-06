@@ -7,20 +7,18 @@ gem "cgi" # Workaround cgi extraction in Ruby 3.5.0-dev
 
 # Bundle edge Rails instead: gem 'rails', github: 'rails/rails', branch: 'main'
 
-# Everything except Action Cable. It's unused and it installs native gems.
+# Skip ActionCable and ActiveRecord, which are unused and depend on native gems.
+# Other unused components that depend on ActiveRecord are also excluded.
 %w[
-  actionmailbox actionmailer actionpack actionview
-  actiontext activejob activemodel activerecord
-  activestorage activesupport railties
+  actionmailer actionpack actionview
+  activejob activemodel
+  activesupport railties
 ].each do |rails_gem|
   gem rails_gem, '~> 8.0'
 end
 
 gem 'sprockets-rails', '3.4.0'
 
-# Use sqlite3 as the database for Active Record
-gem 'sqlite3', platform: :ruby
-gem 'activerecord-jdbcsqlite3-adapter', '~> 70', platform: :jruby
 # Use Puma as the app server
 # gem 'puma', '~> 5.6'
 # Transpile app-like JavaScript. Read more: https://github.com/rails/webpacker
