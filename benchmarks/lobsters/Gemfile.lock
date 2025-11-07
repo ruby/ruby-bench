@@ -1,3 +1,19 @@
+GIT
+  remote: https://github.com/k0kubun/rqrcode.git
+  revision: 12a47520383c1d61d627a5107ba72fb80518ae7e
+  branch: ruby-4-0
+  specs:
+    rqrcode (3.1.0)
+      chunky_png (~> 1.0)
+      rqrcode_core (~> 2.0)
+
+GIT
+  remote: https://github.com/k0kubun/rqrcode_core.git
+  revision: 5108d47343eac062b5d8bb2526425575f1b645f5
+  branch: ruby-4-0
+  specs:
+    rqrcode_core (2.0.0)
+
 GEM
   remote: https://rubygems.org/
   specs:
@@ -229,10 +245,6 @@ GEM
       io-console (~> 0.5)
     rexml (3.4.2)
     rotp (6.3.0)
-    rqrcode (3.1.0)
-      chunky_png (~> 1.0)
-      rqrcode_core (~> 2.0)
-    rqrcode_core (2.0.0)
     rspec-core (3.13.5)
       rspec-support (~> 3.13.0)
     rspec-expectations (3.13.5)
@@ -358,7 +370,8 @@ DEPENDENCIES
   railties (~> 8.0)
   rb-readline
   rotp
-  rqrcode
+  rqrcode!
+  rqrcode_core!
   rspec-rails (~> 6.0.0.rc1)
   rubocop (= 0.81)
   rubocop-rails
@@ -471,8 +484,8 @@ CHECKSUMS
   reline (0.6.2) sha256=1dad26a6008872d59c8e05244b119347c9f2ddaf4a53dce97856cd5f30a02846
   rexml (3.4.2) sha256=1384268554a37af5da5279431ca3f2f37d46f09ffdd6c95e17cc84c83ea7c417
   rotp (6.3.0) sha256=75d40087e65ed0d8022c33055a6306c1c400d1c12261932533b5d6cbcd868854
-  rqrcode (3.1.0) sha256=e2d5996375f6e9a013823c289ed575dbea678b8e0388574302c1fac563f098af
-  rqrcode_core (2.0.0) sha256=1e40b823ab57a96482a417fff5dd5c33645a00cea6ef5d9e342fecc5ef91d9ab
+  rqrcode (3.1.0)
+  rqrcode_core (2.0.0)
   rspec-core (3.13.5) sha256=ab3f682897c6131c67f9a17cfee5022a597f283aebe654d329a565f9937a4fa3
   rspec-expectations (3.13.5) sha256=33a4d3a1d95060aea4c94e9f237030a8f9eae5615e9bd85718fe3a09e4b58836
   rspec-mocks (3.13.5) sha256=e4338a6f285ada9fe56f5893f5457783af8194f5d08884d17a87321d5195ea81
