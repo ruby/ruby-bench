@@ -1,16 +1,14 @@
 GIT
-  remote: https://github.com/k0kubun/rqrcode.git
-  revision: 12a47520383c1d61d627a5107ba72fb80518ae7e
-  branch: ruby-4-0
+  remote: https://github.com/whomwah/rqrcode.git
+  revision: f9fa33704951158a38b3cf04311e295d3a0e947d
   specs:
     rqrcode (3.1.0)
       chunky_png (~> 1.0)
       rqrcode_core (~> 2.0)
 
 GIT
-  remote: https://github.com/k0kubun/rqrcode_core.git
-  revision: 5108d47343eac062b5d8bb2526425575f1b645f5
-  branch: ruby-4-0
+  remote: https://github.com/whomwah/rqrcode_core.git
+  revision: a35eebde0f650074331206ccc7c6dc39a3fbb664
   specs:
     rqrcode_core (2.0.0)
 
