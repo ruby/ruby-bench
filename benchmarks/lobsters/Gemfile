@@ -36,7 +36,10 @@ gem "actionpack-page_caching"
 # security
 gem "bcrypt", "~> 3.1.2"
 gem "rotp"
-gem "rqrcode"
+# Waiting for https://github.com/whomwah/rqrcode/pull/160 to be released
+gem "rqrcode", github: "whomwah/rqrcode"
+# Waiting for https://github.com/whomwah/rqrcode_core/pull/48 to be released
+gem "rqrcode_core", github: "whomwah/rqrcode_core"
 
 # parsing
 gem "pdf-reader"
