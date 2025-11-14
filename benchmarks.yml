@@ -51,6 +51,24 @@ shipit:
 #
 # Other Benchmarks
 #
+addressable-equality:
+  desc: addressable URI equality comparison
+addressable-getters:
+  desc: addressable URI component getters (scheme, host, port, path, query, fragment)
+addressable-join:
+  desc: addressable URI joining/merging paths
+addressable-merge:
+  desc: addressable URI merging options
+addressable-new:
+  desc: addressable URI construction from hash
+addressable-normalize:
+  desc: addressable URI normalization
+addressable-parse:
+  desc: addressable URI parsing (simple and complex URIs)
+addressable-setters:
+  desc: addressable URI component setters (scheme, host, path modification)
+addressable-to-s:
+  desc: addressable URI to string conversion
 binarytrees:
   desc: binarytrees from the Computer Language Benchmarks Game.
 blurhash:
