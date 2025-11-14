@@ -27,7 +27,7 @@ jobs:
           ruby-version: ${{ matrix.ruby }}
 
       - name: Run tests
-        run: ruby test/benchmarks_test.rb
+        run: rake test
 
       - name: Test run_benchmarks.rb
         run: ./run_benchmarks.rb
