@@ -9,9 +9,9 @@ module BenchmarkRunner
   module_function
 
   # Find the first available file number for output files
-  def free_file_no(prefix)
+  def free_file_no(directory)
     (1..).each do |file_no|
-      out_path = File.join(prefix, "output_%03d.csv" % file_no)
+      out_path = File.join(directory, "output_%03d.csv" % file_no)
       return file_no unless File.exist?(out_path)
     end
   end
