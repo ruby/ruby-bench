@@ -101,6 +101,33 @@ It's also convenient for profiling, debugging, etc, especially since all benchma
 ruby benchmarks/some_benchmark.rb
 ```
 
+### Benchmark organization
+
+Benchmarks can be organized in three ways:
+
+1. **Standalone .rb files** - Place a `.rb` file directly in the `benchmarks/` directory:
+   ```
+   benchmarks/fib.rb         # Benchmark name: "fib"
+   ```
+
+2. **Single benchmark per directory** - For benchmarks that need additional files (like Gemfiles):
+   ```
+   benchmarks/erubi/
+     benchmark.rb            # Benchmark name: "erubi"
+     Gemfile
+   ```
+
+3. **Multiple benchmarks per directory** - For related benchmarks sharing dependencies:
+   ```
+   benchmarks/addressable/
+     equality.rb             # Benchmark name: "addressable-equality"
+     join.rb                 # Benchmark name: "addressable-join"
+     Gemfile                 # Shared Gemfile
+   ```
+
+   In directories **without** a `benchmark.rb` file, all `.rb` files will be discovered as separate benchmarks.
+   The benchmark name is derived as `directoryname-suffix` from `suffix.rb` files.
+
 ## Ractor Benchmarks
 
 ruby-bench supports Ractor-specific benchmarking with dedicated categories and benchmark directories.
