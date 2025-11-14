@@ -9,62 +9,6 @@ require 'csv'
 require 'yaml'
 
 describe BenchmarkRunner do
-  describe '.table_to_str' do
-    it 'formats a simple table correctly' do
-      table_data = [
-        ['bench', 'time (ms)', 'stddev (%)'],
-        ['fib', '100.5', '2.3'],
-        ['loop', '50.2', '1.1']
-      ]
-      format = ['%s', '%s', '%s']
-      failures = {}
-
-      result = BenchmarkRunner.table_to_str(table_data, format, failures)
-
-      assert_equal <<~TABLE, result
-        -----  ---------  ----------
-        bench  time (ms)  stddev (%)
-        fib    100.5      2.3
-        loop   50.2       1.1
-        -----  ---------  ----------
-      TABLE
-    end
-
-    it 'includes failure rows when failures are present' do
-      table_data = [
-        ['bench', 'time (ms)'],
-        ['fib', '100.5']
-      ]
-      format = ['%s', '%s']
-      failures = { 'ruby' => { 'broken_bench' => 1 } }
-
-      result = BenchmarkRunner.table_to_str(table_data, format, failures)
-
-      assert_equal <<~TABLE, result
-        ------------  ---------
-        bench         time (ms)
-        broken_bench  N/A
-        fib           100.5
-        ------------  ---------
-      TABLE
-    end
-
-    it 'handles empty failures hash' do
-      table_data = [['bench'], ['fib']]
-      format = ['%s']
-      failures = {}
-
-      result = BenchmarkRunner.table_to_str(table_data, format, failures)
-
-      assert_equal <<~TABLE, result
-        -----
-        bench
-        fib
-        -----
-      TABLE
-    end
-  end
-
   describe '.free_file_no' do
     it 'returns 1 when no files exist' do
       Dir.mktmpdir do |dir|

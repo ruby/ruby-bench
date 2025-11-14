@@ -12,6 +12,7 @@ require 'etc'
 require 'yaml'
 require_relative 'misc/stats'
 require_relative 'lib/benchmark_runner'
+require_relative 'lib/table_formatter'
 
 # Check which OS we are running
 def os
@@ -107,10 +108,6 @@ def performance_governor?
   Dir.glob('/sys/devices/system/cpu/cpu*/cpufreq/scaling_governor').all? do |governor|
     File.read(governor).strip == 'performance'
   end
-end
-
-def table_to_str(table_data, format, failures)
-  BenchmarkRunner.table_to_str(table_data, format, failures)
 end
 
 def mean(values)
@@ -525,7 +522,7 @@ ruby_descriptions.each do |key, value|
   output_str << "#{key}: #{value}\n"
 end
 output_str += "\n"
-output_str += table_to_str(table, format, bench_failures) + "\n"
+output_str += TableFormatter.new(table, format, bench_failures).to_s + "\n"
 unless other_names.empty?
   output_str << "Legend:\n"
   other_names.each do |name|

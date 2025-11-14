@@ -8,42 +8,6 @@ require 'rbconfig'
 module BenchmarkRunner
   module_function
 
-  # Format benchmark data as a string table
-  def table_to_str(table_data, format, failures)
-    # Trim numbers to one decimal for console display
-    # Keep two decimals for the speedup ratios
-
-    failure_rows = failures.map { |_exe, data| data.keys }.flatten.uniq
-                           .map { |name| [name] + (['N/A'] * (table_data.first.size - 1)) }
-
-    table_data = table_data.first(1) + failure_rows + table_data.drop(1).map { |row|
-      format.zip(row).map { |fmt, data| fmt % data }
-    }
-
-    num_rows = table_data.length
-    num_cols = table_data[0].length
-
-    # Pad each column to the maximum width in the column
-    (0...num_cols).each do |c|
-      cell_lens = (0...num_rows).map { |r| table_data[r][c].length }
-      max_width = cell_lens.max
-      (0...num_rows).each { |r| table_data[r][c] = table_data[r][c].ljust(max_width) }
-    end
-
-    # Row of separator dashes
-    sep_row = (0...num_cols).map { |i| '-' * table_data[0][i].length }.join('  ').rstrip
-
-    out = sep_row + "\n"
-
-    table_data.each do |row|
-      out += row.join('  ').rstrip + "\n"
-    end
-
-    out += sep_row + "\n"
-
-    out
-  end
-
   # Find the first available file number for output files
   def free_file_no(prefix)
     (1..).each do |file_no|
