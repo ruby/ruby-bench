@@ -14,11 +14,6 @@ require_relative 'misc/stats'
 require_relative 'lib/benchmark_runner'
 require_relative 'lib/table_formatter'
 
-# Check which OS we are running
-def os
-  BenchmarkRunner.os
-end
-
 # Checked system - error or return info if the command fails
 def check_call(command, env: {}, raise_error: true, quiet: false)
   puts("+ #{command}") unless quiet
@@ -189,7 +184,7 @@ def run_benchmarks(ruby:, ruby_description:, categories:, name_filters:, out_pat
 
       # Set up the benchmarking command
       cmd = []
-      if os == :linux
+      if BenchmarkRunner.os == :linux
         cmd += setarch_prefix
 
         # Pin the process to one given core to improve caching and reduce variance on CRuby
