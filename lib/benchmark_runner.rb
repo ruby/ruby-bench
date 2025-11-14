@@ -18,7 +18,7 @@ module BenchmarkRunner
 
   # Get benchmark categories from metadata
   def benchmark_categories(name, metadata)
-    benchmark_metadata = metadata.find { |benchmark, _metadata| benchmark == name }&.last || {}
+    benchmark_metadata = metadata[name] || {}
     categories = [benchmark_metadata.fetch('category', 'other')]
     categories << 'ractor' if benchmark_metadata['ractor']
     categories
