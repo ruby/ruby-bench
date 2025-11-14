@@ -11,25 +11,8 @@ require 'rbconfig'
 require 'etc'
 require 'yaml'
 require_relative 'misc/stats'
-
-# Check which OS we are running
-def os
-  @os ||= (
-    host_os = RbConfig::CONFIG['host_os']
-    case host_os
-    when /mswin|msys|mingw|cygwin|bccwin|wince|emc/
-      :windows
-    when /darwin|mac os/
-      :macosx
-    when /linux/
-      :linux
-    when /solaris|bsd/
-      :unix
-    else
-      raise "unknown os: #{host_os.inspect}"
-    end
-  )
-end
+require_relative 'lib/benchmark_runner'
+require_relative 'lib/table_formatter'
 
 # Checked system - error or return info if the command fails
 def check_call(command, env: {}, raise_error: true, quiet: false)
@@ -122,41 +105,6 @@ def performance_governor?
   end
 end
 
-def table_to_str(table_data, format, failures)
-  # Trim numbers to one decimal for console display
-  # Keep two decimals for the speedup ratios
-
-  failure_rows = failures.map { |_exe, data| data.keys }.flatten.uniq
-                         .map { |name| [name] + (['N/A'] * (table_data.first.size - 1)) }
-
-  table_data = table_data.first(1) + failure_rows + table_data.drop(1).map { |row|
-    format.zip(row).map { |fmt, data| fmt % data }
-  }
-
-  num_rows = table_data.length
-  num_cols = table_data[0].length
-
-  # Pad each column to the maximum width in the column
-  (0...num_cols).each do |c|
-    cell_lens = (0...num_rows).map { |r| table_data[r][c].length }
-    max_width = cell_lens.max
-    (0...num_rows).each { |r| table_data[r][c] = table_data[r][c].ljust(max_width) }
-  end
-
-  # Row of separator dashes
-  sep_row = (0...num_cols).map { |i| '-' * table_data[0][i].length }.join('  ')
-
-  out = sep_row + "\n"
-
-  table_data.each do |row|
-    out += row.join('  ') + "\n"
-  end
-
-  out += sep_row
-
-  return out
-end
-
 def mean(values)
   Stats.new(values).mean
 end
@@ -165,69 +113,9 @@ def stddev(values)
   Stats.new(values).stddev
 end
 
-def free_file_no(prefix)
-  (1..).each do |file_no|
-    out_path = File.join(prefix, "output_%03d.csv" % file_no)
-    if !File.exist?(out_path)
-      return file_no
-    end
-  end
-end
-
-def benchmark_categories(name)
-  metadata = benchmarks_metadata.find { |benchmark, _metadata| benchmark == name }&.last || {}
-  categories = [metadata.fetch('category', 'other')]
-  categories << 'ractor' if metadata['ractor']
-  categories
-end
-
 # Check if the name matches any of the names in a list of filters
 def match_filter(entry, categories:, name_filters:)
-  name_filters = process_name_filters(name_filters)
-  name = entry.sub(/\.rb\z/, '')
-  (categories.empty? || benchmark_categories(name).any? { |cat| categories.include?(cat) }) &&
-    (name_filters.empty? || name_filters.any? { |filter| filter === name })
-end
-
-# process "/my_benchmark/i" into /my_benchmark/i
-def process_name_filters(name_filters)
-  name_filters.map do |name_filter|
-    if name_filter[0] == "/"
-      regexp_str = name_filter[1..-1].reverse.sub(/\A(\w*)\//, "")
-      regexp_opts = $1.to_s
-      regexp_str.reverse!
-      r = /#{regexp_str}/
-      if !regexp_opts.empty?
-        r = Regexp.compile(r.to_s, regexp_opts)
-      end
-      r
-    else
-      name_filter
-    end
-  end
-end
-
-# Resolve the pre_init file path into a form that can be required
-def expand_pre_init(path)
-  path = Pathname.new(path)
-
-  unless path.exist?
-    puts "--with-pre-init called with non-existent file!"
-    exit(-1)
-  end
-
-  if path.directory?
-    puts "--with-pre-init called with a directory, please pass a .rb file"
-    exit(-1)
-  end
-
-  library_name = path.basename(path.extname)
-  load_path = path.parent.expand_path
-
-  [
-    "-I", load_path,
-    "-r", library_name
-  ]
+  BenchmarkRunner.match_filter(entry, categories: categories, name_filters: name_filters, metadata: benchmarks_metadata)
 end
 
 def benchmarks_metadata
@@ -235,22 +123,11 @@ def benchmarks_metadata
 end
 
 def sort_benchmarks(bench_names)
-  headline_benchmarks = benchmarks_metadata.select { |_, metadata| metadata['category'] == 'headline' }.keys
-  micro_benchmarks = benchmarks_metadata.select { |_, metadata| metadata['category'] == 'micro' }.keys
-
-  headline_names, bench_names = bench_names.partition { |name| headline_benchmarks.include?(name) }
-  micro_names, other_names = bench_names.partition { |name| micro_benchmarks.include?(name) }
-  headline_names.sort + other_names.sort + micro_names.sort
+  BenchmarkRunner.sort_benchmarks(bench_names, benchmarks_metadata)
 end
 
 def setarch_prefix
-  # Disable address space randomization (for determinism)
-  prefix = ["setarch", `uname -m`.strip, "-R"]
-
-  # Abort if we don't have permission (perhaps in a docker container).
-  return [] unless system(*prefix, "true")
-
-  prefix
+  BenchmarkRunner.setarch_prefix
 end
 
 # Run all the benchmarks and record execution times
@@ -284,7 +161,7 @@ def run_benchmarks(ruby:, ruby_description:, categories:, name_filters:, out_pat
   end
 
   if pre_init
-    pre_init = expand_pre_init(pre_init)
+    pre_init = BenchmarkRunner.expand_pre_init(pre_init)
   end
 
 
@@ -307,7 +184,7 @@ def run_benchmarks(ruby:, ruby_description:, categories:, name_filters:, out_pat
 
       # Set up the benchmarking command
       cmd = []
-      if os == :linux
+      if BenchmarkRunner.os == :linux
         cmd += setarch_prefix
 
         # Pin the process to one given core to improve caching and reduce variance on CRuby
@@ -603,7 +480,7 @@ if args.out_override
   output_path = args.out_override
 else
   # If no out path is specified, find a free file index for the output files
-  file_no = free_file_no(args.out_path)
+  file_no = BenchmarkRunner.free_file_no(args.out_path)
   output_path = File.join(args.out_path, "output_%03d" % file_no)
 end
 
@@ -640,7 +517,7 @@ ruby_descriptions.each do |key, value|
   output_str << "#{key}: #{value}\n"
 end
 output_str += "\n"
-output_str += table_to_str(table, format, bench_failures) + "\n"
+output_str += TableFormatter.new(table, format, bench_failures).to_s + "\n"
 unless other_names.empty?
   output_str << "Legend:\n"
   other_names.each do |name|
