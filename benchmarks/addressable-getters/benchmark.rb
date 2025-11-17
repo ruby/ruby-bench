@@ -8,7 +8,7 @@ require "addressable/uri"
 COMPLEX_URI = "https://user:pass@example.com:8080/path/to/resource?query=value&foo=bar#fragment"
 
 run_benchmark(100) do
-  100.times do
+  10000.times do
     # Component access
     uri = Addressable::URI.parse(COMPLEX_URI)
     uri.scheme

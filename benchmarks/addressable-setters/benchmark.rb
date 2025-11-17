@@ -8,7 +8,7 @@ require "addressable/uri"
 SIMPLE_URI = "http://example.com/path"
 
 run_benchmark(100) do
-  100.times do
+  10000.times do
     # Component modification
     uri = Addressable::URI.parse(SIMPLE_URI)
     uri.scheme = "https"
