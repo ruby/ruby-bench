@@ -153,7 +153,11 @@ getivar:
   single_file: true
   ractor: true
 structaref:
-  desc: structaref tests the performance of getting struct members
+  desc: structaref tests the performance of getting Struct members
+  category: micro
+  single_file: true
+structaset:
+  desc: structaset tests the performance of setting Struct members
   category: micro
   single_file: true
 keyword_args:
