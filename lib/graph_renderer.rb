@@ -31,16 +31,16 @@ class GraphRenderer
     bench_names = data.first.last.keys
 
     # ruby_descriptions, bench_names, table
-    g = Gruff::Bar.new(DEFAULT_WIDTH)
-    g.title = "Speedup ratio relative to #{ruby_descriptions.keys.first}"
-    g.title_font_size = title_font_size
-    g.theme = THEME
-    g.labels = bench_names.map.with_index { |bench, index| [index, bench] }.to_h
-    g.show_labels_for_bar_values = true
-    g.bottom_margin = DEFAULT_BOTTOM_MARGIN
-    g.legend_margin = DEFAULT_LEGEND_MARGIN
-    g.legend_font_size = legend_font_size
-    g.marker_font_size = marker_font_size
+    graph = Gruff::Bar.new(DEFAULT_WIDTH)
+    graph.title = "Speedup ratio relative to #{ruby_descriptions.keys.first}"
+    graph.title_font_size = title_font_size
+    graph.theme = THEME
+    graph.labels = bench_names.map.with_index { |bench, index| [index, bench] }.to_h
+    graph.show_labels_for_bar_values = true
+    graph.bottom_margin = DEFAULT_BOTTOM_MARGIN
+    graph.legend_margin = DEFAULT_LEGEND_MARGIN
+    graph.legend_font_size = legend_font_size
+    graph.marker_font_size = marker_font_size
 
     ruby_descriptions.each do |ruby, description|
       speedups = bench_names.map { |bench|
@@ -48,9 +48,9 @@ class GraphRenderer
         times = data.fetch(ruby).fetch(bench).fetch("bench")
         Stats.new(baseline_times).mean / Stats.new(times).mean
       }
-      g.data "#{ruby}: #{description}", speedups
+      graph.data "#{ruby}: #{description}", speedups
     end
-    g.write(png_path)
+    graph.write(png_path)
     png_path
   end
 end
