@@ -31,14 +31,7 @@ class BenchmarkSuite
     @no_pinning = no_pinning
     @ractor_only = (categories == RACTOR_ONLY_CATEGORY)
 
-    @bench_dir = BENCHMARKS_DIR
-    @ractor_bench_dir = RACTOR_BENCHMARKS_DIR
-
-    if @ractor_only
-      @bench_dir = @ractor_bench_dir
-      @harness = RACTOR_HARNESS
-      @categories = []
-    end
+    setup_benchmark_directories
   end
 
   # Run all the benchmarks and record execution times
@@ -68,6 +61,18 @@ class BenchmarkSuite
   end
 
   private
+
+  def setup_benchmark_directories
+    if @ractor_only
+      @bench_dir = RACTOR_BENCHMARKS_DIR
+      @ractor_bench_dir = RACTOR_BENCHMARKS_DIR
+      @harness = RACTOR_HARNESS
+      @categories = []
+    else
+      @bench_dir = BENCHMARKS_DIR
+      @ractor_bench_dir = RACTOR_BENCHMARKS_DIR
+    end
+  end
 
   def process_benchmark_result(result_json_path, command)
     JSON.parse(File.read(result_json_path)).tap do |json|
