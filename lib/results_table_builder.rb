@@ -34,16 +34,16 @@ class ResultsTableBuilder
     header = ["bench"]
 
     @executable_names.each do |name|
-      header += ["#{name} (ms)", "stddev (%)"]
-      header += ["RSS (MiB)"] if @include_rss
+      header << "#{name} (ms)" << "stddev (%)"
+      header << "RSS (MiB)" if @include_rss
     end
 
     @other_names.each do |name|
-      header += ["#{name} 1st itr"]
+      header << "#{name} 1st itr"
     end
 
     @other_names.each do |name|
-      header += ["#{@base_name}/#{name}"]
+      header << "#{@base_name}/#{name}"
     end
 
     header
@@ -53,16 +53,16 @@ class ResultsTableBuilder
     format = ["%s"]
 
     @executable_names.each do |_name|
-      format += ["%.1f", "%.1f"]
-      format += ["%.1f"] if @include_rss
+      format << "%.1f" << "%.1f"
+      format << "%.1f" if @include_rss
     end
 
     @other_names.each do |_name|
-      format += ["%.3f"]
+      format << "%.3f"
     end
 
     @other_names.each do |_name|
-      format += ["%.3f"]
+      format << "%.3f"
     end
 
     format
