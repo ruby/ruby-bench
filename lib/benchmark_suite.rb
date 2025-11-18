@@ -53,42 +53,17 @@ class BenchmarkSuite
 
         puts("Running benchmark \"#{bench_name}\" (#{idx+1}/#{bench_files.length})")
 
-        # Path to the benchmark runner script
-        script_path = File.join(bench_dir, entry)
-
-        if !script_path.end_with?('.rb')
-          script_path = File.join(script_path, 'benchmark.rb')
-        end
-
-        # Set up the environment for the benchmarking command
         result_json_path = File.join(out_path, "temp#{Process.pid}.json")
-        ENV["RESULT_JSON_PATH"] = result_json_path
-
-        # Set up the benchmarking command
-        cmd = base_cmd
-
-        # Fix for jruby/jruby#7394 in JRuby 9.4.2.0
-        script_path = File.expand_path(script_path)
-
-        cmd += [
-          *ruby,
-          "-I", harness,
-          *pre_init,
-          script_path,
-        ].compact
-
-        # Do the benchmarking
-        result = BenchmarkRunner.check_call(cmd.shelljoin, env: benchmark_env, raise_error: false)
+        result = run_single_benchmark(bench_dir, entry, result_json_path)
 
         if result[:success]
           bench_data[bench_name] = JSON.parse(File.read(result_json_path)).tap do |json|
-            json["command_line"] = cmd.shelljoin
+            json["command_line"] = result[:command]
             File.unlink(result_json_path)
           end
         else
           bench_failures[bench_name] = result[:status].exitstatus
         end
-
       end
     end
 
@@ -96,6 +71,34 @@ class BenchmarkSuite
   end
 
   private
+
+  def run_single_benchmark(bench_dir, entry, result_json_path)
+    # Path to the benchmark runner script
+    script_path = File.join(bench_dir, entry)
+
+    if !script_path.end_with?('.rb')
+      script_path = File.join(script_path, 'benchmark.rb')
+    end
+
+    # Fix for jruby/jruby#7394 in JRuby 9.4.2.0
+    script_path = File.expand_path(script_path)
+
+    # Set up the environment for the benchmarking command
+    ENV["RESULT_JSON_PATH"] = result_json_path
+
+    # Set up the benchmarking command
+    cmd = base_cmd + [
+      *ruby,
+      "-I", harness,
+      *pre_init,
+      script_path,
+    ].compact
+
+    # Do the benchmarking
+    result = BenchmarkRunner.check_call(cmd.shelljoin, env: benchmark_env, raise_error: false)
+    result[:command] = cmd.shelljoin
+    result
+  end
 
   def benchmark_env
     @benchmark_env ||= begin
