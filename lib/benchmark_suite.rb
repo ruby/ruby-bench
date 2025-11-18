@@ -13,7 +13,7 @@ require_relative 'benchmark_filter'
 class BenchmarkSuite
   BENCHMARKS_DIR = "benchmarks"
   RACTOR_BENCHMARKS_DIR = "benchmarks-ractor"
-  RACTOR_ONLY_CATEGORY = "ractor-only"
+  RACTOR_ONLY_CATEGORY = ["ractor-only"].freeze
   RACTOR_CATEGORY = "ractor"
   RACTOR_HARNESS = "harness-ractor"
 
@@ -28,6 +28,7 @@ class BenchmarkSuite
     @harness = harness
     @pre_init = pre_init ? expand_pre_init(pre_init) : nil
     @no_pinning = no_pinning
+    @ractor_only = (categories == RACTOR_ONLY_CATEGORY)
   end
 
   # Run all the benchmarks and record execution times
@@ -39,7 +40,7 @@ class BenchmarkSuite
     bench_dir = BENCHMARKS_DIR
     ractor_bench_dir = RACTOR_BENCHMARKS_DIR
 
-    if categories == [RACTOR_ONLY_CATEGORY]
+    if @racktor_only
       bench_dir = ractor_bench_dir
       @harness = RACTOR_HARNESS
       @categories = []
