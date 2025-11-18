@@ -29,46 +29,46 @@ class ResultsTableBuilder
 
   def build_header
     header = ["bench"]
-    
+
     @executable_names.each do |name|
       header += ["#{name} (ms)", "stddev (%)"]
       header += ["RSS (MiB)"] if @include_rss
     end
-    
+
     @other_names.each do |name|
       header += ["#{name} 1st itr"]
     end
-    
+
     @other_names.each do |name|
       header += ["#{@base_name}/#{name}"]
     end
-    
+
     header
   end
 
   def build_format
     format = ["%s"]
-    
+
     @executable_names.each do |_name|
       format += ["%.1f", "%.1f"]
       format += ["%.1f"] if @include_rss
     end
-    
+
     @other_names.each do |_name|
       format += ["%.3f"]
     end
-    
+
     @other_names.each do |_name|
       format += ["%.3f"]
     end
-    
+
     format
   end
 
   def build_row(bench_name)
-    t0s = @executable_names.map { |name| (bench_data_for(name, bench_name)['warmup'][0] || bench_data_for(name, bench_name)['bench'][0]) * 1000.0 }
-    times_no_warmup = @executable_names.map { |name| bench_data_for(name, bench_name)['bench'].map { |v| v * 1000.0 } }
-    rsss = @executable_names.map { |name| bench_data_for(name, bench_name)['rss'] / 1024.0 / 1024.0 }
+    t0s = extract_first_iteration_times(bench_name)
+    times_no_warmup = extract_benchmark_times(bench_name)
+    rsss = extract_rss_values(bench_name)
 
     base_t0, *other_t0s = t0s
     base_t, *other_ts = times_no_warmup
@@ -79,7 +79,7 @@ class ResultsTableBuilder
 
     row = [bench_name, mean(base_t), 100 * stddev(base_t) / mean(base_t)]
     row << base_rss if @include_rss
-    
+
     other_ts.zip(other_rsss).each do |other_t, other_rss|
       row += [mean(other_t), 100 * stddev(other_t) / mean(other_t)]
       row << other_rss if @include_rss
@@ -88,6 +88,25 @@ class ResultsTableBuilder
     row += ratio_1sts + ratios
 
     row
+  end
+
+  def extract_first_iteration_times(bench_name)
+    @executable_names.map do |name|
+      data = bench_data_for(name, bench_name)
+      (data['warmup'][0] || data['bench'][0]) * 1000.0
+    end
+  end
+
+  def extract_benchmark_times(bench_name)
+    @executable_names.map do |name|
+      bench_data_for(name, bench_name)['bench'].map { |v| v * 1000.0 }
+    end
+  end
+
+  def extract_rss_values(bench_name)
+    @executable_names.map do |name|
+      bench_data_for(name, bench_name)['rss'] / 1024.0 / 1024.0
+    end
   end
 
   def bench_data_for(name, bench_name)
