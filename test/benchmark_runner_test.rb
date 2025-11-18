@@ -365,6 +365,150 @@ describe BenchmarkRunner do
     end
   end
 
+  describe '.build_output_text' do
+    it 'builds output text with metadata, table, and legend' do
+      ruby_descriptions = {
+        'ruby-base' => 'ruby 3.3.0',
+        'ruby-yjit' => 'ruby 3.3.0 +YJIT'
+      }
+      table = [
+        ['bench', 'ruby-base (ms)', 'stddev (%)', 'ruby-yjit (ms)', 'stddev (%)'],
+        ['fib', '100.0', '5.0', '50.0', '3.0']
+      ]
+      format = ['%s', '%.1f', '%.1f', '%.1f', '%.1f']
+      bench_failures = {}
+      base_name = 'ruby-base'
+      other_names = ['ruby-yjit']
+
+      result = BenchmarkRunner.build_output_text(
+        ruby_descriptions, table, format, bench_failures, base_name, other_names
+      )
+
+      assert_includes result, 'ruby-base: ruby 3.3.0'
+      assert_includes result, 'ruby-yjit: ruby 3.3.0 +YJIT'
+      assert_includes result, 'Legend:'
+      assert_includes result, '- ruby-yjit 1st itr: ratio of ruby-base/ruby-yjit time for the first benchmarking iteration.'
+      assert_includes result, '- ruby-base/ruby-yjit: ratio of ruby-base/ruby-yjit time. Higher is better for ruby-yjit. Above 1 represents a speedup.'
+    end
+
+    it 'includes formatted table in output' do
+      ruby_descriptions = { 'ruby' => 'ruby 3.3.0' }
+      table = [
+        ['bench', 'ruby (ms)', 'stddev (%)'],
+        ['fib', '100.0', '5.0']
+      ]
+      format = ['%s', '%.1f', '%.1f']
+      bench_failures = {}
+      base_name = 'ruby'
+      other_names = []
+
+      result = BenchmarkRunner.build_output_text(
+        ruby_descriptions, table, format, bench_failures, base_name, other_names
+      )
+
+      # Should contain table headers
+      assert_includes result, 'bench'
+      assert_includes result, 'ruby (ms)'
+      # Should contain table data
+      assert_includes result, 'fib'
+      assert_includes result, '100.0'
+    end
+
+    it 'omits legend when no other executables' do
+      ruby_descriptions = { 'ruby' => 'ruby 3.3.0' }
+      table = [['bench', 'ruby (ms)'], ['fib', '100.0']]
+      format = ['%s', '%.1f']
+      bench_failures = {}
+      base_name = 'ruby'
+      other_names = []
+
+      result = BenchmarkRunner.build_output_text(
+        ruby_descriptions, table, format, bench_failures, base_name, other_names
+      )
+
+      refute_includes result, 'Legend:'
+    end
+
+    it 'handles multiple other executables in legend' do
+      ruby_descriptions = {
+        'ruby' => 'ruby 3.3.0',
+        'ruby-yjit' => 'ruby 3.3.0 +YJIT',
+        'ruby-rjit' => 'ruby 3.3.0 +RJIT'
+      }
+      table = [['bench', 'ruby (ms)', 'ruby-yjit (ms)', 'ruby-rjit (ms)']]
+      format = ['%s', '%.1f', '%.1f', '%.1f']
+      bench_failures = {}
+      base_name = 'ruby'
+      other_names = ['ruby-yjit', 'ruby-rjit']
+
+      result = BenchmarkRunner.build_output_text(
+        ruby_descriptions, table, format, bench_failures, base_name, other_names
+      )
+
+      assert_includes result, 'ruby-yjit 1st itr'
+      assert_includes result, 'ruby-rjit 1st itr'
+      assert_includes result, 'ruby/ruby-yjit'
+      assert_includes result, 'ruby/ruby-rjit'
+    end
+
+    it 'includes benchmark failures in formatted output' do
+      ruby_descriptions = { 'ruby' => 'ruby 3.3.0' }
+      table = [['bench', 'ruby (ms)'], ['fib', '100.0']]
+      format = ['%s', '%.1f']
+      bench_failures = {
+        'ruby' => { 'failed_bench' => 'error message' }
+      }
+      base_name = 'ruby'
+      other_names = []
+
+      result = BenchmarkRunner.build_output_text(
+        ruby_descriptions, table, format, bench_failures, base_name, other_names
+      )
+
+      # TableFormatter handles displaying failures, just verify it's called
+      assert_kind_of String, result
+      assert result.length > 0
+    end
+
+    it 'handles empty ruby_descriptions' do
+      ruby_descriptions = {}
+      table = [['bench']]
+      format = ['%s']
+      bench_failures = {}
+      base_name = 'ruby'
+      other_names = []
+
+      result = BenchmarkRunner.build_output_text(
+        ruby_descriptions, table, format, bench_failures, base_name, other_names
+      )
+
+      assert_kind_of String, result
+      assert result.start_with?("\n") # Should start with newline after empty descriptions
+    end
+
+    it 'preserves order of ruby_descriptions' do
+      ruby_descriptions = {
+        'ruby-a' => 'version A',
+        'ruby-b' => 'version B',
+        'ruby-c' => 'version C'
+      }
+      table = [['bench']]
+      format = ['%s']
+      bench_failures = {}
+      base_name = 'ruby-a'
+      other_names = []
+
+      result = BenchmarkRunner.build_output_text(
+        ruby_descriptions, table, format, bench_failures, base_name, other_names
+      )
+
+      lines = result.lines
+      assert_includes lines[0], 'ruby-a: version A'
+      assert_includes lines[1], 'ruby-b: version B'
+      assert_includes lines[2], 'ruby-c: version C'
+    end
+  end
+
   describe '.render_graph' do
     it 'delegates to GraphRenderer and returns calculated png_path' do
       Dir.mktmpdir do |dir|

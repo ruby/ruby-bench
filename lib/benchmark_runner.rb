@@ -3,6 +3,7 @@
 require 'csv'
 require 'json'
 require 'rbconfig'
+require_relative 'table_formatter'
 
 # Extracted helper methods from run_benchmarks.rb for testing
 module BenchmarkRunner
@@ -44,6 +45,28 @@ module BenchmarkRunner
       end
 
       out_csv_path
+    end
+
+    # Build output text string with metadata, table, and legend
+    def build_output_text(ruby_descriptions, table, format, bench_failures, base_name, other_names)
+      output_str = +""
+
+      ruby_descriptions.each do |key, value|
+        output_str << "#{key}: #{value}\n"
+      end
+
+      output_str << "\n"
+      output_str << TableFormatter.new(table, format, bench_failures).to_s + "\n"
+
+      unless other_names.empty?
+        output_str << "Legend:\n"
+        other_names.each do |name|
+          output_str << "- #{name} 1st itr: ratio of #{base_name}/#{name} time for the first benchmarking iteration.\n"
+          output_str << "- #{base_name}/#{name}: ratio of #{base_name}/#{name} time. Higher is better for #{name}. Above 1 represents a speedup.\n"
+        end
+      end
+
+      output_str
     end
 
     # Render a graph from JSON benchmark data

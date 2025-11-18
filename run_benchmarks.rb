@@ -11,7 +11,6 @@ require 'yaml'
 require_relative 'lib/cpu_config'
 require_relative 'lib/benchmark_runner'
 require_relative 'lib/benchmark_suite'
-require_relative 'lib/table_formatter'
 require_relative 'lib/argument_parser'
 require_relative 'lib/results_table_builder'
 
@@ -77,19 +76,7 @@ out_json_path = BenchmarkRunner.write_json(output_path, ruby_descriptions, bench
 BenchmarkRunner.write_csv(output_path, ruby_descriptions, table)
 
 # Save the output in a text file that we can easily refer to
-output_str = ""
-ruby_descriptions.each do |key, value|
-  output_str << "#{key}: #{value}\n"
-end
-output_str += "\n"
-output_str += TableFormatter.new(table, format, bench_failures).to_s + "\n"
-unless other_names.empty?
-  output_str << "Legend:\n"
-  other_names.each do |name|
-    output_str << "- #{name} 1st itr: ratio of #{base_name}/#{name} time for the first benchmarking iteration.\n"
-    output_str << "- #{base_name}/#{name}: ratio of #{base_name}/#{name} time. Higher is better for #{name}. Above 1 represents a speedup.\n"
-  end
-end
+output_str = BenchmarkRunner.build_output_text(ruby_descriptions, table, format, bench_failures, base_name, other_names)
 out_txt_path = output_path + ".txt"
 File.open(out_txt_path, "w") { |f| f.write output_str }
 
