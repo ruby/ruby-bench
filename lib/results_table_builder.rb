@@ -18,8 +18,7 @@ class ResultsTableBuilder
     format = build_format
 
     @bench_names.each do |bench_name|
-      # Skip this bench_name if we failed to get data for any of the executables.
-      next unless @bench_data.all? { |(_k, v)| v[bench_name] }
+      next unless has_complete_data?(bench_name)
 
       row = build_row(bench_name)
       table << row
@@ -29,6 +28,10 @@ class ResultsTableBuilder
   end
 
   private
+
+  def has_complete_data?(bench_name)
+    @bench_data.all? { |(_k, v)| v[bench_name] }
+  end
 
   def build_header
     header = ["bench"]
