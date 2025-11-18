@@ -30,11 +30,7 @@ class GraphRenderer
     configure_graph(graph, ruby_descriptions, bench_names, title_font_size, legend_font_size, marker_font_size)
 
     ruby_descriptions.each do |ruby, description|
-      speedups = bench_names.map { |bench|
-        baseline_times = data.fetch(baseline).fetch(bench).fetch("bench")
-        times = data.fetch(ruby).fetch(bench).fetch("bench")
-        Stats.new(baseline_times).mean / Stats.new(times).mean
-      }
+      speedups = calculate_speedups(data, baseline, ruby, bench_names)
       graph.data "#{ruby}: #{description}", speedups
     end
     graph.write(png_path)
@@ -61,5 +57,13 @@ class GraphRenderer
     graph.legend_margin = DEFAULT_LEGEND_MARGIN
     graph.legend_font_size = legend_font_size
     graph.marker_font_size = marker_font_size
+  end
+
+  def self.calculate_speedups(data, baseline, ruby, bench_names)
+    bench_names.map { |bench|
+      baseline_times = data.fetch(baseline).fetch(bench).fetch("bench")
+      times = data.fetch(ruby).fetch(bench).fetch("bench")
+      Stats.new(baseline_times).mean / Stats.new(times).mean
+    }
   end
 end
