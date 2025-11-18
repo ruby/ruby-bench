@@ -74,18 +74,7 @@ out_json_path = BenchmarkRunner.write_json(output_path, ruby_descriptions, bench
 # Save data as CSV so we can produce tables/graphs in a spreasheet program
 # NOTE: we don't do any number formatting for the output file because
 #       we don't want to lose any precision
-output_rows = []
-ruby_descriptions.each do |key, value|
-  output_rows.append([key, value])
-end
-output_rows.append([])
-output_rows.concat(table)
-out_tbl_path = output_path + ".csv"
-CSV.open(out_tbl_path, "wb") do |csv|
-  output_rows.each do |row|
-    csv << row
-  end
-end
+BenchmarkRunner.write_csv(output_path, ruby_descriptions, table)
 
 # Save the output in a text file that we can easily refer to
 output_str = ""
