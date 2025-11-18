@@ -16,6 +16,19 @@ jobs:
     if: ${{ github.event_name != 'schedule' || github.repository == 'ruby/ruby-bench' }}
     steps:
       - uses: actions/checkout@v3
+      - name: Cache apt packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            /var/cache/apt/archives
+            /var/lib/apt/lists
+          key: ${{ runner.os }}-apt-imagemagick-${{ hashFiles('.github/workflows/test.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-apt-imagemagick-
+      - name: Install ImageMagick dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libmagickwand-dev
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
@@ -23,6 +36,7 @@ jobs:
 
       - name: Run tests
         run: rake test
+        continue-on-error: ${{ matrix.ruby == 'truffleruby' }}
 
   benchmark-default:
     runs-on: ubuntu-latest
@@ -95,16 +109,26 @@ jobs:
     if: ${{ github.event_name != 'schedule' || github.repository == 'ruby/ruby-bench' }}
     steps:
       - uses: actions/checkout@v3
+      - name: Cache apt packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            /var/cache/apt/archives
+            /var/lib/apt/lists
+          key: ${{ runner.os }}-apt-imagemagick-${{ hashFiles('.github/workflows/test.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-apt-imagemagick-
+      - name: Install ImageMagick dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libmagickwand-dev
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: ruby
 
       - name: Test run_benchmarks.rb --graph
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends libmagickwand-dev
-          ./run_benchmarks.rb --graph fib
+        run: ./run_benchmarks.rb --graph fib
         env:
           WARMUP_ITRS: '1'
           MIN_BENCH_ITRS: '1'

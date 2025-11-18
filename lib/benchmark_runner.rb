@@ -16,6 +16,13 @@ module BenchmarkRunner
     end
   end
 
+  # Render a graph from JSON benchmark data
+  def render_graph(json_path)
+    png_path = json_path.sub(/\.json$/, '.png')
+    require_relative 'graph_renderer'
+    GraphRenderer.render(json_path, png_path)
+  end
+
   # Checked system - error or return info if the command fails
   def check_call(command, env: {}, raise_error: true, quiet: false)
     puts("+ #{command}") unless quiet
