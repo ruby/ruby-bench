@@ -377,11 +377,9 @@ describe BenchmarkRunner do
       ]
       format = ['%s', '%.1f', '%.1f', '%.1f', '%.1f']
       bench_failures = {}
-      base_name = 'ruby-base'
-      other_names = ['ruby-yjit']
 
       result = BenchmarkRunner.build_output_text(
-        ruby_descriptions, table, format, bench_failures, base_name, other_names
+        ruby_descriptions, table, format, bench_failures
       )
 
       assert_includes result, 'ruby-base: ruby 3.3.0'
@@ -399,11 +397,9 @@ describe BenchmarkRunner do
       ]
       format = ['%s', '%.1f', '%.1f']
       bench_failures = {}
-      base_name = 'ruby'
-      other_names = []
 
       result = BenchmarkRunner.build_output_text(
-        ruby_descriptions, table, format, bench_failures, base_name, other_names
+        ruby_descriptions, table, format, bench_failures
       )
 
       # Should contain table headers
@@ -419,11 +415,9 @@ describe BenchmarkRunner do
       table = [['bench', 'ruby (ms)'], ['fib', '100.0']]
       format = ['%s', '%.1f']
       bench_failures = {}
-      base_name = 'ruby'
-      other_names = []
 
       result = BenchmarkRunner.build_output_text(
-        ruby_descriptions, table, format, bench_failures, base_name, other_names
+        ruby_descriptions, table, format, bench_failures
       )
 
       refute_includes result, 'Legend:'
@@ -438,11 +432,9 @@ describe BenchmarkRunner do
       table = [['bench', 'ruby (ms)', 'ruby-yjit (ms)', 'ruby-rjit (ms)']]
       format = ['%s', '%.1f', '%.1f', '%.1f']
       bench_failures = {}
-      base_name = 'ruby'
-      other_names = ['ruby-yjit', 'ruby-rjit']
 
       result = BenchmarkRunner.build_output_text(
-        ruby_descriptions, table, format, bench_failures, base_name, other_names
+        ruby_descriptions, table, format, bench_failures
       )
 
       assert_includes result, 'ruby-yjit 1st itr'
@@ -458,11 +450,9 @@ describe BenchmarkRunner do
       bench_failures = {
         'ruby' => { 'failed_bench' => 'error message' }
       }
-      base_name = 'ruby'
-      other_names = []
 
       result = BenchmarkRunner.build_output_text(
-        ruby_descriptions, table, format, bench_failures, base_name, other_names
+        ruby_descriptions, table, format, bench_failures
       )
 
       # TableFormatter handles displaying failures, just verify it's called
@@ -475,11 +465,9 @@ describe BenchmarkRunner do
       table = [['bench']]
       format = ['%s']
       bench_failures = {}
-      base_name = 'ruby'
-      other_names = []
 
       result = BenchmarkRunner.build_output_text(
-        ruby_descriptions, table, format, bench_failures, base_name, other_names
+        ruby_descriptions, table, format, bench_failures
       )
 
       assert_kind_of String, result
@@ -495,11 +483,9 @@ describe BenchmarkRunner do
       table = [['bench']]
       format = ['%s']
       bench_failures = {}
-      base_name = 'ruby-a'
-      other_names = []
 
       result = BenchmarkRunner.build_output_text(
-        ruby_descriptions, table, format, bench_failures, base_name, other_names
+        ruby_descriptions, table, format, bench_failures
       )
 
       lines = result.lines

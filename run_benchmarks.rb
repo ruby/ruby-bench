@@ -57,7 +57,6 @@ puts
 
 # Build results table
 all_names = args.executables.keys
-base_name, *other_names = all_names
 builder = ResultsTableBuilder.new(
   executable_names: all_names,
   bench_data: bench_data,
@@ -76,7 +75,7 @@ out_json_path = BenchmarkRunner.write_json(output_path, ruby_descriptions, bench
 BenchmarkRunner.write_csv(output_path, ruby_descriptions, table)
 
 # Save the output in a text file that we can easily refer to
-output_str = BenchmarkRunner.build_output_text(ruby_descriptions, table, format, bench_failures, base_name, other_names)
+output_str = BenchmarkRunner.build_output_text(ruby_descriptions, table, format, bench_failures)
 out_txt_path = output_path + ".txt"
 File.open(out_txt_path, "w") { |f| f.write output_str }
 

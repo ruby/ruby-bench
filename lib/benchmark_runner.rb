@@ -48,7 +48,9 @@ module BenchmarkRunner
     end
 
     # Build output text string with metadata, table, and legend
-    def build_output_text(ruby_descriptions, table, format, bench_failures, base_name, other_names)
+    def build_output_text(ruby_descriptions, table, format, bench_failures)
+      base_name, *other_names = ruby_descriptions.keys
+
       output_str = +""
 
       ruby_descriptions.each do |key, value|
