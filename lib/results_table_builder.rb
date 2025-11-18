@@ -74,14 +74,10 @@ class ResultsTableBuilder
     base_t, *other_ts = times_no_warmup
     base_rss, *other_rsss = rsss
 
-    ratio_1sts = other_t0s.map { |other_t0| base_t0 / other_t0 }
-    ratios = other_ts.map { |other_t| mean(base_t) / mean(other_t) }
-
     row = [bench_name]
     build_base_columns(row, base_t, base_rss)
     build_comparison_columns(row, other_ts, other_rsss)
-    row.concat(ratio_1sts)
-    row.concat(ratios)
+    build_ratio_columns(row, base_t0, other_t0s, base_t, other_ts)
 
     row
   end
@@ -98,6 +94,13 @@ class ResultsTableBuilder
       row << 100 * stddev(other_t) / mean(other_t)
       row << other_rss if @include_rss
     end
+  end
+
+  def build_ratio_columns(row, base_t0, other_t0s, base_t, other_ts)
+    ratio_1sts = other_t0s.map { |other_t0| base_t0 / other_t0 }
+    ratios = other_ts.map { |other_t| mean(base_t) / mean(other_t) }
+    row.concat(ratio_1sts)
+    row.concat(ratios)
   end
 
   def extract_first_iteration_times(bench_name)
