@@ -1,6 +1,9 @@
 require_relative '../misc/stats'
 
 class ResultsTableBuilder
+  SECONDS_TO_MS = 1000.0
+  BYTES_TO_MIB = 1024.0 * 1024.0
+
   def initialize(executable_names:, bench_data:, bench_names:, include_rss: false)
     @executable_names = executable_names
     @bench_data = bench_data
@@ -106,19 +109,19 @@ class ResultsTableBuilder
   def extract_first_iteration_times(bench_name)
     @executable_names.map do |name|
       data = bench_data_for(name, bench_name)
-      (data['warmup'][0] || data['bench'][0]) * 1000.0
+      (data['warmup'][0] || data['bench'][0]) * SECONDS_TO_MS
     end
   end
 
   def extract_benchmark_times(bench_name)
     @executable_names.map do |name|
-      bench_data_for(name, bench_name)['bench'].map { |v| v * 1000.0 }
+      bench_data_for(name, bench_name)['bench'].map { |v| v * SECONDS_TO_MS }
     end
   end
 
   def extract_rss_values(bench_name)
     @executable_names.map do |name|
-      bench_data_for(name, bench_name)['rss'] / 1024.0 / 1024.0
+      bench_data_for(name, bench_name)['rss'] / BYTES_TO_MIB
     end
   end
 
