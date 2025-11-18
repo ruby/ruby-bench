@@ -65,18 +65,7 @@ class BenchmarkSuite
         ENV["RESULT_JSON_PATH"] = result_json_path
 
         # Set up the benchmarking command
-        cmd = []
-        if linux?
-          cmd += setarch_prefix
-
-          # Pin the process to one given core to improve caching and reduce variance on CRuby
-          # Other Rubies need to use multiple cores, e.g., for JIT threads
-          if ruby_description.start_with?('ruby ') && !no_pinning
-            # The last few cores of Intel CPU may be slow E-Cores, so avoid using the last one.
-            cpu = [(Etc.nprocessors / 2) - 1, 0].max
-            cmd += ["taskset", "-c", "#{cpu}"]
-          end
-        end
+        cmd = base_cmd
 
         # Fix for jruby/jruby#7394 in JRuby 9.4.2.0
         script_path = File.expand_path(script_path)
@@ -167,6 +156,27 @@ class BenchmarkSuite
   # Check if running on Linux
   def linux?
     @linux ||= RbConfig::CONFIG['host_os'] =~ /linux/
+  end
+
+  # Set up the base command with CPU pinning if needed
+  def base_cmd
+    @base_cmd ||= begin
+      cmd = []
+
+      if linux?
+        cmd += setarch_prefix
+
+        # Pin the process to one given core to improve caching and reduce variance on CRuby
+        # Other Rubies need to use multiple cores, e.g., for JIT threads
+        if ruby_description.start_with?('ruby ') && !no_pinning
+          # The last few cores of Intel CPU may be slow E-Cores, so avoid using the last one.
+          cpu = [(Etc.nprocessors / 2) - 1, 0].max
+          cmd += ["taskset", "-c", "#{cpu}"]
+        end
+      end
+
+      cmd
+    end
   end
 
   # Generate setarch prefix for Linux
