@@ -69,15 +69,7 @@ table, format = builder.build
 output_path = BenchmarkRunner.output_path(args.out_path, out_override: args.out_override)
 
 # Save the raw data as JSON
-out_json_path = output_path + ".json"
-File.open(out_json_path, "w") do |file|
-  out_data = {
-    metadata: ruby_descriptions,
-    raw_data: bench_data,
-  }
-  json_str = JSON.generate(out_data)
-  file.write json_str
-end
+out_json_path = BenchmarkRunner.write_json(output_path, ruby_descriptions, bench_data)
 
 # Save data as CSV so we can produce tables/graphs in a spreasheet program
 # NOTE: we don't do any number formatting for the output file because

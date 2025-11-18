@@ -180,6 +180,93 @@ describe BenchmarkRunner do
     end
   end
 
+  describe '.write_json' do
+    it 'writes JSON file with metadata and raw data' do
+      Dir.mktmpdir do |dir|
+        output_path = File.join(dir, 'output_001')
+        ruby_descriptions = {
+          'ruby-base' => 'ruby 3.3.0',
+          'ruby-yjit' => 'ruby 3.3.0 +YJIT'
+        }
+        bench_data = {
+          'ruby-base' => { 'fib' => { 'time' => 1.5 } },
+          'ruby-yjit' => { 'fib' => { 'time' => 1.0 } }
+        }
+
+        result_path = BenchmarkRunner.write_json(output_path, ruby_descriptions, bench_data)
+
+        expected_path = File.join(dir, 'output_001.json')
+        assert_equal expected_path, result_path
+        assert File.exist?(expected_path)
+
+        json_content = JSON.parse(File.read(expected_path))
+        assert_equal ruby_descriptions, json_content['metadata']
+        assert_equal bench_data, json_content['raw_data']
+      end
+    end
+
+    it 'returns the JSON file path' do
+      Dir.mktmpdir do |dir|
+        output_path = File.join(dir, 'output_test')
+        result_path = BenchmarkRunner.write_json(output_path, {}, {})
+
+        assert_equal File.join(dir, 'output_test.json'), result_path
+      end
+    end
+
+    it 'handles empty metadata and bench data' do
+      Dir.mktmpdir do |dir|
+        output_path = File.join(dir, 'output_empty')
+
+        result_path = BenchmarkRunner.write_json(output_path, {}, {})
+
+        assert File.exist?(result_path)
+        json_content = JSON.parse(File.read(result_path))
+        assert_equal({}, json_content['metadata'])
+        assert_equal({}, json_content['raw_data'])
+      end
+    end
+
+    it 'handles nested benchmark data structures' do
+      Dir.mktmpdir do |dir|
+        output_path = File.join(dir, 'output_nested')
+        ruby_descriptions = { 'ruby' => 'ruby 3.3.0' }
+        bench_data = {
+          'ruby' => {
+            'benchmark1' => {
+              'time' => 1.5,
+              'rss' => 12345,
+              'iterations' => [1.4, 1.5, 1.6]
+            }
+          }
+        }
+
+        result_path = BenchmarkRunner.write_json(output_path, ruby_descriptions, bench_data)
+
+        json_content = JSON.parse(File.read(result_path))
+        assert_equal bench_data, json_content['raw_data']
+      end
+    end
+
+    it 'overwrites existing JSON file' do
+      Dir.mktmpdir do |dir|
+        output_path = File.join(dir, 'output_overwrite')
+
+        # Write first version
+        BenchmarkRunner.write_json(output_path, { 'v' => '1' }, { 'd' => '1' })
+
+        # Write second version
+        new_metadata = { 'v' => '2' }
+        new_data = { 'd' => '2' }
+        result_path = BenchmarkRunner.write_json(output_path, new_metadata, new_data)
+
+        json_content = JSON.parse(File.read(result_path))
+        assert_equal new_metadata, json_content['metadata']
+        assert_equal new_data, json_content['raw_data']
+      end
+    end
+  end
+
   describe '.render_graph' do
     it 'delegates to GraphRenderer and returns calculated png_path' do
       Dir.mktmpdir do |dir|
