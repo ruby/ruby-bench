@@ -47,10 +47,6 @@ def sort_benchmarks(bench_names)
   BenchmarkRunner.sort_benchmarks(bench_names, benchmarks_metadata)
 end
 
-def setarch_prefix
-  BenchmarkRunner.setarch_prefix
-end
-
 # Run all the benchmarks and record execution times
 def run_benchmarks(ruby:, ruby_description:, categories:, name_filters:, out_path:, harness:, pre_init:, no_pinning:)
   bench_data = {}
@@ -108,7 +104,7 @@ def run_benchmarks(ruby:, ruby_description:, categories:, name_filters:, out_pat
       # Set up the benchmarking command
       cmd = []
       if BenchmarkRunner.os == :linux
-        cmd += setarch_prefix
+        cmd += BenchmarkRunner.setarch_prefix
 
         # Pin the process to one given core to improve caching and reduce variance on CRuby
         # Other Rubies need to use multiple cores, e.g., for JIT threads
