@@ -80,4 +80,21 @@ module BenchmarkRunner
 
     prefix
   end
+
+  # Checked system - error or return info if the command fails
+  def check_call(command, env: {}, raise_error: true, quiet: false)
+    puts("+ #{command}") unless quiet
+
+    result = {}
+
+    result[:success] = system(env, command)
+    result[:status] = $?
+
+    unless result[:success]
+      puts "Command #{command.inspect} failed with exit code #{result[:status].exitstatus} in directory #{Dir.pwd}"
+      raise RuntimeError.new if raise_error
+    end
+
+    result
+  end
 end

@@ -15,23 +15,6 @@ require_relative 'lib/benchmark_runner'
 require_relative 'lib/table_formatter'
 require_relative 'lib/benchmark_filter'
 
-# Checked system - error or return info if the command fails
-def check_call(command, env: {}, raise_error: true, quiet: false)
-  puts("+ #{command}") unless quiet
-
-  result = {}
-
-  result[:success] = system(env, command)
-  result[:status] = $?
-
-  unless result[:success]
-    puts "Command #{command.inspect} failed with exit code #{result[:status].exitstatus} in directory #{Dir.pwd}"
-    raise RuntimeError.new if raise_error
-  end
-
-  result
-end
-
 def check_output(*command)
   IO.popen(*command, &:read)
 end
@@ -46,17 +29,17 @@ def set_bench_config(turbo:)
   # sudo requires the flag '-S' in order to take input from stdin
   if File.exist?('/sys/devices/system/cpu/intel_pstate') # Intel
     unless intel_no_turbo? || turbo
-      check_call("sudo -S sh -c 'echo 1 > /sys/devices/system/cpu/intel_pstate/no_turbo'")
-      at_exit { check_call("sudo -S sh -c 'echo 0 > /sys/devices/system/cpu/intel_pstate/no_turbo'", quiet: true) }
+      BenchmarkRunner.check_call("sudo -S sh -c 'echo 1 > /sys/devices/system/cpu/intel_pstate/no_turbo'")
+      at_exit { BenchmarkRunner.check_call("sudo -S sh -c 'echo 0 > /sys/devices/system/cpu/intel_pstate/no_turbo'", quiet: true) }
     end
     # Disabling Turbo Boost reduces the CPU frequency, so this should be run after that.
-    check_call("sudo -S sh -c 'echo 100 > /sys/devices/system/cpu/intel_pstate/min_perf_pct'") unless intel_perf_100pct?
+    BenchmarkRunner.check_call("sudo -S sh -c 'echo 100 > /sys/devices/system/cpu/intel_pstate/min_perf_pct'") unless intel_perf_100pct?
   elsif File.exist?('/sys/devices/system/cpu/cpufreq/boost') # AMD
     unless amd_no_boost? || turbo
-      check_call("sudo -S sh -c 'echo 0 > /sys/devices/system/cpu/cpufreq/boost'")
-      at_exit { check_call("sudo -S sh -c 'echo 1 > /sys/devices/system/cpu/cpufreq/boost'", quiet: true) }
+      BenchmarkRunner.check_call("sudo -S sh -c 'echo 0 > /sys/devices/system/cpu/cpufreq/boost'")
+      at_exit { BenchmarkRunner.check_call("sudo -S sh -c 'echo 1 > /sys/devices/system/cpu/cpufreq/boost'", quiet: true) }
     end
-    check_call("sudo -S cpupower frequency-set -g performance") unless performance_governor?
+    BenchmarkRunner.check_call("sudo -S cpupower frequency-set -g performance") unless performance_governor?
   end
 end
 
@@ -230,7 +213,7 @@ def run_benchmarks(ruby:, ruby_description:, categories:, name_filters:, out_pat
       end
 
       # Do the benchmarking
-      result = check_call(cmd.shelljoin, env: env, raise_error: false)
+      result = BenchmarkRunner.check_call(cmd.shelljoin, env: env, raise_error: false)
 
       if result[:success]
         bench_data[bench_name] = JSON.parse(File.read(result_json_path)).tap do |json|
