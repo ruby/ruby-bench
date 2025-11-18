@@ -15,12 +15,8 @@ require_relative 'lib/benchmark_runner'
 require_relative 'lib/table_formatter'
 require_relative 'lib/benchmark_filter'
 
-def check_output(*command)
-  IO.popen(*command, &:read)
-end
-
 def have_yjit?(ruby)
-  ruby_version = check_output("#{ruby} -v --yjit", err: File::NULL).strip
+  ruby_version = `#{ruby} -v --yjit 2> #{File::NULL}`.strip
   ruby_version.downcase.include?("yjit")
 end
 
@@ -381,7 +377,7 @@ FileUtils.mkdir_p(args.out_path)
 
 ruby_descriptions = {}
 args.executables.each do |name, executable|
-  ruby_descriptions[name] = check_output([*executable, "-v"]).chomp
+  ruby_descriptions[name] = `#{executable.shelljoin} -v`.chomp
 end
 
 # Benchmark with and without YJIT
