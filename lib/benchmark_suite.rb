@@ -166,7 +166,7 @@ class BenchmarkSuite
 
   # Check if running on Linux
   def linux?
-    RbConfig::CONFIG['host_os'] =~ /linux/
+    @linux ||= RbConfig::CONFIG['host_os'] =~ /linux/
   end
 
   # Generate setarch prefix for Linux
