@@ -77,17 +77,27 @@ class ResultsTableBuilder
     ratio_1sts = other_t0s.map { |other_t0| base_t0 / other_t0 }
     ratios = other_ts.map { |other_t| mean(base_t) / mean(other_t) }
 
-    row = [bench_name, mean(base_t), 100 * stddev(base_t) / mean(base_t)]
-    row << base_rss if @include_rss
-
-    other_ts.zip(other_rsss).each do |other_t, other_rss|
-      row += [mean(other_t), 100 * stddev(other_t) / mean(other_t)]
-      row << other_rss if @include_rss
-    end
-
-    row += ratio_1sts + ratios
+    row = [bench_name]
+    build_base_columns(row, base_t, base_rss)
+    build_comparison_columns(row, other_ts, other_rsss)
+    row.concat(ratio_1sts)
+    row.concat(ratios)
 
     row
+  end
+
+  def build_base_columns(row, base_t, base_rss)
+    row << mean(base_t)
+    row << 100 * stddev(base_t) / mean(base_t)
+    row << base_rss if @include_rss
+  end
+
+  def build_comparison_columns(row, other_ts, other_rsss)
+    other_ts.zip(other_rsss).each do |other_t, other_rss|
+      row << mean(other_t)
+      row << 100 * stddev(other_t) / mean(other_t)
+      row << other_rss if @include_rss
+    end
   end
 
   def extract_first_iteration_times(bench_name)
