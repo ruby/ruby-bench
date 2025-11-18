@@ -20,15 +20,12 @@ module BenchmarkRunner
 
     # Write benchmark data to JSON file
     def write_json(output_path, ruby_descriptions, bench_data)
-      out_json_path = output_path + ".json"
-      File.open(out_json_path, "w") do |file|
-        out_data = {
-          metadata: ruby_descriptions,
-          raw_data: bench_data,
-        }
-        json_str = JSON.generate(out_data)
-        file.write json_str
-      end
+      out_json_path = "#{output_path}.json"
+      out_data = {
+        metadata: ruby_descriptions,
+        raw_data: bench_data,
+      }
+      File.write(out_json_path, JSON.generate(out_data))
       out_json_path
     end
 
