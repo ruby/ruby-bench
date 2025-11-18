@@ -176,22 +176,20 @@ class BenchmarkSuite
 
   # Set up the base command with CPU pinning if needed
   def base_cmd
-    @base_cmd ||= begin
-      cmd = []
+    @base_cmd ||= if linux?
+      cmd = setarch_prefix
 
-      if linux?
-        cmd += setarch_prefix
-
-        # Pin the process to one given core to improve caching and reduce variance on CRuby
-        # Other Rubies need to use multiple cores, e.g., for JIT threads
-        if ruby_description.start_with?('ruby ') && !no_pinning
-          # The last few cores of Intel CPU may be slow E-Cores, so avoid using the last one.
-          cpu = [(Etc.nprocessors / 2) - 1, 0].max
-          cmd += ["taskset", "-c", "#{cpu}"]
-        end
+      # Pin the process to one given core to improve caching and reduce variance on CRuby
+      # Other Rubies need to use multiple cores, e.g., for JIT threads
+      if ruby_description.start_with?('ruby ') && !no_pinning
+        # The last few cores of Intel CPU may be slow E-Cores, so avoid using the last one.
+        cpu = [(Etc.nprocessors / 2) - 1, 0].max
+        cmd.concat(["taskset", "-c", "#{cpu}"])
       end
 
       cmd
+    else
+      []
     end
   end
 
