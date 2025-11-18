@@ -76,7 +76,7 @@ class BenchmarkSuite
     # Path to the benchmark runner script
     script_path = File.join(bench_dir, entry)
 
-    if !script_path.end_with?('.rb')
+    unless script_path.end_with?('.rb')
       script_path = File.join(script_path, 'benchmark.rb')
     end
 
