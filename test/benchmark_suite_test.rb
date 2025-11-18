@@ -78,6 +78,54 @@ describe BenchmarkSuite do
 
       assert_equal true, suite.no_pinning
     end
+
+    it 'sets bench_dir to BENCHMARKS_DIR by default' do
+      suite = BenchmarkSuite.new(
+        ruby: ['ruby'],
+        ruby_description: 'ruby 3.2.0',
+        categories: ['micro'],
+        name_filters: [],
+        out_path: @out_path,
+        harness: 'harness'
+      )
+
+      assert_equal 'benchmarks', suite.bench_dir
+      assert_equal 'benchmarks-ractor', suite.ractor_bench_dir
+      assert_equal 'harness', suite.harness
+      assert_equal ['micro'], suite.categories
+    end
+
+    it 'sets bench_dir to ractor directory and updates harness when ractor-only category is used' do
+      suite = BenchmarkSuite.new(
+        ruby: ['ruby'],
+        ruby_description: 'ruby 3.2.0',
+        categories: ['ractor-only'],
+        name_filters: [],
+        out_path: @out_path,
+        harness: 'harness'
+      )
+
+      assert_equal 'benchmarks-ractor', suite.bench_dir
+      assert_equal 'benchmarks-ractor', suite.ractor_bench_dir
+      assert_equal 'harness-ractor', suite.harness
+      assert_equal [], suite.categories
+    end
+
+    it 'keeps bench_dir as BENCHMARKS_DIR when ractor category is used' do
+      suite = BenchmarkSuite.new(
+        ruby: ['ruby'],
+        ruby_description: 'ruby 3.2.0',
+        categories: ['ractor'],
+        name_filters: [],
+        out_path: @out_path,
+        harness: 'harness'
+      )
+
+      assert_equal 'benchmarks', suite.bench_dir
+      assert_equal 'benchmarks-ractor', suite.ractor_bench_dir
+      assert_equal 'harness', suite.harness
+      assert_equal ['ractor'], suite.categories
+    end
   end
 
   describe '#run' do

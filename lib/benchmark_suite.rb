@@ -8,6 +8,7 @@ require 'etc'
 require 'yaml'
 require 'rbconfig'
 require_relative 'benchmark_filter'
+require_relative 'benchmark_runner'
 
 # BenchmarkSuite runs a collection of benchmarks and collects their results
 class BenchmarkSuite
@@ -17,7 +18,7 @@ class BenchmarkSuite
   RACTOR_CATEGORY = "ractor"
   RACTOR_HARNESS = "harness-ractor"
 
-  attr_reader :ruby, :ruby_description, :categories, :name_filters, :out_path, :harness, :pre_init, :no_pinning
+  attr_reader :ruby, :ruby_description, :categories, :name_filters, :out_path, :harness, :pre_init, :no_pinning, :bench_dir, :ractor_bench_dir
 
   def initialize(ruby:, ruby_description:, categories:, name_filters:, out_path:, harness:, pre_init: nil, no_pinning: false)
     @ruby = ruby
@@ -29,6 +30,15 @@ class BenchmarkSuite
     @pre_init = pre_init ? expand_pre_init(pre_init) : nil
     @no_pinning = no_pinning
     @ractor_only = (categories == RACTOR_ONLY_CATEGORY)
+
+    @bench_dir = BENCHMARKS_DIR
+    @ractor_bench_dir = RACTOR_BENCHMARKS_DIR
+
+    if @ractor_only
+      @bench_dir = @ractor_bench_dir
+      @harness = RACTOR_HARNESS
+      @categories = []
+    end
   end
 
   # Run all the benchmarks and record execution times
@@ -36,33 +46,6 @@ class BenchmarkSuite
   def run
     bench_data = {}
     bench_failures = {}
-
-    bench_dir = BENCHMARKS_DIR
-    ractor_bench_dir = RACTOR_BENCHMARKS_DIR
-
-    if @racktor_only
-      bench_dir = ractor_bench_dir
-      @harness = RACTOR_HARNESS
-      @categories = []
-    end
-
-    bench_file_grouping = {}
-
-    # Get the list of benchmark files/directories matching name filters
-    filter = benchmark_filter(categories: categories, name_filters: name_filters)
-    bench_file_grouping[bench_dir] = Dir.children(bench_dir).sort.filter do |entry|
-      filter.match?(entry)
-    end
-
-    if categories == [RACTOR_CATEGORY]
-      # We ignore the category filter here because everything in the
-      # benchmarks-ractor directory should be included when we're benchmarking the
-      # Ractor category
-      ractor_filter = benchmark_filter(categories: [], name_filters: name_filters)
-      bench_file_grouping[ractor_bench_dir] = Dir.children(ractor_bench_dir).sort.filter do |entry|
-        ractor_filter.match?(entry)
-      end
-    end
 
     bench_file_grouping.each do |bench_dir, bench_files|
       bench_files.each_with_index do |entry, idx|
@@ -139,6 +122,30 @@ class BenchmarkSuite
   end
 
   private
+
+  def bench_file_grouping
+    bench_file_grouping = {}
+
+    # Get the list of benchmark files/directories matching name filters
+    filter = benchmark_filter(categories: categories, name_filters: name_filters)
+    bench_file_grouping[bench_dir] = filtered_bench_entries(bench_dir, filter)
+
+    if categories == [RACTOR_CATEGORY]
+      # We ignore the category filter here because everything in the
+      # benchmarks-ractor directory should be included when we're benchmarking the
+      # Ractor category
+      ractor_filter = benchmark_filter(categories: [], name_filters: name_filters)
+      bench_file_grouping[ractor_bench_dir] = filtered_bench_entries(ractor_bench_dir, ractor_filter)
+    end
+
+    bench_file_grouping
+  end
+
+  def filtered_bench_entries(dir, filter)
+    Dir.children(dir).sort.filter do |entry|
+      filter.match?(entry)
+    end
+  end
 
   def benchmark_filter(categories:, name_filters:)
     @benchmark_filter ||= {}
