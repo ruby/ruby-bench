@@ -26,17 +26,8 @@ class GraphRenderer
   def self.render(json_path, png_path, title_font_size: 16.0, legend_font_size: 12.0, marker_font_size: 10.0)
     ruby_descriptions, data, baseline, bench_names = load_benchmark_data(json_path)
 
-    # ruby_descriptions, bench_names, table
     graph = Gruff::Bar.new(DEFAULT_WIDTH)
-    graph.title = "Speedup ratio relative to #{ruby_descriptions.keys.first}"
-    graph.title_font_size = title_font_size
-    graph.theme = THEME
-    graph.labels = bench_names.map.with_index { |bench, index| [index, bench] }.to_h
-    graph.show_labels_for_bar_values = true
-    graph.bottom_margin = DEFAULT_BOTTOM_MARGIN
-    graph.legend_margin = DEFAULT_LEGEND_MARGIN
-    graph.legend_font_size = legend_font_size
-    graph.marker_font_size = marker_font_size
+    configure_graph(graph, ruby_descriptions, bench_names, title_font_size, legend_font_size, marker_font_size)
 
     ruby_descriptions.each do |ruby, description|
       speedups = bench_names.map { |bench|
@@ -58,5 +49,17 @@ class GraphRenderer
     bench_names = data.first.last.keys
 
     [ruby_descriptions, data, baseline, bench_names]
+  end
+
+  def self.configure_graph(graph, ruby_descriptions, bench_names, title_font_size, legend_font_size, marker_font_size)
+    graph.title = "Speedup ratio relative to #{ruby_descriptions.keys.first}"
+    graph.title_font_size = title_font_size
+    graph.theme = THEME
+    graph.labels = bench_names.map.with_index { |bench, index| [index, bench] }.to_h
+    graph.show_labels_for_bar_values = true
+    graph.bottom_margin = DEFAULT_BOTTOM_MARGIN
+    graph.legend_margin = DEFAULT_LEGEND_MARGIN
+    graph.legend_font_size = legend_font_size
+    graph.marker_font_size = marker_font_size
   end
 end
