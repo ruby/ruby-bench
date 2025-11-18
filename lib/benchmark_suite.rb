@@ -19,11 +19,9 @@ class BenchmarkSuite
   RACTOR_CATEGORY = ["ractor"].freeze
   RACTOR_HARNESS = "harness-ractor"
 
-  attr_reader :ruby, :ruby_description, :categories, :name_filters, :excludes, :out_path, :harness, :pre_init, :no_pinning, :bench_dir, :ractor_bench_dir
+  attr_reader :categories, :name_filters, :excludes, :out_path, :harness, :pre_init, :no_pinning, :bench_dir, :ractor_bench_dir
 
-  def initialize(ruby:, ruby_description:, categories:, name_filters:, excludes: [], out_path:, harness:, pre_init: nil, no_pinning: false)
-    @ruby = ruby
-    @ruby_description = ruby_description
+  def initialize(categories:, name_filters:, excludes: [], out_path:, harness:, pre_init: nil, no_pinning: false)
     @categories = categories
     @name_filters = name_filters
     @excludes = excludes
@@ -38,17 +36,19 @@ class BenchmarkSuite
 
   # Run all the benchmarks and record execution times
   # Returns [bench_data, bench_failures]
-  def run
+  def run(ruby:, ruby_description:)
     bench_data = {}
     bench_failures = {}
 
     benchmark_entries = discover_benchmarks
+    cmd_prefix = base_cmd(ruby_description)
+    env = benchmark_env(ruby)
 
     benchmark_entries.each_with_index do |entry, idx|
       puts("Running benchmark \"#{entry.name}\" (#{idx+1}/#{benchmark_entries.length})")
 
       result_json_path = File.join(out_path, "temp#{Process.pid}.json")
-      result = run_single_benchmark(entry.script_path, result_json_path)
+      result = run_single_benchmark(entry.script_path, result_json_path, ruby, cmd_prefix, env)
 
       if result[:success]
         bench_data[entry.name] = process_benchmark_result(result_json_path, result[:command])
@@ -142,7 +142,7 @@ class BenchmarkSuite
     entries.select { |entry| filter.match?(entry.name) }
   end
 
-  def run_single_benchmark(script_path, result_json_path)
+  def run_single_benchmark(script_path, result_json_path, ruby, cmd_prefix, env)
     # Fix for jruby/jruby#7394 in JRuby 9.4.2.0
     script_path = File.expand_path(script_path)
 
@@ -150,7 +150,7 @@ class BenchmarkSuite
     ENV["RESULT_JSON_PATH"] = result_json_path
 
     # Set up the benchmarking command
-    cmd = base_cmd + [
+    cmd = cmd_prefix + [
       *ruby,
       "-I", harness,
       *pre_init,
@@ -158,31 +158,29 @@ class BenchmarkSuite
     ].compact
 
     # Do the benchmarking
-    result = BenchmarkRunner.check_call(cmd.shelljoin, env: benchmark_env, raise_error: false)
+    result = BenchmarkRunner.check_call(cmd.shelljoin, env: env, raise_error: false)
     result[:command] = cmd.shelljoin
     result
   end
 
-  def benchmark_env
-    @benchmark_env ||= begin
-      # When the Ruby running this script is not the first Ruby in PATH, shell commands
-      # like `bundle install` in a child process will not use the Ruby being benchmarked.
-      # It overrides PATH to guarantee the commands of the benchmarked Ruby will be used.
-      env = {}
-      ruby_path = `#{ruby.shelljoin} -e 'print RbConfig.ruby' 2> #{File::NULL}`
+  def benchmark_env(ruby)
+    # When the Ruby running this script is not the first Ruby in PATH, shell commands
+    # like `bundle install` in a child process will not use the Ruby being benchmarked.
+    # It overrides PATH to guarantee the commands of the benchmarked Ruby will be used.
+    env = {}
+    ruby_path = `#{ruby.shelljoin} -e 'print RbConfig.ruby' 2> #{File::NULL}`
 
-      if ruby_path != RbConfig.ruby
-        env["PATH"] = "#{File.dirname(ruby_path)}:#{ENV["PATH"]}"
+    if ruby_path != RbConfig.ruby
+      env["PATH"] = "#{File.dirname(ruby_path)}:#{ENV["PATH"]}"
 
-        # chruby sets GEM_HOME and GEM_PATH in your shell. We have to unset it in the child
-        # process to avoid installing gems to the version that is running run_benchmarks.rb.
-        ["GEM_HOME", "GEM_PATH"].each do |var|
-          env[var] = nil if ENV.key?(var)
-        end
+      # chruby sets GEM_HOME and GEM_PATH in your shell. We have to unset it in the child
+      # process to avoid installing gems to the version that is running run_benchmarks.rb.
+      ["GEM_HOME", "GEM_PATH"].each do |var|
+        env[var] = nil if ENV.key?(var)
       end
-
-      env
     end
+
+    env
   end
 
   def benchmarks_metadata
@@ -199,8 +197,8 @@ class BenchmarkSuite
   end
 
   # Set up the base command with CPU pinning if needed
-  def base_cmd
-    @base_cmd ||= if linux?
+  def base_cmd(ruby_description)
+    if linux?
       cmd = setarch_prefix
 
       # Pin the process to one given core to improve caching and reduce variance on CRuby
