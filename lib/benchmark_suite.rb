@@ -57,10 +57,7 @@ class BenchmarkSuite
         result = run_single_benchmark(bench_dir, entry, result_json_path)
 
         if result[:success]
-          bench_data[bench_name] = JSON.parse(File.read(result_json_path)).tap do |json|
-            json["command_line"] = result[:command]
-            File.unlink(result_json_path)
-          end
+          bench_data[bench_name] = process_benchmark_result(result_json_path, result[:command])
         else
           bench_failures[bench_name] = result[:status].exitstatus
         end
@@ -71,6 +68,13 @@ class BenchmarkSuite
   end
 
   private
+
+  def process_benchmark_result(result_json_path, command)
+    JSON.parse(File.read(result_json_path)).tap do |json|
+      json["command_line"] = command
+      File.unlink(result_json_path)
+    end
+  end
 
   def run_single_benchmark(bench_dir, entry, result_json_path)
     # Path to the benchmark runner script
