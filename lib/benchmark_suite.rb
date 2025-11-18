@@ -49,7 +49,7 @@ class BenchmarkSuite
 
     bench_file_grouping.each do |bench_dir, bench_files|
       bench_files.each_with_index do |entry, idx|
-        bench_name = entry.gsub('.rb', '')
+        bench_name = entry.delete_suffix('.rb')
 
         puts("Running benchmark \"#{bench_name}\" (#{idx+1}/#{bench_files.length})")
 
