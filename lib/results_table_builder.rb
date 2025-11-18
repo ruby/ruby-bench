@@ -1,16 +1,17 @@
 require_relative '../misc/stats'
+require 'yaml'
 
 class ResultsTableBuilder
   SECONDS_TO_MS = 1000.0
   BYTES_TO_MIB = 1024.0 * 1024.0
 
-  def initialize(executable_names:, bench_data:, bench_names:, include_rss: false)
+  def initialize(executable_names:, bench_data:, include_rss: false)
     @executable_names = executable_names
     @bench_data = bench_data
-    @bench_names = bench_names
     @include_rss = include_rss
     @base_name = executable_names.first
     @other_names = executable_names[1..]
+    @bench_names = compute_bench_names
   end
 
   def build
@@ -142,5 +143,22 @@ class ResultsTableBuilder
 
   def stddev_percent(values)
     100 * stddev(values) / mean(values)
+  end
+
+  def compute_bench_names
+    # Get keys from all rows in case a benchmark failed for only some executables
+    all_bench_names = @bench_data.map { |k, v| v.keys }.flatten.uniq
+    benchmarks_metadata = YAML.load_file('benchmarks.yml')
+    sort_benchmarks(all_bench_names, benchmarks_metadata)
+  end
+
+  # Sort benchmarks with headlines first, then others, then micro
+  def sort_benchmarks(bench_names, metadata)
+    headline_benchmarks = metadata.select { |_, meta| meta['category'] == 'headline' }.keys
+    micro_benchmarks = metadata.select { |_, meta| meta['category'] == 'micro' }.keys
+
+    headline_names, bench_names = bench_names.partition { |name| headline_benchmarks.include?(name) }
+    micro_names, other_names = bench_names.partition { |name| micro_benchmarks.include?(name) }
+    headline_names.sort + other_names.sort + micro_names.sort
   end
 end

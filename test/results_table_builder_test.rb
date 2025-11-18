@@ -1,7 +1,33 @@
 require_relative 'test_helper'
 require_relative '../lib/results_table_builder'
+require 'yaml'
+require 'tmpdir'
 
 describe ResultsTableBuilder do
+  before do
+    @original_dir = Dir.pwd
+    @temp_dir = Dir.mktmpdir
+    Dir.chdir(@temp_dir)
+
+    benchmarks_metadata = {
+      'fib' => { 'category' => 'micro' },
+      'loop' => { 'category' => 'micro' },
+      'railsbench' => { 'category' => 'headline' },
+      'optcarrot' => { 'category' => 'headline' },
+      'zebra' => { 'category' => 'other' },
+      'apple' => { 'category' => 'other' },
+      'mango' => { 'category' => 'other' },
+      'some_bench' => { 'category' => 'other' },
+      'another_bench' => { 'category' => 'other' }
+    }
+    File.write('benchmarks.yml', YAML.dump(benchmarks_metadata))
+  end
+
+  after do
+    Dir.chdir(@original_dir)
+    FileUtils.rm_rf(@temp_dir)
+  end
+
   describe '#build' do
     it 'builds a table with header and data rows' do
       executable_names = ['ruby', 'ruby-yjit']
@@ -21,12 +47,10 @@ describe ResultsTableBuilder do
           }
         }
       }
-      bench_names = ['fib']
 
       builder = ResultsTableBuilder.new(
         executable_names: executable_names,
         bench_data: bench_data,
-        bench_names: bench_names,
         include_rss: false
       )
 
@@ -54,12 +78,10 @@ describe ResultsTableBuilder do
           }
         }
       }
-      bench_names = ['fib']
 
       builder = ResultsTableBuilder.new(
         executable_names: executable_names,
         bench_data: bench_data,
-        bench_names: bench_names,
         include_rss: true
       )
 
@@ -95,12 +117,10 @@ describe ResultsTableBuilder do
           }
         }
       }
-      bench_names = ['fib', 'loop']
 
       builder = ResultsTableBuilder.new(
         executable_names: executable_names,
         bench_data: bench_data,
-        bench_names: bench_names,
         include_rss: false
       )
 
@@ -135,12 +155,10 @@ describe ResultsTableBuilder do
           }
         }
       }
-      bench_names = ['fib']
 
       builder = ResultsTableBuilder.new(
         executable_names: executable_names,
         bench_data: bench_data,
-        bench_names: bench_names,
         include_rss: false
       )
 
@@ -173,12 +191,10 @@ describe ResultsTableBuilder do
           }
         }
       }
-      bench_names = ['fib']
 
       builder = ResultsTableBuilder.new(
         executable_names: executable_names,
         bench_data: bench_data,
-        bench_names: bench_names,
         include_rss: false
       )
 
@@ -187,6 +203,169 @@ describe ResultsTableBuilder do
       assert_equal 2, table.length
       assert_equal 'fib', table[1][0]
       assert_in_delta 100.0, table[1][1], 5.0
+    end
+
+    it 'sorts benchmarks with headlines first, then others, then micro' do
+      executable_names = ['ruby']
+      bench_data = {
+        'ruby' => {
+          'fib' => {
+            'warmup' => [0.1],
+            'bench' => [0.1],
+            'rss' => 1024 * 1024 * 10
+          },
+          'loop' => {
+            'warmup' => [0.1],
+            'bench' => [0.1],
+            'rss' => 1024 * 1024 * 10
+          },
+          'railsbench' => {
+            'warmup' => [0.1],
+            'bench' => [0.1],
+            'rss' => 1024 * 1024 * 10
+          },
+          'optcarrot' => {
+            'warmup' => [0.1],
+            'bench' => [0.1],
+            'rss' => 1024 * 1024 * 10
+          }
+        }
+      }
+
+      builder = ResultsTableBuilder.new(
+        executable_names: executable_names,
+        bench_data: bench_data,
+        include_rss: false
+      )
+
+      table, _format = builder.build
+
+      bench_names = table[1..].map { |row| row[0] }
+
+      assert_equal 'optcarrot', bench_names[0]
+      assert_equal 'railsbench', bench_names[1]
+
+      assert_equal 'fib', bench_names[2]
+      assert_equal 'loop', bench_names[3]
+    end
+
+    it 'sorts benchmarks alphabetically within other category' do
+      executable_names = ['ruby']
+      bench_data = {
+        'ruby' => {
+          'zebra' => {
+            'warmup' => [0.1],
+            'bench' => [0.1],
+            'rss' => 1024 * 1024 * 10
+          },
+          'apple' => {
+            'warmup' => [0.1],
+            'bench' => [0.1],
+            'rss' => 1024 * 1024 * 10
+          },
+          'mango' => {
+            'warmup' => [0.1],
+            'bench' => [0.1],
+            'rss' => 1024 * 1024 * 10
+          }
+        }
+      }
+
+      builder = ResultsTableBuilder.new(
+        executable_names: executable_names,
+        bench_data: bench_data,
+        include_rss: false
+      )
+
+      table, _format = builder.build
+
+      bench_names = table[1..].map { |row| row[0] }
+
+      assert_equal ['apple', 'mango', 'zebra'], bench_names
+    end
+
+    it 'handles single benchmark' do
+      executable_names = ['ruby']
+      bench_data = {
+        'ruby' => {
+          'fib' => {
+            'warmup' => [0.1],
+            'bench' => [0.1],
+            'rss' => 1024 * 1024 * 10
+          }
+        }
+      }
+
+      builder = ResultsTableBuilder.new(
+        executable_names: executable_names,
+        bench_data: bench_data,
+        include_rss: false
+      )
+
+      table, _format = builder.build
+
+      assert_equal 2, table.length
+      assert_equal 'fib', table[1][0]
+    end
+
+    it 'handles only headline benchmarks' do
+      executable_names = ['ruby']
+      bench_data = {
+        'ruby' => {
+          'railsbench' => {
+            'warmup' => [0.1],
+            'bench' => [0.1],
+            'rss' => 1024 * 1024 * 10
+          },
+          'optcarrot' => {
+            'warmup' => [0.1],
+            'bench' => [0.1],
+            'rss' => 1024 * 1024 * 10
+          }
+        }
+      }
+
+      builder = ResultsTableBuilder.new(
+        executable_names: executable_names,
+        bench_data: bench_data,
+        include_rss: false
+      )
+
+      table, _format = builder.build
+
+      bench_names = table[1..].map { |row| row[0] }
+
+      assert_equal ['optcarrot', 'railsbench'], bench_names
+    end
+
+    it 'sorts mixed categories correctly with multiple benchmarks' do
+      executable_names = ['ruby']
+      bench_data = {
+        'ruby' => {
+          'fib' => { 'warmup' => [0.1], 'bench' => [0.1], 'rss' => 1024 * 1024 * 10 },
+          'some_bench' => { 'warmup' => [0.1], 'bench' => [0.1], 'rss' => 1024 * 1024 * 10 },
+          'railsbench' => { 'warmup' => [0.1], 'bench' => [0.1], 'rss' => 1024 * 1024 * 10 },
+          'another_bench' => { 'warmup' => [0.1], 'bench' => [0.1], 'rss' => 1024 * 1024 * 10 },
+          'optcarrot' => { 'warmup' => [0.1], 'bench' => [0.1], 'rss' => 1024 * 1024 * 10 }
+        }
+      }
+
+      builder = ResultsTableBuilder.new(
+        executable_names: executable_names,
+        bench_data: bench_data,
+        include_rss: false
+      )
+
+      table, _format = builder.build
+      bench_names = table[1..].map { |row| row[0] }
+
+      assert_equal 'optcarrot', bench_names[0]
+      assert_equal 'railsbench', bench_names[1]
+
+      assert_equal 'another_bench', bench_names[2]
+      assert_equal 'some_bench', bench_names[3]
+
+      assert_equal 'fib', bench_names[4]
     end
   end
 end

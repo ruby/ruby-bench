@@ -15,11 +15,6 @@ require_relative 'lib/table_formatter'
 require_relative 'lib/argument_parser'
 require_relative 'lib/results_table_builder'
 
-def sort_benchmarks(bench_names)
-  benchmarks_metadata = YAML.load_file('benchmarks.yml')
-  BenchmarkRunner.sort_benchmarks(bench_names, benchmarks_metadata)
-end
-
 args = ArgumentParser.parse(ARGV)
 
 CPUConfig.configure_for_benchmarking(turbo: args.turbo)
@@ -52,9 +47,6 @@ args.executables.each do |name, executable|
 end
 
 bench_end_time = Time.now.to_f
-# Get keys from all rows in case a benchmark failed for only some executables.
-bench_names = sort_benchmarks(bench_data.map { |k, v| v.keys }.flatten.uniq)
-
 bench_total_time = (bench_end_time - bench_start_time).to_i
 puts("Total time spent benchmarking: #{bench_total_time}s")
 
@@ -70,7 +62,6 @@ base_name, *other_names = all_names
 builder = ResultsTableBuilder.new(
   executable_names: all_names,
   bench_data: bench_data,
-  bench_names: bench_names,
   include_rss: args.rss
 )
 table, format = builder.build
