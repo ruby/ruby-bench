@@ -15,7 +15,7 @@ class BenchmarkSuite
   BENCHMARKS_DIR = "benchmarks"
   RACTOR_BENCHMARKS_DIR = "benchmarks-ractor"
   RACTOR_ONLY_CATEGORY = ["ractor-only"].freeze
-  RACTOR_CATEGORY = "ractor"
+  RACTOR_CATEGORY = ["ractor"].freeze
   RACTOR_HARNESS = "harness-ractor"
 
   attr_reader :ruby, :ruby_description, :categories, :name_filters, :out_path, :harness, :pre_init, :no_pinning, :bench_dir, :ractor_bench_dir
@@ -130,7 +130,7 @@ class BenchmarkSuite
     filter = benchmark_filter(categories: categories, name_filters: name_filters)
     bench_file_grouping[bench_dir] = filtered_bench_entries(bench_dir, filter)
 
-    if categories == [RACTOR_CATEGORY]
+    if benchmark_ractor_directory?
       # We ignore the category filter here because everything in the
       # benchmarks-ractor directory should be included when we're benchmarking the
       # Ractor category
@@ -139,12 +139,6 @@ class BenchmarkSuite
     end
 
     bench_file_grouping
-  end
-
-  def filtered_bench_entries(dir, filter)
-    Dir.children(dir).sort.filter do |entry|
-      filter.match?(entry)
-    end
   end
 
   def benchmark_filter(categories:, name_filters:)
@@ -159,6 +153,16 @@ class BenchmarkSuite
 
   def benchmarks_metadata
     @benchmarks_metadata ||= YAML.load_file('benchmarks.yml')
+  end
+
+  def filtered_bench_entries(dir, filter)
+    Dir.children(dir).sort.filter do |entry|
+      filter.match?(entry)
+    end
+  end
+
+  def benchmark_ractor_directory?
+    categories == RACTOR_CATEGORY
   end
 
   # Check if running on Linux
