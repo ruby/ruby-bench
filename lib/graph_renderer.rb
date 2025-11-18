@@ -24,11 +24,7 @@ class GraphRenderer
   DEFAULT_LEGEND_MARGIN = 4.0
 
   def self.render(json_path, png_path, title_font_size: 16.0, legend_font_size: 12.0, marker_font_size: 10.0)
-    json = JSON.load_file(json_path)
-    ruby_descriptions = json.fetch("metadata")
-    data = json.fetch("raw_data")
-    baseline = ruby_descriptions.first.first
-    bench_names = data.first.last.keys
+    ruby_descriptions, data, baseline, bench_names = load_benchmark_data(json_path)
 
     # ruby_descriptions, bench_names, table
     graph = Gruff::Bar.new(DEFAULT_WIDTH)
@@ -52,5 +48,15 @@ class GraphRenderer
     end
     graph.write(png_path)
     png_path
+  end
+
+  def self.load_benchmark_data(json_path)
+    json = JSON.load_file(json_path)
+    ruby_descriptions = json.fetch("metadata")
+    data = json.fetch("raw_data")
+    baseline = ruby_descriptions.first.first
+    bench_names = data.first.last.keys
+
+    [ruby_descriptions, data, baseline, bench_names]
   end
 end
