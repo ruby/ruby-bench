@@ -32,18 +32,17 @@ module BenchmarkRunner
     # Write benchmark results to CSV file
     def write_csv(output_path, ruby_descriptions, table)
       out_csv_path = "#{output_path}.csv"
-      output_rows = []
-      ruby_descriptions.each do |key, value|
-        output_rows.append([key, value])
-      end
-      output_rows.append([])
-      output_rows.concat(table)
 
       CSV.open(out_csv_path, "wb") do |csv|
-        output_rows.each do |row|
+        ruby_descriptions.each do |key, value|
+          csv << [key, value]
+        end
+        csv << []
+        table.each do |row|
           csv << row
         end
       end
+
       out_csv_path
     end
 
