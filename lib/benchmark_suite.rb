@@ -11,6 +11,12 @@ require_relative 'benchmark_filter'
 
 # BenchmarkSuite runs a collection of benchmarks and collects their results
 class BenchmarkSuite
+  BENCHMARKS_DIR = "benchmarks"
+  RACTOR_BENCHMARKS_DIR = "benchmarks-ractor"
+  RACTOR_ONLY_CATEGORY = "ractor-only"
+  RACTOR_CATEGORY = "ractor"
+  RACTOR_HARNESS = "harness-ractor"
+
   attr_reader :ruby, :ruby_description, :categories, :name_filters, :out_path, :harness, :pre_init, :no_pinning
 
   def initialize(ruby:, ruby_description:, categories:, name_filters:, out_path:, harness:, pre_init: nil, no_pinning: false)
@@ -30,12 +36,12 @@ class BenchmarkSuite
     bench_data = {}
     bench_failures = {}
 
-    bench_dir = "benchmarks"
-    ractor_bench_dir = "benchmarks-ractor"
+    bench_dir = BENCHMARKS_DIR
+    ractor_bench_dir = RACTOR_BENCHMARKS_DIR
 
-    if categories == ["ractor-only"]
+    if categories == [RACTOR_ONLY_CATEGORY]
       bench_dir = ractor_bench_dir
-      @harness = "harness-ractor"
+      @harness = RACTOR_HARNESS
       @categories = []
     end
 
@@ -47,7 +53,7 @@ class BenchmarkSuite
       filter.match?(entry)
     end
 
-    if categories == ["ractor"]
+    if categories == [RACTOR_CATEGORY]
       # We ignore the category filter here because everything in the
       # benchmarks-ractor directory should be included when we're benchmarking the
       # Ractor category
