@@ -36,15 +36,14 @@ CPUConfig.configure_for_benchmarking(turbo: args.turbo)
 FileUtils.mkdir_p(args.out_path)
 
 ruby_descriptions = {}
-args.executables.each do |name, executable|
-  ruby_descriptions[name] = `#{executable.shelljoin} -v`.chomp
-end
 
 # Benchmark with and without YJIT
 bench_start_time = Time.now.to_f
 bench_data = {}
 bench_failures = {}
 args.executables.each do |name, executable|
+  ruby_descriptions[name] = `#{executable.shelljoin} -v`.chomp
+
   suite = BenchmarkSuite.new(
     ruby: executable,
     ruby_description: ruby_descriptions[name],
