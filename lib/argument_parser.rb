@@ -1,5 +1,6 @@
 require 'optparse'
 require 'shellwords'
+require 'rbconfig'
 
 class ArgumentParser
   Args = Struct.new(
@@ -19,8 +20,12 @@ class ArgumentParser
     keyword_init: true
   )
 
-  def self.parse(argv = ARGV)
-    new.parse(argv)
+  def self.parse(argv = ARGV, ruby_executable: RbConfig.ruby)
+    new(ruby_executable: ruby_executable).parse(argv)
+  end
+
+  def initialize(ruby_executable: RbConfig.ruby)
+    @ruby_executable = ruby_executable
   end
 
   def parse(argv)
@@ -140,10 +145,25 @@ class ArgumentParser
       args.name_filters += argv
     end
 
+    # If -e is not specified, benchmark the current Ruby. Compare it with YJIT if available.
+    if args.executables.empty?
+      if have_yjit?(@ruby_executable) && !args.skip_yjit
+        args.executables["interp"] = [@ruby_executable]
+        args.executables["yjit"] = [@ruby_executable, "--yjit", *args.yjit_opts.shellsplit]
+      else
+        args.executables["ruby"] = [@ruby_executable]
+      end
+    end
+
     args
   end
 
   private
+
+  def have_yjit?(ruby)
+    ruby_version = `#{ruby} -v --yjit 2> #{File::NULL}`.strip
+    ruby_version.downcase.include?("yjit")
+  end
 
   def default_args
     Args.new(

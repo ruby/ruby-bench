@@ -15,11 +15,6 @@ require_relative 'lib/table_formatter'
 require_relative 'lib/benchmark_filter'
 require_relative 'lib/argument_parser'
 
-def have_yjit?(ruby)
-  ruby_version = `#{ruby} -v --yjit 2> #{File::NULL}`.strip
-  ruby_version.downcase.include?("yjit")
-end
-
 def mean(values)
   Stats.new(values).mean
 end
@@ -158,16 +153,6 @@ def run_benchmarks(ruby:, ruby_description:, categories:, name_filters:, out_pat
 end
 
 args = ArgumentParser.parse(ARGV)
-
-# If -e is not specified, benchmark the current Ruby. Compare it with YJIT if available.
-if args.executables.empty?
-  if have_yjit?(RbConfig.ruby) && !args.skip_yjit
-    args.executables["interp"] = [RbConfig.ruby]
-    args.executables["yjit"] = [RbConfig.ruby, "--yjit", *args.yjit_opts.shellsplit]
-  else
-    args.executables["ruby"] = [RbConfig.ruby]
-  end
-end
 
 CPUConfig.configure_for_benchmarking(turbo: args.turbo)
 

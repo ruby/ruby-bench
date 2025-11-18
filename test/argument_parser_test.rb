@@ -34,21 +34,26 @@ describe ArgumentParser do
 
   describe '#parse' do
     it 'returns default values when no arguments provided' do
-      parser = ArgumentParser.new
-      args = parser.parse([])
+      mock_ruby = '/usr/bin/ruby'
+      parser = ArgumentParser.new(ruby_executable: mock_ruby)
 
-      assert_equal({}, args.executables)
-      assert_equal File.expand_path("./data"), args.out_path
-      assert_nil args.out_override
-      assert_equal "harness", args.harness
-      assert_equal "", args.yjit_opts
-      assert_equal [], args.categories
-      assert_equal [], args.name_filters
-      assert_equal false, args.rss
-      assert_equal false, args.graph
-      assert_equal false, args.no_pinning
-      assert_equal false, args.turbo
-      assert_equal false, args.skip_yjit
+      # Stub to return false so we get a single 'ruby' executable
+      parser.stub :have_yjit?, false do
+        args = parser.parse([])
+
+        assert_equal({ 'ruby' => [mock_ruby] }, args.executables)
+        assert_equal File.expand_path("./data"), args.out_path
+        assert_nil args.out_override
+        assert_equal "harness", args.harness
+        assert_equal "", args.yjit_opts
+        assert_equal [], args.categories
+        assert_equal [], args.name_filters
+        assert_equal false, args.rss
+        assert_equal false, args.graph
+        assert_equal false, args.no_pinning
+        assert_equal false, args.turbo
+        assert_equal false, args.skip_yjit
+      end
     end
 
     describe '-e option' do
@@ -500,6 +505,96 @@ describe ArgumentParser do
         args = ArgumentParser.parse(['--rss'])
 
         assert_equal true, args.rss
+      end
+    end
+
+    describe 'default executables' do
+      it 'sets ruby executable when no -e option and no YJIT' do
+        mock_ruby = '/usr/bin/ruby'
+
+        parser = ArgumentParser.new(ruby_executable: mock_ruby)
+
+        parser.stub :have_yjit?, false do
+          args = parser.parse([])
+
+          assert_equal 1, args.executables.size
+          assert_equal [mock_ruby], args.executables['ruby']
+        end
+      end
+
+      it 'sets interp and yjit executables when no -e option and YJIT available' do
+        mock_ruby = '/usr/bin/ruby'
+
+        parser = ArgumentParser.new(ruby_executable: mock_ruby)
+
+        parser.stub :have_yjit?, true do
+          args = parser.parse([])
+
+          assert_equal 2, args.executables.size
+          assert_equal [mock_ruby], args.executables['interp']
+          assert_equal [mock_ruby, '--yjit'], args.executables['yjit']
+        end
+      end
+
+      it 'includes yjit_opts in default yjit executable' do
+        mock_ruby = '/usr/bin/ruby'
+
+        parser = ArgumentParser.new(ruby_executable: mock_ruby)
+
+        parser.stub :have_yjit?, true do
+          args = parser.parse(['--yjit_opts=--yjit-call-threshold=10'])
+
+          assert_equal 2, args.executables.size
+          assert_equal [mock_ruby], args.executables['interp']
+          assert_equal [mock_ruby, '--yjit', '--yjit-call-threshold=10'], args.executables['yjit']
+        end
+      end
+
+      it 'respects --skip-yjit flag when YJIT is available' do
+        mock_ruby = '/usr/bin/ruby'
+
+        parser = ArgumentParser.new(ruby_executable: mock_ruby)
+
+        parser.stub :have_yjit?, true do
+          args = parser.parse(['--skip-yjit'])
+
+          assert_equal 1, args.executables.size
+          assert_equal [mock_ruby], args.executables['ruby']
+        end
+      end
+
+      it 'does not set default executables when -e option is provided' do
+        mock_ruby = '/usr/bin/ruby'
+
+        parser = ArgumentParser.new(ruby_executable: mock_ruby)
+
+        parser.stub :have_yjit?, true do
+          args = parser.parse(['-e', 'custom::custom-ruby'])
+
+          assert_equal 1, args.executables.size
+          assert_equal ['custom-ruby'], args.executables['custom']
+        end
+      end
+
+      it 'does not set default executables when --chruby option is provided' do
+        Dir.mktmpdir do |tmpdir|
+          @temp_home = tmpdir
+          rubies_dir = File.join(tmpdir, '.rubies')
+          ruby_path = File.join(rubies_dir, '3.2.0/bin/ruby')
+          setup_mock_ruby(ruby_path)
+
+          ENV['HOME'] = tmpdir
+          mock_ruby = '/usr/bin/ruby'
+
+          parser = ArgumentParser.new(ruby_executable: mock_ruby)
+
+          parser.stub :have_yjit?, true do
+            args = parser.parse(['--chruby=test::3.2.0'])
+
+            assert_equal 1, args.executables.size
+            assert_equal ruby_path, args.executables['test'].first
+          end
+        end
       end
     end
   end
