@@ -9,46 +9,6 @@ require 'csv'
 require 'yaml'
 
 describe BenchmarkRunner do
-  describe '.free_file_no' do
-    it 'returns 1 when no files exist' do
-      Dir.mktmpdir do |dir|
-        file_no = BenchmarkRunner.free_file_no(dir)
-        assert_equal 1, file_no
-      end
-    end
-
-    it 'returns next available number when files exist' do
-      Dir.mktmpdir do |dir|
-        FileUtils.touch(File.join(dir, 'output_001.csv'))
-        FileUtils.touch(File.join(dir, 'output_002.csv'))
-
-        file_no = BenchmarkRunner.free_file_no(dir)
-        assert_equal 3, file_no
-      end
-    end
-
-    it 'finds first gap in numbering' do
-      Dir.mktmpdir do |dir|
-        FileUtils.touch(File.join(dir, 'output_001.csv'))
-        FileUtils.touch(File.join(dir, 'output_003.csv'))
-
-        file_no = BenchmarkRunner.free_file_no(dir)
-        assert_equal 2, file_no
-      end
-    end
-
-    it 'handles triple digit numbers' do
-      Dir.mktmpdir do |dir|
-        (1..100).each do |i|
-          FileUtils.touch(File.join(dir, 'output_%03d.csv' % i))
-        end
-
-        file_no = BenchmarkRunner.free_file_no(dir)
-        assert_equal 101, file_no
-      end
-    end
-  end
-
   describe '.check_call' do
     it 'runs a successful command and returns success status' do
       result = nil
@@ -154,6 +114,68 @@ describe BenchmarkRunner do
         expected_path = File.join(dir, "output_123.csv")
 
         assert_equal expected_path, File.join(dir, "output_%03d.csv" % file_no)
+      end
+    end
+  end
+
+  describe '.output_path' do
+    it 'returns the override path when provided' do
+      Dir.mktmpdir do |dir|
+        override = '/custom/path/output'
+        result = BenchmarkRunner.output_path(dir, out_override: override)
+        assert_equal override, result
+      end
+    end
+
+    it 'generates path with first available file number when no override' do
+      Dir.mktmpdir do |dir|
+        result = BenchmarkRunner.output_path(dir)
+        expected = File.join(dir, 'output_001')
+        assert_equal expected, result
+      end
+    end
+
+    it 'uses next available file number when files exist' do
+      Dir.mktmpdir do |dir|
+        FileUtils.touch(File.join(dir, 'output_001.csv'))
+        FileUtils.touch(File.join(dir, 'output_002.csv'))
+
+        result = BenchmarkRunner.output_path(dir)
+        expected = File.join(dir, 'output_003')
+        assert_equal expected, result
+      end
+    end
+
+    it 'finds first gap in numbering when files are non-sequential' do
+      Dir.mktmpdir do |dir|
+        FileUtils.touch(File.join(dir, 'output_001.csv'))
+        FileUtils.touch(File.join(dir, 'output_003.csv'))
+
+        result = BenchmarkRunner.output_path(dir)
+        expected = File.join(dir, 'output_002')
+        assert_equal expected, result
+      end
+    end
+
+    it 'prefers override even when files exist' do
+      Dir.mktmpdir do |dir|
+        FileUtils.touch(File.join(dir, 'output_001.csv'))
+
+        override = '/override/path'
+        result = BenchmarkRunner.output_path(dir, out_override: override)
+        assert_equal override, result
+      end
+    end
+
+    it 'handles triple digit file numbers' do
+      Dir.mktmpdir do |dir|
+        (1..100).each do |i|
+          FileUtils.touch(File.join(dir, 'output_%03d.csv' % i))
+        end
+
+        result = BenchmarkRunner.output_path(dir)
+        expected = File.join(dir, 'output_101')
+        assert_equal expected, result
       end
     end
   end

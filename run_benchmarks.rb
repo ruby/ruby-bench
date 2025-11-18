@@ -66,14 +66,7 @@ builder = ResultsTableBuilder.new(
 )
 table, format = builder.build
 
-output_path = nil
-if args.out_override
-  output_path = args.out_override
-else
-  # If no out path is specified, find a free file index for the output files
-  file_no = BenchmarkRunner.free_file_no(args.out_path)
-  output_path = File.join(args.out_path, "output_%03d" % file_no)
-end
+output_path = BenchmarkRunner.output_path(args.out_path, out_override: args.out_override)
 
 # Save the raw data as JSON
 out_json_path = output_path + ".json"

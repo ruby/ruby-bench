@@ -34,10 +34,11 @@ describe 'run_benchmarks.rb integration' do
         File.write(File.join(tmpdir, 'output_001.csv'), 'test')
         File.write(File.join(tmpdir, 'output_002.csv'), 'test')
 
-        # The free_file_no function should find the next number
+        # The output_path function should find the next number
         require_relative '../lib/benchmark_runner'
-        file_no = BenchmarkRunner.free_file_no(tmpdir)
-        assert_equal 3, file_no
+        output_path = BenchmarkRunner.output_path(tmpdir)
+        expected_path = File.join(tmpdir, 'output_003')
+        assert_equal expected_path, output_path
       end
     end
 
