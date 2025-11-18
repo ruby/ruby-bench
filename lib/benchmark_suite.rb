@@ -77,23 +77,8 @@ class BenchmarkSuite
           script_path,
         ].compact
 
-        # When the Ruby running this script is not the first Ruby in PATH, shell commands
-        # like `bundle install` in a child process will not use the Ruby being benchmarked.
-        # It overrides PATH to guarantee the commands of the benchmarked Ruby will be used.
-        env = {}
-        ruby_path = `#{ruby.shelljoin} -e 'print RbConfig.ruby' 2> #{File::NULL}`
-        if ruby_path != RbConfig.ruby
-          env["PATH"] = "#{File.dirname(ruby_path)}:#{ENV["PATH"]}"
-
-          # chruby sets GEM_HOME and GEM_PATH in your shell. We have to unset it in the child
-          # process to avoid installing gems to the version that is running run_benchmarks.rb.
-          ["GEM_HOME", "GEM_PATH"].each do |var|
-            env[var] = nil if ENV.key?(var)
-          end
-        end
-
         # Do the benchmarking
-        result = BenchmarkRunner.check_call(cmd.shelljoin, env: env, raise_error: false)
+        result = BenchmarkRunner.check_call(cmd.shelljoin, env: benchmark_env, raise_error: false)
 
         if result[:success]
           bench_data[bench_name] = JSON.parse(File.read(result_json_path)).tap do |json|
@@ -111,6 +96,28 @@ class BenchmarkSuite
   end
 
   private
+
+  def benchmark_env
+    @benchmark_env ||= begin
+      # When the Ruby running this script is not the first Ruby in PATH, shell commands
+      # like `bundle install` in a child process will not use the Ruby being benchmarked.
+      # It overrides PATH to guarantee the commands of the benchmarked Ruby will be used.
+      env = {}
+      ruby_path = `#{ruby.shelljoin} -e 'print RbConfig.ruby' 2> #{File::NULL}`
+
+      if ruby_path != RbConfig.ruby
+        env["PATH"] = "#{File.dirname(ruby_path)}:#{ENV["PATH"]}"
+
+        # chruby sets GEM_HOME and GEM_PATH in your shell. We have to unset it in the child
+        # process to avoid installing gems to the version that is running run_benchmarks.rb.
+        ["GEM_HOME", "GEM_PATH"].each do |var|
+          env[var] = nil if ENV.key?(var)
+        end
+      end
+
+      env
+    end
+  end
 
   def bench_file_grouping
     bench_file_grouping = {}
