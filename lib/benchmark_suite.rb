@@ -127,27 +127,32 @@ class BenchmarkSuite
   end
 
   def bench_file_grouping
-    bench_file_grouping = {}
+    grouping = {}
 
     # Get the list of benchmark files/directories matching name filters
-    filter = benchmark_filter(categories: categories)
-    bench_file_grouping[bench_dir] = filtered_bench_entries(bench_dir, filter)
+    grouping[bench_dir] = filtered_bench_entries(bench_dir, main_benchmark_filter)
 
     if benchmark_ractor_directory?
       # We ignore the category filter here because everything in the
       # benchmarks-ractor directory should be included when we're benchmarking the
       # Ractor category
-      ractor_filter = benchmark_filter(categories: [])
-      bench_file_grouping[ractor_bench_dir] = filtered_bench_entries(ractor_bench_dir, ractor_filter)
+      grouping[ractor_bench_dir] = filtered_bench_entries(ractor_bench_dir, ractor_benchmark_filter)
     end
 
-    bench_file_grouping
+    grouping
   end
 
-  def benchmark_filter(categories:)
-    @benchmark_filter ||= {}
-    @benchmark_filter[categories] ||= BenchmarkFilter.new(
+  def main_benchmark_filter
+    @main_benchmark_filter ||= BenchmarkFilter.new(
       categories: categories,
+      name_filters: name_filters,
+      metadata: benchmarks_metadata
+    )
+  end
+
+  def ractor_benchmark_filter
+    @ractor_benchmark_filter ||= BenchmarkFilter.new(
+      categories: [],
       name_filters: name_filters,
       metadata: benchmarks_metadata
     )
