@@ -87,14 +87,14 @@ class ResultsTableBuilder
 
   def build_base_columns(row, base_t, base_rss)
     row << mean(base_t)
-    row << 100 * stddev(base_t) / mean(base_t)
+    row << stddev_percent(base_t)
     row << base_rss if @include_rss
   end
 
   def build_comparison_columns(row, other_ts, other_rsss)
     other_ts.zip(other_rsss).each do |other_t, other_rss|
       row << mean(other_t)
-      row << 100 * stddev(other_t) / mean(other_t)
+      row << stddev_percent(other_t)
       row << other_rss if @include_rss
     end
   end
@@ -135,5 +135,9 @@ class ResultsTableBuilder
 
   def stddev(values)
     Stats.new(values).stddev
+  end
+
+  def stddev_percent(values)
+    100 * stddev(values) / mean(values)
   end
 end
