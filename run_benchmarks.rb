@@ -56,9 +56,8 @@ end
 puts
 
 # Build results table
-all_names = args.executables.keys
 builder = ResultsTableBuilder.new(
-  executable_names: all_names,
+  executable_names: ruby_descriptions.keys,
   bench_data: bench_data,
   include_rss: args.rss
 )
