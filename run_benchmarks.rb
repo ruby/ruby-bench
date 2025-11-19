@@ -13,6 +13,7 @@ require 'yaml'
 require_relative 'misc/stats'
 require_relative 'lib/benchmark_runner'
 require_relative 'lib/table_formatter'
+require_relative 'lib/benchmark_filter'
 
 # Checked system - error or return info if the command fails
 def check_call(command, env: {}, raise_error: true, quiet: false)
@@ -113,9 +114,14 @@ def stddev(values)
   Stats.new(values).stddev
 end
 
-# Check if the name matches any of the names in a list of filters
-def match_filter(entry, categories:, name_filters:)
-  BenchmarkRunner.match_filter(entry, categories: categories, name_filters: name_filters, metadata: benchmarks_metadata)
+def benchmark_filter(categories:, name_filters:)
+  @benchmark_filter ||= {}
+  key = [categories, name_filters]
+  @benchmark_filter[key] ||= BenchmarkFilter.new(
+    categories: categories,
+    name_filters: name_filters,
+    metadata: benchmarks_metadata
+  )
 end
 
 def benchmarks_metadata
@@ -147,16 +153,18 @@ def run_benchmarks(ruby:, ruby_description:, categories:, name_filters:, out_pat
   bench_file_grouping = {}
 
   # Get the list of benchmark files/directories matching name filters
+  filter = benchmark_filter(categories: categories, name_filters: name_filters)
   bench_file_grouping[bench_dir] = Dir.children(bench_dir).sort.filter do |entry|
-    match_filter(entry, categories: categories, name_filters: name_filters)
+    filter.match?(entry)
   end
 
   if categories == ["ractor"]
     # We ignore the category filter here because everything in the
     # benchmarks-ractor directory should be included when we're benchmarking the
     # Ractor category
+    ractor_filter = benchmark_filter(categories: [], name_filters: name_filters)
     bench_file_grouping[ractor_bench_dir] = Dir.children(ractor_bench_dir).sort.filter do |entry|
-      match_filter(entry, categories: [], name_filters: name_filters)
+      ractor_filter.match?(entry)
     end
   end
 

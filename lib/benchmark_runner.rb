@@ -16,45 +16,6 @@ module BenchmarkRunner
     end
   end
 
-  # Get benchmark categories from metadata
-  def benchmark_categories(name, metadata)
-    benchmark_metadata = metadata[name] || {}
-    categories = [benchmark_metadata.fetch('category', 'other')]
-    categories << 'ractor' if benchmark_metadata['ractor']
-    categories
-  end
-
-  # Check if the name matches any of the names in a list of filters
-  def match_filter(entry, categories:, name_filters:, metadata:)
-    name_filters = process_name_filters(name_filters)
-    name = entry.sub(/\.rb\z/, '')
-    (categories.empty? || benchmark_categories(name, metadata).any? { |cat| categories.include?(cat) }) &&
-      (name_filters.empty? || name_filters.any? { |filter| filter === name })
-  end
-
-  # Process "/my_benchmark/i" into /my_benchmark/i
-  def process_name_filters(name_filters)
-    name_filters.map do |name_filter|
-      if name_filter[0] == "/"
-        regexp_str = name_filter[1..-1].reverse.sub(/\A(\w*)\//, "")
-        regexp_opts = ::Regexp.last_match(1).to_s
-        regexp_str.reverse!
-        r = /#{regexp_str}/
-        if !regexp_opts.empty?
-          # Convert option string to Regexp option flags
-          flags = 0
-          flags |= Regexp::IGNORECASE if regexp_opts.include?('i')
-          flags |= Regexp::MULTILINE if regexp_opts.include?('m')
-          flags |= Regexp::EXTENDED if regexp_opts.include?('x')
-          r = Regexp.new(regexp_str, flags)
-        end
-        r
-      else
-        name_filter
-      end
-    end
-  end
-
   # Resolve the pre_init file path into a form that can be required
   def expand_pre_init(path)
     require 'pathname'
