@@ -91,12 +91,18 @@ describe BenchmarkRunner do
     end
 
     it 'exits when file does not exist' do
-      assert_raises(SystemExit) { BenchmarkRunner.expand_pre_init('/nonexistent/file.rb') }
+      out = capture_io do
+        assert_raises(SystemExit) { BenchmarkRunner.expand_pre_init('/nonexistent/file.rb') }
+      end
+      assert_includes out, "--with-pre-init called with non-existent file!\n"
     end
 
     it 'exits when path is a directory' do
       Dir.mktmpdir do |dir|
-        assert_raises(SystemExit) { BenchmarkRunner.expand_pre_init(dir) }
+        out = capture_io do
+          assert_raises(SystemExit) { BenchmarkRunner.expand_pre_init(dir) }
+        end
+        assert_includes out, "--with-pre-init called with a directory, please pass a .rb file\n"
       end
     end
   end
