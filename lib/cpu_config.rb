@@ -13,21 +13,46 @@ class CPUConfig
 
     # Disable Turbo Boost while running benchmarks. Maximize the CPU frequency.
     def disable_frequency_scaling(turbo:)
-      # sudo requires the flag '-S' in order to take input from stdin
-      if File.exist?('/sys/devices/system/cpu/intel_pstate') # Intel
-        unless intel_no_turbo? || turbo
-          BenchmarkRunner.check_call("sudo -S sh -c 'echo 1 > /sys/devices/system/cpu/intel_pstate/no_turbo'")
-          at_exit { BenchmarkRunner.check_call("sudo -S sh -c 'echo 0 > /sys/devices/system/cpu/intel_pstate/no_turbo'", quiet: true) }
-        end
-        # Disabling Turbo Boost reduces the CPU frequency, so this should be run after that.
-        BenchmarkRunner.check_call("sudo -S sh -c 'echo 100 > /sys/devices/system/cpu/intel_pstate/min_perf_pct'") unless intel_perf_100pct?
-      elsif File.exist?('/sys/devices/system/cpu/cpufreq/boost') # AMD
-        unless amd_no_boost? || turbo
-          BenchmarkRunner.check_call("sudo -S sh -c 'echo 0 > /sys/devices/system/cpu/cpufreq/boost'")
-          at_exit { BenchmarkRunner.check_call("sudo -S sh -c 'echo 1 > /sys/devices/system/cpu/cpufreq/boost'", quiet: true) }
-        end
-        BenchmarkRunner.check_call("sudo -S cpupower frequency-set -g performance") unless performance_governor?
+      if intel_cpu?
+        disable_intel_turbo unless turbo
+        maximize_intel_frequency
+      elsif amd_cpu?
+        disable_amd_boost unless turbo
+        set_performance_governor
       end
+    end
+
+    def intel_cpu?
+      File.exist?('/sys/devices/system/cpu/intel_pstate')
+    end
+
+    def amd_cpu?
+      File.exist?('/sys/devices/system/cpu/cpufreq/boost')
+    end
+
+    def disable_intel_turbo
+      return if intel_no_turbo?
+      # sudo requires the flag '-S' in order to take input from stdin
+      BenchmarkRunner.check_call("sudo -S sh -c 'echo 1 > /sys/devices/system/cpu/intel_pstate/no_turbo'")
+      at_exit { BenchmarkRunner.check_call("sudo -S sh -c 'echo 0 > /sys/devices/system/cpu/intel_pstate/no_turbo'", quiet: true) }
+    end
+
+    def maximize_intel_frequency
+      return if intel_perf_100pct?
+      # Disabling Turbo Boost reduces the CPU frequency, so this should be run after that.
+      BenchmarkRunner.check_call("sudo -S sh -c 'echo 100 > /sys/devices/system/cpu/intel_pstate/min_perf_pct'")
+    end
+
+    def disable_amd_boost
+      return if amd_no_boost?
+      # sudo requires the flag '-S' in order to take input from stdin
+      BenchmarkRunner.check_call("sudo -S sh -c 'echo 0 > /sys/devices/system/cpu/cpufreq/boost'")
+      at_exit { BenchmarkRunner.check_call("sudo -S sh -c 'echo 1 > /sys/devices/system/cpu/cpufreq/boost'", quiet: true) }
+    end
+
+    def set_performance_governor
+      return if performance_governor?
+      BenchmarkRunner.check_call("sudo -S cpupower frequency-set -g performance")
     end
 
     def intel_no_turbo?
