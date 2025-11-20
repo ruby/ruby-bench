@@ -3,6 +3,31 @@ require_relative '../lib/cpu_config'
 require_relative '../lib/benchmark_runner'
 
 describe CPUConfig do
+  describe '.build' do
+    it 'returns IntelCPUConfig when Intel pstate files exist' do
+      File.stub :exist?, ->(path) { path.include?('intel_pstate') } do
+        config = CPUConfig.build
+        assert_instance_of IntelCPUConfig, config
+      end
+    end
+
+    it 'returns AMDCPUConfig when AMD cpufreq files exist' do
+      File.stub :exist?, ->(path) { path.include?('cpufreq/boost') } do
+        config = CPUConfig.build
+        assert_instance_of AMDCPUConfig, config
+      end
+    end
+
+    it 'returns NullCPUConfig when no CPU files exist' do
+      File.stub :exist?, false do
+        config = CPUConfig.build
+        assert_instance_of NullCPUConfig, config
+      end
+    end
+  end
+end
+
+describe NullCPUConfig do
   describe '#configure_for_benchmarking' do
     it 'does nothing when CPU frequency files do not exist' do
       call_count = 0
@@ -10,7 +35,7 @@ describe CPUConfig do
       exit_called = false
 
       File.stub :exist?, false do
-        cpu_config = CPUConfig.new
+        cpu_config = NullCPUConfig.new
         cpu_config.stub :at_exit, ->(&block) { at_exit_called = true } do
           cpu_config.stub :exit, ->(code) { exit_called = true } do
             BenchmarkRunner.stub :check_call, ->(*_args, **_kwargs) { call_count += 1 } do
@@ -25,14 +50,18 @@ describe CPUConfig do
         end
       end
     end
+  end
+end
 
+describe IntelCPUConfig do
+  describe '#configure_for_benchmarking' do
     it 'does not call commands or exit when Intel CPU is already properly configured with turbo disabled' do
       call_count = 0
       at_exit_called = false
       exit_called = false
 
       File.stub :exist?, ->(path) { path.include?('intel_pstate') } do
-        cpu_config = CPUConfig.new
+        cpu_config = IntelCPUConfig.new
         cpu_config.stub :at_exit, ->(&block) { at_exit_called = true } do
           cpu_config.stub :exit, ->(code) { exit_called = true } do
             BenchmarkRunner.stub :check_call, ->(*_args, **_kwargs) { call_count += 1 } do
@@ -62,7 +91,7 @@ describe CPUConfig do
       exit_called = false
 
       File.stub :exist?, ->(path) { path.include?('intel_pstate') } do
-        cpu_config = CPUConfig.new
+        cpu_config = IntelCPUConfig.new
         cpu_config.stub :at_exit, ->(&block) { at_exit_called = true } do
           cpu_config.stub :exit, ->(code) { exit_called = true } do
             BenchmarkRunner.stub :check_call, ->(*_args, **_kwargs) { call_count += 1 } do
@@ -94,7 +123,7 @@ describe CPUConfig do
       read_count = 0
 
       File.stub :exist?, ->(path) { path.include?('intel_pstate') } do
-        cpu_config = CPUConfig.new
+        cpu_config = IntelCPUConfig.new
         cpu_config.stub :at_exit, ->(&block) { at_exit_called = true; at_exit_block = block } do
           cpu_config.stub :exit, ->(code) { exit_called = true } do
             BenchmarkRunner.stub :check_call, ->(*_args, **_kwargs) { call_count += 1 } do
@@ -138,7 +167,7 @@ describe CPUConfig do
       exit_code = nil
       output = capture_io do
         File.stub :exist?, ->(path) { path.include?('intel_pstate') } do
-          cpu_config = CPUConfig.new
+          cpu_config = IntelCPUConfig.new
           cpu_config.stub :at_exit, ->(&block) {} do
             cpu_config.stub :exit, ->(code) { exit_code = code } do
               BenchmarkRunner.stub :check_call, ->(*_args, **_kwargs) {} do
@@ -166,7 +195,7 @@ describe CPUConfig do
       exit_code = nil
       output = capture_io do
         File.stub :exist?, ->(path) { path.include?('intel_pstate') } do
-          cpu_config = CPUConfig.new
+          cpu_config = IntelCPUConfig.new
           cpu_config.stub :at_exit, ->(&block) {} do
             cpu_config.stub :exit, ->(code) { exit_code = code } do
               BenchmarkRunner.stub :check_call, ->(*_args, **_kwargs) {} do
@@ -189,14 +218,18 @@ describe CPUConfig do
       assert_includes output[0], "You forgot to set the min perf percentage to 100"
       assert_includes output[0], "sudo sh -c 'echo 100 > /sys/devices/system/cpu/intel_pstate/min_perf_pct'"
     end
+  end
+end
 
+describe AMDCPUConfig do
+  describe '#configure_for_benchmarking' do
     it 'does not call commands or exit when AMD CPU is already properly configured with turbo disabled' do
       call_count = 0
       at_exit_called = false
       exit_called = false
 
       File.stub :exist?, ->(path) { path.include?('cpufreq/boost') } do
-        cpu_config = CPUConfig.new
+        cpu_config = AMDCPUConfig.new
         cpu_config.stub :at_exit, ->(&block) { at_exit_called = true } do
           cpu_config.stub :exit, ->(code) { exit_called = true } do
             BenchmarkRunner.stub :check_call, ->(*_args, **_kwargs) { call_count += 1 } do
@@ -230,7 +263,7 @@ describe CPUConfig do
       read_count = 0
 
       File.stub :exist?, ->(path) { path.include?('cpufreq/boost') } do
-        cpu_config = CPUConfig.new
+        cpu_config = AMDCPUConfig.new
         cpu_config.stub :at_exit, ->(&block) { at_exit_called = true; at_exit_block = block } do
           cpu_config.stub :exit, ->(code) { exit_called = true } do
             BenchmarkRunner.stub :check_call, ->(*_args, **_kwargs) { call_count += 1 } do
@@ -273,7 +306,7 @@ describe CPUConfig do
       exit_code = nil
       output = capture_io do
         File.stub :exist?, ->(path) { path.include?('cpufreq/boost') } do
-          cpu_config = CPUConfig.new
+          cpu_config = AMDCPUConfig.new
           cpu_config.stub :at_exit, ->(&block) {} do
             cpu_config.stub :exit, ->(code) { exit_code = code } do
               BenchmarkRunner.stub :check_call, ->(*_args, **_kwargs) {} do
@@ -303,7 +336,7 @@ describe CPUConfig do
       exit_code = nil
       output = capture_io do
         File.stub :exist?, ->(path) { path.include?('cpufreq/boost') } do
-          cpu_config = CPUConfig.new
+          cpu_config = AMDCPUConfig.new
           cpu_config.stub :at_exit, ->(&block) {} do
             cpu_config.stub :exit, ->(code) { exit_code = code } do
               BenchmarkRunner.stub :check_call, ->(*_args, **_kwargs) {} do
