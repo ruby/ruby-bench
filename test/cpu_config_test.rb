@@ -3,18 +3,19 @@ require_relative '../lib/cpu_config'
 require_relative '../lib/benchmark_runner'
 
 describe CPUConfig do
-  describe '.configure_for_benchmarking' do
+  describe '#configure_for_benchmarking' do
     it 'does nothing when CPU frequency files do not exist' do
       call_count = 0
       at_exit_called = false
       exit_called = false
 
-      CPUConfig.stub :at_exit, ->(&block) { at_exit_called = true } do
-        CPUConfig.stub :exit, ->(code) { exit_called = true } do
-          File.stub :exist?, false do
+      File.stub :exist?, false do
+        cpu_config = CPUConfig.new
+        cpu_config.stub :at_exit, ->(&block) { at_exit_called = true } do
+          cpu_config.stub :exit, ->(code) { exit_called = true } do
             BenchmarkRunner.stub :check_call, ->(*_args, **_kwargs) { call_count += 1 } do
               capture_io do
-                CPUConfig.configure_for_benchmarking(turbo: false)
+                cpu_config.configure_for_benchmarking(turbo: false)
               end
               assert_equal 0, call_count, "Should not call check_call when files don't exist"
               refute at_exit_called, "Should not call at_exit when CPU frequency files don't exist"
@@ -30,10 +31,11 @@ describe CPUConfig do
       at_exit_called = false
       exit_called = false
 
-      CPUConfig.stub :at_exit, ->(&block) { at_exit_called = true } do
-        CPUConfig.stub :exit, ->(code) { exit_called = true } do
-          BenchmarkRunner.stub :check_call, ->(*_args, **_kwargs) { call_count += 1 } do
-            File.stub :exist?, ->(path) { path.include?('intel_pstate') } do
+      File.stub :exist?, ->(path) { path.include?('intel_pstate') } do
+        cpu_config = CPUConfig.new
+        cpu_config.stub :at_exit, ->(&block) { at_exit_called = true } do
+          cpu_config.stub :exit, ->(code) { exit_called = true } do
+            BenchmarkRunner.stub :check_call, ->(*_args, **_kwargs) { call_count += 1 } do
               File.stub :read, lambda { |path|
                 if path.include?('no_turbo')
                   "1\n"
@@ -42,7 +44,7 @@ describe CPUConfig do
                 end
               } do
                 capture_io do
-                  CPUConfig.configure_for_benchmarking(turbo: false)
+                  cpu_config.configure_for_benchmarking(turbo: false)
                 end
                 assert_equal 0, call_count, "Should not call check_call when Intel CPU is properly configured"
                 refute at_exit_called, "Should not call at_exit when Intel CPU already configured"
@@ -59,10 +61,11 @@ describe CPUConfig do
       at_exit_called = false
       exit_called = false
 
-      CPUConfig.stub :at_exit, ->(&block) { at_exit_called = true } do
-        CPUConfig.stub :exit, ->(code) { exit_called = true } do
-          BenchmarkRunner.stub :check_call, ->(*_args, **_kwargs) { call_count += 1 } do
-            File.stub :exist?, ->(path) { path.include?('intel_pstate') } do
+      File.stub :exist?, ->(path) { path.include?('intel_pstate') } do
+        cpu_config = CPUConfig.new
+        cpu_config.stub :at_exit, ->(&block) { at_exit_called = true } do
+          cpu_config.stub :exit, ->(code) { exit_called = true } do
+            BenchmarkRunner.stub :check_call, ->(*_args, **_kwargs) { call_count += 1 } do
               File.stub :read, lambda { |path|
                 if path.include?('no_turbo')
                   "0\n"
@@ -71,7 +74,7 @@ describe CPUConfig do
                 end
               } do
                 capture_io do
-                  CPUConfig.configure_for_benchmarking(turbo: true)
+                  cpu_config.configure_for_benchmarking(turbo: true)
                 end
                 assert_equal 0, call_count, "Should not call check_call when turbo is true and min_perf is correct"
                 refute at_exit_called, "Should not call at_exit when turbo is true and CPU already configured"
@@ -90,10 +93,11 @@ describe CPUConfig do
       exit_called = false
       read_count = 0
 
-      CPUConfig.stub :at_exit, ->(&block) { at_exit_called = true; at_exit_block = block } do
-        CPUConfig.stub :exit, ->(code) { exit_called = true } do
-          BenchmarkRunner.stub :check_call, ->(*_args, **_kwargs) { call_count += 1 } do
-            File.stub :exist?, ->(path) { path.include?('intel_pstate') } do
+      File.stub :exist?, ->(path) { path.include?('intel_pstate') } do
+        cpu_config = CPUConfig.new
+        cpu_config.stub :at_exit, ->(&block) { at_exit_called = true; at_exit_block = block } do
+          cpu_config.stub :exit, ->(code) { exit_called = true } do
+            BenchmarkRunner.stub :check_call, ->(*_args, **_kwargs) { call_count += 1 } do
               File.stub :read, lambda { |path|
                 if path.include?('no_turbo')
                   read_count += 1
@@ -107,7 +111,7 @@ describe CPUConfig do
                 end
               } do
                 capture_io do
-                  CPUConfig.configure_for_benchmarking(turbo: false)
+                  cpu_config.configure_for_benchmarking(turbo: false)
                 end
                 assert_operator call_count, :>, 0, "Should call check_call to configure Intel CPU"
                 assert at_exit_called, "Should register at_exit handler to restore CPU settings"
@@ -133,10 +137,11 @@ describe CPUConfig do
     it 'exits when Intel turbo is not disabled and turbo flag is false' do
       exit_code = nil
       output = capture_io do
-        CPUConfig.stub :at_exit, ->(&block) {} do
-          CPUConfig.stub :exit, ->(code) { exit_code = code } do
-            BenchmarkRunner.stub :check_call, ->(*_args, **_kwargs) {} do
-              File.stub :exist?, ->(path) { path.include?('intel_pstate') } do
+        File.stub :exist?, ->(path) { path.include?('intel_pstate') } do
+          cpu_config = CPUConfig.new
+          cpu_config.stub :at_exit, ->(&block) {} do
+            cpu_config.stub :exit, ->(code) { exit_code = code } do
+              BenchmarkRunner.stub :check_call, ->(*_args, **_kwargs) {} do
                 File.stub :read, lambda { |path|
                   if path.include?('no_turbo')
                     "0\n"
@@ -144,7 +149,7 @@ describe CPUConfig do
                     "100\n"
                   end
                 } do
-                  CPUConfig.configure_for_benchmarking(turbo: false)
+                  cpu_config.configure_for_benchmarking(turbo: false)
                 end
               end
             end
@@ -160,10 +165,11 @@ describe CPUConfig do
     it 'exits when Intel min perf is not 100%' do
       exit_code = nil
       output = capture_io do
-        CPUConfig.stub :at_exit, ->(&block) {} do
-          CPUConfig.stub :exit, ->(code) { exit_code = code } do
-            BenchmarkRunner.stub :check_call, ->(*_args, **_kwargs) {} do
-              File.stub :exist?, ->(path) { path.include?('intel_pstate') } do
+        File.stub :exist?, ->(path) { path.include?('intel_pstate') } do
+          cpu_config = CPUConfig.new
+          cpu_config.stub :at_exit, ->(&block) {} do
+            cpu_config.stub :exit, ->(code) { exit_code = code } do
+              BenchmarkRunner.stub :check_call, ->(*_args, **_kwargs) {} do
                 File.stub :read, lambda { |path|
                   if path.include?('no_turbo')
                     "1\n"
@@ -171,7 +177,7 @@ describe CPUConfig do
                     "50\n"
                   end
                 } do
-                  CPUConfig.configure_for_benchmarking(turbo: false)
+                  cpu_config.configure_for_benchmarking(turbo: false)
                 end
               end
             end
@@ -189,10 +195,11 @@ describe CPUConfig do
       at_exit_called = false
       exit_called = false
 
-      CPUConfig.stub :at_exit, ->(&block) { at_exit_called = true } do
-        CPUConfig.stub :exit, ->(code) { exit_called = true } do
-          BenchmarkRunner.stub :check_call, ->(*_args, **_kwargs) { call_count += 1 } do
-            File.stub :exist?, ->(path) { path.include?('cpufreq/boost') } do
+      File.stub :exist?, ->(path) { path.include?('cpufreq/boost') } do
+        cpu_config = CPUConfig.new
+        cpu_config.stub :at_exit, ->(&block) { at_exit_called = true } do
+          cpu_config.stub :exit, ->(code) { exit_called = true } do
+            BenchmarkRunner.stub :check_call, ->(*_args, **_kwargs) { call_count += 1 } do
               File.stub :read, ->(path) {
                 if path.include?('boost')
                   "0\n"
@@ -202,7 +209,7 @@ describe CPUConfig do
               } do
                 Dir.stub :glob, ->(pattern) { ['/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor'] } do
                   capture_io do
-                    CPUConfig.configure_for_benchmarking(turbo: false)
+                    cpu_config.configure_for_benchmarking(turbo: false)
                   end
                   assert_equal 0, call_count, "Should not call check_call when AMD CPU is properly configured"
                   refute at_exit_called, "Should not call at_exit when AMD CPU already configured"
@@ -222,10 +229,11 @@ describe CPUConfig do
       exit_called = false
       read_count = 0
 
-      CPUConfig.stub :at_exit, ->(&block) { at_exit_called = true; at_exit_block = block } do
-        CPUConfig.stub :exit, ->(code) { exit_called = true } do
-          BenchmarkRunner.stub :check_call, ->(*_args, **_kwargs) { call_count += 1 } do
-            File.stub :exist?, ->(path) { path.include?('cpufreq/boost') } do
+      File.stub :exist?, ->(path) { path.include?('cpufreq/boost') } do
+        cpu_config = CPUConfig.new
+        cpu_config.stub :at_exit, ->(&block) { at_exit_called = true; at_exit_block = block } do
+          cpu_config.stub :exit, ->(code) { exit_called = true } do
+            BenchmarkRunner.stub :check_call, ->(*_args, **_kwargs) { call_count += 1 } do
               File.stub :read, lambda { |path|
                 if path.include?('boost')
                   read_count += 1
@@ -237,7 +245,7 @@ describe CPUConfig do
               } do
                 Dir.stub :glob, ->(pattern) { ['/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor'] } do
                   capture_io do
-                    CPUConfig.configure_for_benchmarking(turbo: false)
+                    cpu_config.configure_for_benchmarking(turbo: false)
                   end
                   assert_operator call_count, :>, 0, "Should call check_call to configure AMD CPU"
                   assert at_exit_called, "Should register at_exit handler to restore CPU settings"
@@ -264,10 +272,11 @@ describe CPUConfig do
     it 'exits when AMD boost is not disabled and turbo flag is false' do
       exit_code = nil
       output = capture_io do
-        CPUConfig.stub :at_exit, ->(&block) {} do
-          CPUConfig.stub :exit, ->(code) { exit_code = code } do
-            BenchmarkRunner.stub :check_call, ->(*_args, **_kwargs) {} do
-              File.stub :exist?, ->(path) { path.include?('cpufreq/boost') } do
+        File.stub :exist?, ->(path) { path.include?('cpufreq/boost') } do
+          cpu_config = CPUConfig.new
+          cpu_config.stub :at_exit, ->(&block) {} do
+            cpu_config.stub :exit, ->(code) { exit_code = code } do
+              BenchmarkRunner.stub :check_call, ->(*_args, **_kwargs) {} do
                 File.stub :read, ->(path) {
                   if path.include?('boost')
                     "1\n"
@@ -276,7 +285,7 @@ describe CPUConfig do
                   end
                 } do
                   Dir.stub :glob, ->(pattern) { ['/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor'] } do
-                    CPUConfig.configure_for_benchmarking(turbo: false)
+                    cpu_config.configure_for_benchmarking(turbo: false)
                   end
                 end
               end
@@ -293,10 +302,11 @@ describe CPUConfig do
     it 'exits when AMD performance governor is not set' do
       exit_code = nil
       output = capture_io do
-        CPUConfig.stub :at_exit, ->(&block) {} do
-          CPUConfig.stub :exit, ->(code) { exit_code = code } do
-            BenchmarkRunner.stub :check_call, ->(*_args, **_kwargs) {} do
-              File.stub :exist?, ->(path) { path.include?('cpufreq/boost') } do
+        File.stub :exist?, ->(path) { path.include?('cpufreq/boost') } do
+          cpu_config = CPUConfig.new
+          cpu_config.stub :at_exit, ->(&block) {} do
+            cpu_config.stub :exit, ->(code) { exit_code = code } do
+              BenchmarkRunner.stub :check_call, ->(*_args, **_kwargs) {} do
                 File.stub :read, lambda { |path|
                   if path.include?('boost')
                     "0\n"
@@ -305,7 +315,7 @@ describe CPUConfig do
                   end
                 } do
                   Dir.stub :glob, ->(pattern) { ['/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor'] } do
-                    CPUConfig.configure_for_benchmarking(turbo: false)
+                    cpu_config.configure_for_benchmarking(turbo: false)
                   end
                 end
               end
