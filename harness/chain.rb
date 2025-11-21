@@ -1,4 +1,4 @@
-require_relative 'harness-common'
+require_relative '../lib/harness'
 
 # Ex: HARNESS_CHAIN="vernier,ractor"
 # Wraps the ractor harness in ther vernier harness
@@ -10,7 +10,7 @@ if CHAIN.size < 2
 end
 
 if CHAIN.include?("vernier") && CHAIN.last != "vernier"
-  require_relative "harness-extra"
+  require_relative "../lib/harness/extra"
   def run_enough_to_profile(n, **kwargs, &block)
     block.call
   end

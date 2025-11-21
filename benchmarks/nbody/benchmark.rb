@@ -5,7 +5,7 @@
 # modified by Jesse Millikan
 # modified by Yusuke Endoh 
 
-require_relative '../../harness/loader'
+require_relative '../../lib/harness/loader'
 
 SOLAR_MASS = 4 * Math::PI**2
 DAYS_PER_YEAR = 365.24

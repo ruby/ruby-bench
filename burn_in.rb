@@ -63,9 +63,9 @@ def run_benchmark(bench_id, no_yjit, logs_path, run_time, ruby_version)
   # Determine the path to the benchmark script
   bench_name = bench_id.sub('ractor/', '')
   bench_dir, harness = if bench_name == bench_id
-    ['benchmarks', 'harness']
+    ['benchmarks', 'default']
   else
-    ['benchmarks-ractor', 'harness-ractor']
+    ['benchmarks-ractor', 'ractor']
   end
 
   script_path = File.join(bench_dir, bench_name, 'benchmark.rb')
@@ -108,7 +108,8 @@ def run_benchmark(bench_id, no_yjit, logs_path, run_time, ruby_version)
   cmd = [
     'ruby',
     *test_options,
-    "-I#{harness}",
+    "-Iharness",
+    "-r#{harness}",
     script_path,
   ].compact
   cmd_str = cmd.shelljoin

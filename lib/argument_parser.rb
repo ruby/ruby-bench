@@ -176,7 +176,7 @@ class ArgumentParser
       executables: {},
       out_path: File.expand_path("./data"),
       out_override: nil,
-      harness: "harness",
+      harness: "default",
       yjit_opts: "",
       categories: [],
       name_filters: [],

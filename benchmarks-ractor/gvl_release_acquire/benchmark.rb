@@ -1,4 +1,4 @@
-require_relative "../../harness/loader"
+require_relative "../../lib/harness/loader"
 
 run_benchmark(5) do |num_rs, ractor_args|
   output = File.open("/dev/null", "wb")

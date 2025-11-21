@@ -10,9 +10,9 @@
 HARNESS_ARGS=()
 for arg in "$@"; do
     if [[ "$arg" == *"benchmarks-ractor/"* ]]; then
-        HARNESS_ARGS=("-r" "ractor")
+        HARNESS_ARGS=("-r" "./harness/ractor")
         break
     fi
 done
 
-WARMUP_ITRS=0 MIN_BENCH_ITRS=1 MIN_BENCH_TIME=0 ruby -I"./harness" "${HARNESS_ARGS[@]}" "$@"
+WARMUP_ITRS=0 MIN_BENCH_ITRS=1 MIN_BENCH_TIME=0 ruby "${HARNESS_ARGS[@]}" "$@"
