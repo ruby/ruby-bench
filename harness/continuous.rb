@@ -1,4 +1,4 @@
-require_relative "../harness/harness-common"
+require_relative "harness-common"
 
 puts RUBY_DESCRIPTION
 
