@@ -12,12 +12,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - ruby: ruby
-          - ruby: head
-          - ruby: truffleruby
-            # TruffleRuby has randomly failed on different benchmarks
-            continue-on-error: true
+        ruby: [ruby, head, truffleruby]
     if: ${{ github.event_name != 'schedule' || github.repository == 'ruby/ruby-bench' }}
     steps:
       - uses: actions/checkout@v3
@@ -29,13 +24,41 @@ jobs:
       - name: Run tests
         run: rake test
 
+  benchmark-default:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby: [ruby, head, truffleruby]
+    if: ${{ github.event_name != 'schedule' || github.repository == 'ruby/ruby-bench' }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby }}
+
       - name: Test run_benchmarks.rb
         run: ./run_benchmarks.rb
         env:
           WARMUP_ITRS: '1'
           MIN_BENCH_ITRS: '1'
           MIN_BENCH_TIME: '0'
-        continue-on-error: ${{ matrix.continue-on-error || false }}
+        continue-on-error: ${{ matrix.ruby == 'truffleruby' }}
+
+  benchmark-ractor:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby: [ruby, head, truffleruby]
+    if: ${{ github.event_name != 'schedule' || github.repository == 'ruby/ruby-bench' }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby }}
 
       - name: Test run_benchmarks.rb - Ractors
         run: ./run_benchmarks.rb --category=ractor
@@ -43,7 +66,21 @@ jobs:
           WARMUP_ITRS: '1'
           MIN_BENCH_ITRS: '1'
           MIN_BENCH_TIME: '0'
-        continue-on-error: ${{ matrix.continue-on-error || false }}
+        continue-on-error: ${{ matrix.ruby == 'truffleruby' }}
+
+  benchmark-ractor-only:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby: [ruby, head, truffleruby]
+    if: ${{ github.event_name != 'schedule' || github.repository == 'ruby/ruby-bench' }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby }}
 
       - name: Test run_benchmarks.rb - Ractor Only
         run: ./run_benchmarks.rb --category=ractor-only
@@ -51,19 +88,54 @@ jobs:
           WARMUP_ITRS: '1'
           MIN_BENCH_ITRS: '1'
           MIN_BENCH_TIME: '0'
-        continue-on-error: ${{ matrix.continue-on-error || false }}
+        continue-on-error: ${{ matrix.ruby == 'truffleruby' }}
+
+  benchmark-graph:
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'schedule' || github.repository == 'ruby/ruby-bench' }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ruby
 
       - name: Test run_benchmarks.rb --graph
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends libmagickwand-dev
           ./run_benchmarks.rb --graph fib
-        if: matrix.ruby == 'ruby'
         env:
           WARMUP_ITRS: '1'
           MIN_BENCH_ITRS: '1'
           MIN_BENCH_TIME: '0'
 
+  benchmark-run-once:
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'schedule' || github.repository == 'ruby/ruby-bench' }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: head
+
       - name: Test run_once.sh
         run: ./run_once.sh --yjit-stats benchmarks/railsbench/benchmark.rb
-        if: matrix.ruby == 'head'
+
+  all-tests:
+    runs-on: ubuntu-latest
+    needs: [test, benchmark-default, benchmark-ractor, benchmark-ractor-only, benchmark-graph, benchmark-run-once]
+    if: always()
+    steps:
+      - name: Check all job results
+        run: |
+          if [[ "${{ contains(needs.*.result, 'failure') }}" == "true" ]]; then
+            echo "One or more jobs failed"
+            exit 1
+          elif [[ "${{ contains(needs.*.result, 'cancelled') }}" == "true" ]]; then
+            echo "One or more jobs were cancelled"
+            exit 1
+          else
+            echo "All jobs completed successfully"
+          fi
