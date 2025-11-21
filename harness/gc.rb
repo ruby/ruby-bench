@@ -1,4 +1,4 @@
-require_relative "harness-common"
+require_relative "../lib/harness"
 require_relative "../lib/gc_stats"
 
 WARMUP_ITRS = Integer(ENV.fetch('WARMUP_ITRS', 15))

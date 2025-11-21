@@ -1,4 +1,4 @@
-require_relative "../../harness/loader"
+require_relative "../../lib/harness/loader"
 
 # Windows has no /dev/zero, so read the same zeros from a regular file kept in data/.
 ZERO_PATH = if File.exist?("/dev/zero")

@@ -247,7 +247,7 @@ class ArgumentParser
       executables: {},
       out_path: File.expand_path("../data", __dir__),
       out_override: nil,
-      harness: "harness",
+      harness: "default",
       harness_explicit: false,
       yjit_opts: "",
       zjit_opts: "",

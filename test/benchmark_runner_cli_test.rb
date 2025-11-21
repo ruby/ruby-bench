@@ -44,7 +44,7 @@ describe BenchmarkRunner::CLI do
       executables: executables,
       out_path: nil,
       out_override: nil,
-      harness: 'harness',
+      harness: 'default',
       yjit_opts: '',
       categories: [],
       name_filters: [],
@@ -107,13 +107,13 @@ describe BenchmarkRunner::CLI do
         }
       }
       bench_harnesses = {
-        'fib' => 'harness',
+        'fib' => 'default',
         'symbol-name-ractor' => 'ractor'
       }
 
       sections = cli.send(:build_output_sections, ['ruby'], bench_data, bench_harnesses, {})
 
-      assert_equal ['ractor', 'harness'], sections.map { |section| section[:title] }
+      assert_equal ['ractor', 'default'], sections.map { |section| section[:title] }
       assert_equal ['bench', 'ractors', 'ruby (ms)'], sections[0][:table][0]
       assert_equal ['symbol-name-ractor', '0', '1000.0 ± 0.0%'], sections[0][:table][1]
       assert_equal ['', '2', '2000.0 ± 0.0%'], sections[0][:table][2]
@@ -153,11 +153,11 @@ describe BenchmarkRunner::CLI do
           }
         }
       }
-      bench_harnesses = { 'fib' => 'harness', 'object-new' => 'ractor' }
+      bench_harnesses = { 'fib' => 'default', 'object-new' => 'ractor' }
 
       sections = cli.send(:build_output_sections, ['ruby'], bench_data, bench_harnesses, {})
       ractor = sections.find { |section| section[:title] == 'ractor' }
-      normal = sections.find { |section| section[:title] == 'harness' }
+      normal = sections.find { |section| section[:title] == 'default' }
 
       assert_equal 'ractor-local-workload', ractor[:gc_scope]
       refute normal.key?(:gc_scope)
@@ -283,7 +283,7 @@ describe BenchmarkRunner::CLI do
         'ruby' => { 'fib' => { 'warmup' => [0.1], 'bench' => [0.1], 'rss' => 10 * 1024 * 1024 } }
       }
 
-      sections = cli.send(:build_output_sections, ['ruby'], bench_data, { 'fib' => 'harness' }, {})
+      sections = cli.send(:build_output_sections, ['ruby'], bench_data, { 'fib' => 'default' }, {})
 
       assert_nil sections.first[:memory_tables]
       output = BenchmarkRunner.build_output_text({ 'ruby' => 'ruby 4.1.0dev' }, nil, nil, {}, sections: sections)

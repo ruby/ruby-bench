@@ -206,17 +206,17 @@ class BenchmarkSuite
     ENV["RESULT_JSON_PATH"] = result_json_path
 
     # Set up the benchmarking command
-    # If harness is 'harness', use default (no -r needed)
-    # Otherwise use -r to load the specific harness file
-    harness_args = if benchmark_harness == "harness"
+    # If harness is 'default', use default (no -r needed)
+    # Otherwise use -r to load the specific harness file with full path
+    harness_args = if benchmark_harness == "default"
       []
     else
-      ["-r", benchmark_harness]
+      harness_path = File.join(HARNESS_DIR, benchmark_harness)
+      ["-r", harness_path]
     end
 
     cmd = (cmd_prefix + [
       *ruby,
-      "-I", HARNESS_DIR,
       *harness_args,
       *pre_init,
       script_path,

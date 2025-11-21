@@ -1,4 +1,4 @@
-require_relative '../harness/loader'
+require_relative '../lib/harness/loader'
 
 INNER_ITERATIONS = 10_000_000
 EXPECTED_RESULT = 2 * INNER_ITERATIONS * INNER_ITERATIONS + 4 * INNER_ITERATIONS

@@ -4,7 +4,7 @@
 # k-nucleotide benchmark - Fastest implementation
 # Based on Ruby #1 with byteslice optimization
 
-require_relative '../../harness/loader'
+require_relative '../../lib/harness/loader'
 
 def frequency(seq, length)
   frequencies = Hash.new(0)

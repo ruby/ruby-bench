@@ -1,5 +1,5 @@
 # A harness for Ruby implementations that compile the whole program ahead of
-# time, such as Spinel (https://github.com/matz/spinel). harness/harness.rb
+# time, such as Spinel (https://github.com/matz/spinel). harness/default.rb
 # relies on CRuby-only libraries and reflection (RubyVM, RbConfig, Fiddle,
 # Bundler, $LOAD_PATH) that a whole-program compiler refuses to compile, so
 # this file reimplements the same protocol in a portable subset of Ruby:
@@ -7,9 +7,9 @@
 # * WARMUP_ITRS, MIN_BENCH_ITRS and MIN_BENCH_TIME select the iteration count.
 # * RESULT_JSON_PATH receives the JSON that run_benchmarks.rb reads.
 #
-# harness/loader.rb selects this harness automatically when RUBY_ENGINE is
+# lib/harness/loader.rb selects this harness automatically when RUBY_ENGINE is
 # "spinel", so `spinel -E benchmarks/fib.rb` works without any -I option. It
-# also runs on CRuby (`ruby -Iharness -rspinel benchmarks/fib.rb`), which is how
+# also runs on CRuby (`ruby -r./harness/spinel benchmarks/fib.rb`), which is how
 # its output is kept compatible with the default harness.
 require "json"
 

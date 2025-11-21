@@ -1,4 +1,4 @@
-require_relative "../../harness/loader"
+require_relative "../../lib/harness/loader"
 
 SYMBOL = :ruby_bench_id2str_pressure_static_symbol
 EXPECTED_NAME = SYMBOL.name

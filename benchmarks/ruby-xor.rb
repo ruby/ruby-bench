@@ -1,4 +1,4 @@
-require_relative '../harness/loader'
+require_relative '../lib/harness/loader'
 
 # XOR strings in place
 # Expected to behave like Xorcist.xor! from the xorcist gem

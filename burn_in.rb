@@ -62,7 +62,7 @@ end
 def run_benchmark(bench_name, no_yjit, logs_path, run_time, ruby_version, metadata)
   bench_dir = 'benchmarks'
   entry = metadata[bench_name] || {}
-  harness = entry.fetch('default_harness', 'harness')
+  harness = entry.fetch('default_harness', 'default')
 
   script_path = File.join(bench_dir, bench_name, 'benchmark.rb')
   if not File.exist?(script_path)
@@ -105,7 +105,7 @@ def run_benchmark(bench_name, no_yjit, logs_path, run_time, ruby_version, metada
     'ruby',
     *test_options,
     "-Iharness",
-    *(harness == 'harness' ? [] : ["-r#{harness}"]),
+    "-r#{harness}",
     script_path,
   ].compact
   cmd_str = cmd.shelljoin

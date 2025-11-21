@@ -660,7 +660,7 @@ describe BenchmarkRunner do
       ruby_descriptions = { 'ruby' => 'ruby 3.3.0' }
       sections = [
         {
-          title: 'harness',
+          title: 'default',
           table: [['bench', 'ruby (ms)'], ['fib', '100.0']],
           format: ['%s', '%.1f'],
           failures: {},
@@ -679,7 +679,7 @@ describe BenchmarkRunner do
         ruby_descriptions, sections.first[:table], sections.first[:format], {}, sections: sections
       )
 
-      assert_includes result, "harness:\n"
+      assert_includes result, "default:\n"
       assert_includes result, "ractor:\n"
       assert_includes result, 'fib'
       assert_includes result, 'symbol-name-ractor'

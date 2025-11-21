@@ -1,4 +1,4 @@
-require_relative "../../harness/loader"
+require_relative "../../lib/harness/loader"
 
 Dir.chdir(__dir__)
 use_gemfile

@@ -1,4 +1,4 @@
-require_relative '../../harness/loader'
+require_relative '../../lib/harness/loader'
 require_relative "lib/optcarrot"
 
 if ENV["RUBY_BENCH_RACTOR_HARNESS"]

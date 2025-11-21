@@ -13,7 +13,7 @@ describe 'Ractor harness' do
       Dir.mkdir(calls_dir)
       script = File.join(dir, 'workload.rb')
       File.write(script, <<~RUBY)
-        require #{File.join(root, 'harness', 'loader').inspect}
+        require #{File.join(root, 'lib', 'harness', 'loader').inspect}
         run_benchmark(1) do |count|
           File.open(File.join(#{calls_dir.inspect}, Ractor.current.object_id.to_s), 'a') { |f| f.puts(count) }
         end
@@ -28,7 +28,7 @@ describe 'Ractor harness' do
         'RESULT_JSON_PATH' => result_path
       }
 
-      stdout, stderr, status = Open3.capture3(env, RbConfig.ruby, "-I#{File.join(root, 'harness')}", "-rractor", script)
+      stdout, stderr, status = Open3.capture3(env, RbConfig.ruby, "-r#{File.join(root, 'harness', 'ractor')}", script)
 
       assert status.success?, "workload failed:\n#{stdout}\n#{stderr}"
       data = JSON.parse(File.read(result_path))

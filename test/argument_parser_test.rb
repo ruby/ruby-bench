@@ -44,7 +44,7 @@ describe ArgumentParser do
         assert_equal({ 'ruby' => [mock_ruby] }, args.executables)
         assert_equal File.expand_path("./data"), args.out_path
         assert_nil args.out_override
-        assert_equal "harness", args.harness
+        assert_equal "default", args.harness
         assert_equal "", args.yjit_opts
         assert_equal [], args.categories
         assert_equal [], args.name_filters
