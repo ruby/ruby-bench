@@ -16,16 +16,6 @@ module BenchmarkRunner
     end
   end
 
-  # Sort benchmarks with headlines first, then others, then micro
-  def sort_benchmarks(bench_names, metadata)
-    headline_benchmarks = metadata.select { |_, meta| meta['category'] == 'headline' }.keys
-    micro_benchmarks = metadata.select { |_, meta| meta['category'] == 'micro' }.keys
-
-    headline_names, bench_names = bench_names.partition { |name| headline_benchmarks.include?(name) }
-    micro_names, other_names = bench_names.partition { |name| micro_benchmarks.include?(name) }
-    headline_names.sort + other_names.sort + micro_names.sort
-  end
-
   # Checked system - error or return info if the command fails
   def check_call(command, env: {}, raise_error: true, quiet: false)
     puts("+ #{command}") unless quiet

@@ -49,57 +49,6 @@ describe BenchmarkRunner do
     end
   end
 
-  describe '.sort_benchmarks' do
-    before do
-      @metadata = {
-        'fib' => { 'category' => 'micro' },
-        'railsbench' => { 'category' => 'headline' },
-        'optcarrot' => { 'category' => 'headline' },
-        'some_bench' => { 'category' => 'other' },
-        'another_bench' => { 'category' => 'other' },
-        'zebra' => { 'category' => 'other' }
-      }
-    end
-
-    it 'sorts benchmarks with headlines first, then others, then micro' do
-      bench_names = ['fib', 'some_bench', 'railsbench', 'another_bench', 'optcarrot']
-      result = BenchmarkRunner.sort_benchmarks(bench_names, @metadata)
-
-      # Headlines should be first
-      headline_indices = [result.index('railsbench'), result.index('optcarrot')]
-      assert_equal true, headline_indices.all? { |i| i < 2 }
-
-      # Micro should be last
-      assert_equal 'fib', result.last
-
-      # Others in the middle
-      other_indices = [result.index('some_bench'), result.index('another_bench')]
-      assert_equal true, other_indices.all? { |i| i >= 2 && i < result.length - 1 }
-    end
-
-    it 'sorts alphabetically within categories' do
-      bench_names = ['zebra', 'another_bench', 'some_bench']
-      result = BenchmarkRunner.sort_benchmarks(bench_names, @metadata)
-      assert_equal ['another_bench', 'some_bench', 'zebra'], result
-    end
-
-    it 'handles empty list' do
-      result = BenchmarkRunner.sort_benchmarks([], @metadata)
-      assert_equal [], result
-    end
-
-    it 'handles single benchmark' do
-      result = BenchmarkRunner.sort_benchmarks(['fib'], @metadata)
-      assert_equal ['fib'], result
-    end
-
-    it 'handles only headline benchmarks' do
-      bench_names = ['railsbench', 'optcarrot']
-      result = BenchmarkRunner.sort_benchmarks(bench_names, @metadata)
-      assert_equal ['optcarrot', 'railsbench'], result
-    end
-  end
-
   describe '.check_call' do
     it 'runs a successful command and returns success status' do
       result = nil

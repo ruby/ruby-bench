@@ -8,25 +8,12 @@ require 'shellwords'
 require 'rbconfig'
 require 'etc'
 require 'yaml'
-require_relative 'misc/stats'
 require_relative 'lib/cpu_config'
 require_relative 'lib/benchmark_runner'
 require_relative 'lib/benchmark_suite'
 require_relative 'lib/table_formatter'
 require_relative 'lib/argument_parser'
-
-def mean(values)
-  Stats.new(values).mean
-end
-
-def stddev(values)
-  Stats.new(values).stddev
-end
-
-def sort_benchmarks(bench_names)
-  benchmarks_metadata = YAML.load_file('benchmarks.yml')
-  BenchmarkRunner.sort_benchmarks(bench_names, benchmarks_metadata)
-end
+require_relative 'lib/results_table_builder'
 
 args = ArgumentParser.parse(ARGV)
 
@@ -36,15 +23,14 @@ CPUConfig.configure_for_benchmarking(turbo: args.turbo)
 FileUtils.mkdir_p(args.out_path)
 
 ruby_descriptions = {}
-args.executables.each do |name, executable|
-  ruby_descriptions[name] = `#{executable.shelljoin} -v`.chomp
-end
 
 # Benchmark with and without YJIT
 bench_start_time = Time.now.to_f
 bench_data = {}
 bench_failures = {}
 args.executables.each do |name, executable|
+  ruby_descriptions[name] = `#{executable.shelljoin} -v`.chomp
+
   suite = BenchmarkSuite.new(
     ruby: executable,
     ruby_description: ruby_descriptions[name],
@@ -61,9 +47,6 @@ args.executables.each do |name, executable|
 end
 
 bench_end_time = Time.now.to_f
-# Get keys from all rows in case a benchmark failed for only some executables.
-bench_names = sort_benchmarks(bench_data.map { |k, v| v.keys }.flatten.uniq)
-
 bench_total_time = (bench_end_time - bench_start_time).to_i
 puts("Total time spent benchmarking: #{bench_total_time}s")
 
@@ -73,55 +56,15 @@ end
 
 puts
 
-# Table for the data we've gathered
+# Build results table
 all_names = args.executables.keys
 base_name, *other_names = all_names
-table  = [["bench"]]
-format = ["%s"]
-all_names.each do |name|
-  table[0] += ["#{name} (ms)", "stddev (%)"]
-  format   += ["%.1f",         "%.1f"]
-  if args.rss
-    table[0] += ["RSS (MiB)"]
-    format   += ["%.1f"]
-  end
-end
-other_names.each do |name|
-  table[0] += ["#{name} 1st itr"]
-  format   += ["%.3f"]
-end
-other_names.each do |name|
-  table[0] += ["#{base_name}/#{name}"]
-  format   += ["%.3f"]
-end
-
-# Format the results table
-bench_names.each do |bench_name|
-  # Skip this bench_name if we failed to get data for any of the executables.
-  next unless bench_data.all? { |(_k, v)| v[bench_name] }
-
-  t0s = all_names.map { |name| (bench_data[name][bench_name]['warmup'][0] || bench_data[name][bench_name]['bench'][0]) * 1000.0 }
-  times_no_warmup = all_names.map { |name| bench_data[name][bench_name]['bench'].map { |v| v * 1000.0 } }
-  rsss = all_names.map { |name| bench_data[name][bench_name]['rss'] / 1024.0 / 1024.0 }
-
-  base_t0, *other_t0s = t0s
-  base_t, *other_ts = times_no_warmup
-  base_rss, *other_rsss = rsss
-
-  ratio_1sts = other_t0s.map { |other_t0| base_t0 / other_t0 }
-  ratios = other_ts.map { |other_t| mean(base_t) / mean(other_t) }
-
-  row = [bench_name, mean(base_t), 100 * stddev(base_t) / mean(base_t)]
-  row << base_rss if args.rss
-  other_ts.zip(other_rsss).each do |other_t, other_rss|
-    row += [mean(other_t), 100 * stddev(other_t) / mean(other_t)]
-    row << other_rss if args.rss
-  end
-
-  row += ratio_1sts + ratios
-
-  table << row
-end
+builder = ResultsTableBuilder.new(
+  executable_names: all_names,
+  bench_data: bench_data,
+  include_rss: args.rss
+)
+table, format = builder.build
 
 output_path = nil
 if args.out_override
