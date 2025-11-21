@@ -9,46 +9,6 @@ require 'csv'
 require 'yaml'
 
 describe BenchmarkRunner do
-  describe '.free_file_no' do
-    it 'returns 1 when no files exist' do
-      Dir.mktmpdir do |dir|
-        file_no = BenchmarkRunner.free_file_no(dir)
-        assert_equal 1, file_no
-      end
-    end
-
-    it 'returns next available number when files exist' do
-      Dir.mktmpdir do |dir|
-        FileUtils.touch(File.join(dir, 'output_001.csv'))
-        FileUtils.touch(File.join(dir, 'output_002.csv'))
-
-        file_no = BenchmarkRunner.free_file_no(dir)
-        assert_equal 3, file_no
-      end
-    end
-
-    it 'finds first gap in numbering' do
-      Dir.mktmpdir do |dir|
-        FileUtils.touch(File.join(dir, 'output_001.csv'))
-        FileUtils.touch(File.join(dir, 'output_003.csv'))
-
-        file_no = BenchmarkRunner.free_file_no(dir)
-        assert_equal 2, file_no
-      end
-    end
-
-    it 'handles triple digit numbers' do
-      Dir.mktmpdir do |dir|
-        (1..100).each do |i|
-          FileUtils.touch(File.join(dir, 'output_%03d.csv' % i))
-        end
-
-        file_no = BenchmarkRunner.free_file_no(dir)
-        assert_equal 101, file_no
-      end
-    end
-  end
-
   describe '.check_call' do
     it 'runs a successful command and returns success status' do
       result = nil
@@ -155,6 +115,383 @@ describe BenchmarkRunner do
 
         assert_equal expected_path, File.join(dir, "output_%03d.csv" % file_no)
       end
+    end
+  end
+
+  describe '.output_path' do
+    it 'returns the override path when provided' do
+      Dir.mktmpdir do |dir|
+        override = '/custom/path/output'
+        result = BenchmarkRunner.output_path(dir, out_override: override)
+        assert_equal override, result
+      end
+    end
+
+    it 'generates path with first available file number when no override' do
+      Dir.mktmpdir do |dir|
+        result = BenchmarkRunner.output_path(dir)
+        expected = File.join(dir, 'output_001')
+        assert_equal expected, result
+      end
+    end
+
+    it 'uses next available file number when files exist' do
+      Dir.mktmpdir do |dir|
+        FileUtils.touch(File.join(dir, 'output_001.csv'))
+        FileUtils.touch(File.join(dir, 'output_002.csv'))
+
+        result = BenchmarkRunner.output_path(dir)
+        expected = File.join(dir, 'output_003')
+        assert_equal expected, result
+      end
+    end
+
+    it 'finds first gap in numbering when files are non-sequential' do
+      Dir.mktmpdir do |dir|
+        FileUtils.touch(File.join(dir, 'output_001.csv'))
+        FileUtils.touch(File.join(dir, 'output_003.csv'))
+
+        result = BenchmarkRunner.output_path(dir)
+        expected = File.join(dir, 'output_002')
+        assert_equal expected, result
+      end
+    end
+
+    it 'prefers override even when files exist' do
+      Dir.mktmpdir do |dir|
+        FileUtils.touch(File.join(dir, 'output_001.csv'))
+
+        override = '/override/path'
+        result = BenchmarkRunner.output_path(dir, out_override: override)
+        assert_equal override, result
+      end
+    end
+
+    it 'handles triple digit file numbers' do
+      Dir.mktmpdir do |dir|
+        (1..100).each do |i|
+          FileUtils.touch(File.join(dir, 'output_%03d.csv' % i))
+        end
+
+        result = BenchmarkRunner.output_path(dir)
+        expected = File.join(dir, 'output_101')
+        assert_equal expected, result
+      end
+    end
+  end
+
+  describe '.write_csv' do
+    it 'writes CSV file with metadata and table data' do
+      Dir.mktmpdir do |dir|
+        output_path = File.join(dir, 'output_001')
+        ruby_descriptions = {
+          'ruby-base' => 'ruby 3.3.0',
+          'ruby-yjit' => 'ruby 3.3.0 +YJIT'
+        }
+        table = [
+          ['Benchmark', 'ruby-base', 'ruby-yjit'],
+          ['fib', '1.5', '1.0'],
+          ['matmul', '2.0', '1.8']
+        ]
+
+        result_path = BenchmarkRunner.write_csv(output_path, ruby_descriptions, table)
+
+        expected_path = File.join(dir, 'output_001.csv')
+        assert_equal expected_path, result_path
+        assert File.exist?(expected_path)
+
+        csv_rows = CSV.read(expected_path)
+        assert_equal 'ruby-base', csv_rows[0][0]
+        assert_equal 'ruby 3.3.0', csv_rows[0][1]
+        assert_equal 'ruby-yjit', csv_rows[1][0]
+        assert_equal 'ruby 3.3.0 +YJIT', csv_rows[1][1]
+        assert_equal [], csv_rows[2]
+        assert_equal table, csv_rows[3..5]
+      end
+    end
+
+    it 'returns the CSV file path' do
+      Dir.mktmpdir do |dir|
+        output_path = File.join(dir, 'output_test')
+        result_path = BenchmarkRunner.write_csv(output_path, {}, [])
+
+        assert_equal File.join(dir, 'output_test.csv'), result_path
+      end
+    end
+
+    it 'handles empty metadata and table' do
+      Dir.mktmpdir do |dir|
+        output_path = File.join(dir, 'output_empty')
+
+        result_path = BenchmarkRunner.write_csv(output_path, {}, [])
+
+        assert File.exist?(result_path)
+        csv_rows = CSV.read(result_path)
+        assert_equal [[]], csv_rows
+      end
+    end
+
+    it 'handles single metadata entry' do
+      Dir.mktmpdir do |dir|
+        output_path = File.join(dir, 'output_single')
+        ruby_descriptions = { 'ruby' => 'ruby 3.3.0' }
+        table = [['Benchmark', 'Time'], ['test', '1.0']]
+
+        result_path = BenchmarkRunner.write_csv(output_path, ruby_descriptions, table)
+
+        csv_rows = CSV.read(result_path)
+        assert_equal 'ruby', csv_rows[0][0]
+        assert_equal 'ruby 3.3.0', csv_rows[0][1]
+        assert_equal [], csv_rows[1]
+        assert_equal table, csv_rows[2..3]
+      end
+    end
+
+    it 'preserves precision in numeric strings' do
+      Dir.mktmpdir do |dir|
+        output_path = File.join(dir, 'output_precision')
+        table = [['Benchmark', 'Time'], ['test', '1.234567890123']]
+
+        result_path = BenchmarkRunner.write_csv(output_path, {}, table)
+
+        csv_rows = CSV.read(result_path)
+        assert_equal '1.234567890123', csv_rows[2][1]
+      end
+    end
+
+    it 'overwrites existing CSV file' do
+      Dir.mktmpdir do |dir|
+        output_path = File.join(dir, 'output_overwrite')
+
+        # Write first version
+        BenchmarkRunner.write_csv(output_path, { 'v1' => 'first' }, [['old']])
+
+        # Write second version
+        new_descriptions = { 'v2' => 'second' }
+        new_table = [['new']]
+        result_path = BenchmarkRunner.write_csv(output_path, new_descriptions, new_table)
+
+        csv_rows = CSV.read(result_path)
+        assert_equal 'v2', csv_rows[0][0]
+        assert_equal 'second', csv_rows[0][1]
+      end
+    end
+  end
+
+  describe '.write_json' do
+    it 'writes JSON file with metadata and raw data' do
+      Dir.mktmpdir do |dir|
+        output_path = File.join(dir, 'output_001')
+        ruby_descriptions = {
+          'ruby-base' => 'ruby 3.3.0',
+          'ruby-yjit' => 'ruby 3.3.0 +YJIT'
+        }
+        bench_data = {
+          'ruby-base' => { 'fib' => { 'time' => 1.5 } },
+          'ruby-yjit' => { 'fib' => { 'time' => 1.0 } }
+        }
+
+        result_path = BenchmarkRunner.write_json(output_path, ruby_descriptions, bench_data)
+
+        expected_path = File.join(dir, 'output_001.json')
+        assert_equal expected_path, result_path
+        assert File.exist?(expected_path)
+
+        json_content = JSON.parse(File.read(expected_path))
+        assert_equal ruby_descriptions, json_content['metadata']
+        assert_equal bench_data, json_content['raw_data']
+      end
+    end
+
+    it 'returns the JSON file path' do
+      Dir.mktmpdir do |dir|
+        output_path = File.join(dir, 'output_test')
+        result_path = BenchmarkRunner.write_json(output_path, {}, {})
+
+        assert_equal File.join(dir, 'output_test.json'), result_path
+      end
+    end
+
+    it 'handles empty metadata and bench data' do
+      Dir.mktmpdir do |dir|
+        output_path = File.join(dir, 'output_empty')
+
+        result_path = BenchmarkRunner.write_json(output_path, {}, {})
+
+        assert File.exist?(result_path)
+        json_content = JSON.parse(File.read(result_path))
+        assert_equal({}, json_content['metadata'])
+        assert_equal({}, json_content['raw_data'])
+      end
+    end
+
+    it 'handles nested benchmark data structures' do
+      Dir.mktmpdir do |dir|
+        output_path = File.join(dir, 'output_nested')
+        ruby_descriptions = { 'ruby' => 'ruby 3.3.0' }
+        bench_data = {
+          'ruby' => {
+            'benchmark1' => {
+              'time' => 1.5,
+              'rss' => 12345,
+              'iterations' => [1.4, 1.5, 1.6]
+            }
+          }
+        }
+
+        result_path = BenchmarkRunner.write_json(output_path, ruby_descriptions, bench_data)
+
+        json_content = JSON.parse(File.read(result_path))
+        assert_equal bench_data, json_content['raw_data']
+      end
+    end
+
+    it 'overwrites existing JSON file' do
+      Dir.mktmpdir do |dir|
+        output_path = File.join(dir, 'output_overwrite')
+
+        # Write first version
+        BenchmarkRunner.write_json(output_path, { 'v' => '1' }, { 'd' => '1' })
+
+        # Write second version
+        new_metadata = { 'v' => '2' }
+        new_data = { 'd' => '2' }
+        result_path = BenchmarkRunner.write_json(output_path, new_metadata, new_data)
+
+        json_content = JSON.parse(File.read(result_path))
+        assert_equal new_metadata, json_content['metadata']
+        assert_equal new_data, json_content['raw_data']
+      end
+    end
+  end
+
+  describe '.build_output_text' do
+    it 'builds output text with metadata, table, and legend' do
+      ruby_descriptions = {
+        'ruby-base' => 'ruby 3.3.0',
+        'ruby-yjit' => 'ruby 3.3.0 +YJIT'
+      }
+      table = [
+        ['bench', 'ruby-base (ms)', 'stddev (%)', 'ruby-yjit (ms)', 'stddev (%)'],
+        ['fib', '100.0', '5.0', '50.0', '3.0']
+      ]
+      format = ['%s', '%.1f', '%.1f', '%.1f', '%.1f']
+      bench_failures = {}
+
+      result = BenchmarkRunner.build_output_text(
+        ruby_descriptions, table, format, bench_failures
+      )
+
+      assert_includes result, 'ruby-base: ruby 3.3.0'
+      assert_includes result, 'ruby-yjit: ruby 3.3.0 +YJIT'
+      assert_includes result, 'Legend:'
+      assert_includes result, '- ruby-yjit 1st itr: ratio of ruby-base/ruby-yjit time for the first benchmarking iteration.'
+      assert_includes result, '- ruby-base/ruby-yjit: ratio of ruby-base/ruby-yjit time. Higher is better for ruby-yjit. Above 1 represents a speedup.'
+    end
+
+    it 'includes formatted table in output' do
+      ruby_descriptions = { 'ruby' => 'ruby 3.3.0' }
+      table = [
+        ['bench', 'ruby (ms)', 'stddev (%)'],
+        ['fib', '100.0', '5.0']
+      ]
+      format = ['%s', '%.1f', '%.1f']
+      bench_failures = {}
+
+      result = BenchmarkRunner.build_output_text(
+        ruby_descriptions, table, format, bench_failures
+      )
+
+      # Should contain table headers
+      assert_includes result, 'bench'
+      assert_includes result, 'ruby (ms)'
+      # Should contain table data
+      assert_includes result, 'fib'
+      assert_includes result, '100.0'
+    end
+
+    it 'omits legend when no other executables' do
+      ruby_descriptions = { 'ruby' => 'ruby 3.3.0' }
+      table = [['bench', 'ruby (ms)'], ['fib', '100.0']]
+      format = ['%s', '%.1f']
+      bench_failures = {}
+
+      result = BenchmarkRunner.build_output_text(
+        ruby_descriptions, table, format, bench_failures
+      )
+
+      refute_includes result, 'Legend:'
+    end
+
+    it 'handles multiple other executables in legend' do
+      ruby_descriptions = {
+        'ruby' => 'ruby 3.3.0',
+        'ruby-yjit' => 'ruby 3.3.0 +YJIT',
+        'ruby-rjit' => 'ruby 3.3.0 +RJIT'
+      }
+      table = [['bench', 'ruby (ms)', 'ruby-yjit (ms)', 'ruby-rjit (ms)']]
+      format = ['%s', '%.1f', '%.1f', '%.1f']
+      bench_failures = {}
+
+      result = BenchmarkRunner.build_output_text(
+        ruby_descriptions, table, format, bench_failures
+      )
+
+      assert_includes result, 'ruby-yjit 1st itr'
+      assert_includes result, 'ruby-rjit 1st itr'
+      assert_includes result, 'ruby/ruby-yjit'
+      assert_includes result, 'ruby/ruby-rjit'
+    end
+
+    it 'includes benchmark failures in formatted output' do
+      ruby_descriptions = { 'ruby' => 'ruby 3.3.0' }
+      table = [['bench', 'ruby (ms)'], ['fib', '100.0']]
+      format = ['%s', '%.1f']
+      bench_failures = {
+        'ruby' => { 'failed_bench' => 'error message' }
+      }
+
+      result = BenchmarkRunner.build_output_text(
+        ruby_descriptions, table, format, bench_failures
+      )
+
+      # TableFormatter handles displaying failures, just verify it's called
+      assert_kind_of String, result
+      assert result.length > 0
+    end
+
+    it 'handles empty ruby_descriptions' do
+      ruby_descriptions = {}
+      table = [['bench']]
+      format = ['%s']
+      bench_failures = {}
+
+      result = BenchmarkRunner.build_output_text(
+        ruby_descriptions, table, format, bench_failures
+      )
+
+      assert_kind_of String, result
+      assert result.start_with?("\n") # Should start with newline after empty descriptions
+    end
+
+    it 'preserves order of ruby_descriptions' do
+      ruby_descriptions = {
+        'ruby-a' => 'version A',
+        'ruby-b' => 'version B',
+        'ruby-c' => 'version C'
+      }
+      table = [['bench']]
+      format = ['%s']
+      bench_failures = {}
+
+      result = BenchmarkRunner.build_output_text(
+        ruby_descriptions, table, format, bench_failures
+      )
+
+      lines = result.lines
+      assert_includes lines[0], 'ruby-a: version A'
+      assert_includes lines[1], 'ruby-b: version B'
+      assert_includes lines[2], 'ruby-c: version C'
     end
   end
 

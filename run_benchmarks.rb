@@ -11,7 +11,6 @@ require 'yaml'
 require_relative 'lib/cpu_config'
 require_relative 'lib/benchmark_runner'
 require_relative 'lib/benchmark_suite'
-require_relative 'lib/table_formatter'
 require_relative 'lib/argument_parser'
 require_relative 'lib/results_table_builder'
 
@@ -57,65 +56,25 @@ end
 puts
 
 # Build results table
-all_names = args.executables.keys
-base_name, *other_names = all_names
 builder = ResultsTableBuilder.new(
-  executable_names: all_names,
+  executable_names: ruby_descriptions.keys,
   bench_data: bench_data,
   include_rss: args.rss
 )
 table, format = builder.build
 
-output_path = nil
-if args.out_override
-  output_path = args.out_override
-else
-  # If no out path is specified, find a free file index for the output files
-  file_no = BenchmarkRunner.free_file_no(args.out_path)
-  output_path = File.join(args.out_path, "output_%03d" % file_no)
-end
+output_path = BenchmarkRunner.output_path(args.out_path, out_override: args.out_override)
 
 # Save the raw data as JSON
-out_json_path = output_path + ".json"
-File.open(out_json_path, "w") do |file|
-  out_data = {
-    metadata: ruby_descriptions,
-    raw_data: bench_data,
-  }
-  json_str = JSON.generate(out_data)
-  file.write json_str
-end
+out_json_path = BenchmarkRunner.write_json(output_path, ruby_descriptions, bench_data)
 
 # Save data as CSV so we can produce tables/graphs in a spreasheet program
 # NOTE: we don't do any number formatting for the output file because
 #       we don't want to lose any precision
-output_rows = []
-ruby_descriptions.each do |key, value|
-  output_rows.append([key, value])
-end
-output_rows.append([])
-output_rows.concat(table)
-out_tbl_path = output_path + ".csv"
-CSV.open(out_tbl_path, "wb") do |csv|
-  output_rows.each do |row|
-    csv << row
-  end
-end
+BenchmarkRunner.write_csv(output_path, ruby_descriptions, table)
 
 # Save the output in a text file that we can easily refer to
-output_str = ""
-ruby_descriptions.each do |key, value|
-  output_str << "#{key}: #{value}\n"
-end
-output_str += "\n"
-output_str += TableFormatter.new(table, format, bench_failures).to_s + "\n"
-unless other_names.empty?
-  output_str << "Legend:\n"
-  other_names.each do |name|
-    output_str << "- #{name} 1st itr: ratio of #{base_name}/#{name} time for the first benchmarking iteration.\n"
-    output_str << "- #{base_name}/#{name}: ratio of #{base_name}/#{name} time. Higher is better for #{name}. Above 1 represents a speedup.\n"
-  end
-end
+output_str = BenchmarkRunner.build_output_text(ruby_descriptions, table, format, bench_failures)
 out_txt_path = output_path + ".txt"
 File.open(out_txt_path, "w") { |f| f.write output_str }
 
