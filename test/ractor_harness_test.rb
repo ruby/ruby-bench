@@ -28,7 +28,7 @@ describe 'Ractor harness' do
         'RESULT_JSON_PATH' => result_path
       }
 
-      stdout, stderr, status = Open3.capture3(env, RbConfig.ruby, "-I#{File.join(root, 'harness-ractor')}", script)
+      stdout, stderr, status = Open3.capture3(env, RbConfig.ruby, "-I#{File.join(root, 'harness')}", "-rractor", script)
 
       assert status.success?, "workload failed:\n#{stdout}\n#{stderr}"
       data = JSON.parse(File.read(result_path))

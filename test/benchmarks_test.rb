@@ -31,7 +31,7 @@ describe 'benchmarks.yml' do
     benchmarks_yml.each do |name, metadata|
       category = metadata.fetch('category') do
         # Ractor scaling benchmarks are intentionally kept in their own section.
-        metadata['default_harness'] == 'harness-ractor' ? 'ractor-scaling' : 'other'
+        metadata['default_harness'] == 'ractor' ? 'ractor-scaling' : 'other'
       end
       benchmark_names_by_category[category] << name
     end

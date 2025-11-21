@@ -30,7 +30,7 @@ class BenchmarkFilter
   def ractor_harness_benchmark?(name)
     benchmark_metadata = @metadata[name] || {}
     benchmark_metadata['ractor_only'] ||
-      (benchmark_metadata['ractor'] && benchmark_metadata['default_harness'] == 'harness-ractor')
+      (benchmark_metadata['ractor'] && benchmark_metadata['default_harness'] == 'ractor')
   end
 
   def matches_name_filter?(name)

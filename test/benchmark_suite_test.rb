@@ -87,6 +87,7 @@ describe BenchmarkSuite do
       assert_equal ['micro'], suite.categories
     end
 
+
     it 'keeps bench_dir as BENCHMARKS_DIR when ractor category is used' do
       suite = BenchmarkSuite.new(
         categories: ['ractor'],
@@ -114,7 +115,7 @@ describe BenchmarkSuite do
         categories: [],
         name_filters: [],
         out_path: @out_path,
-        harness: 'harness-ractor'
+        harness: 'ractor'
       )
       assert_equal false, suite_auto.harness_explicit
     end
@@ -134,12 +135,12 @@ describe BenchmarkSuite do
         categories: [],
         name_filters: [],
         out_path: @out_path,
-        harness: 'harness-ractor',
+        harness: 'ractor',
         harness_explicit: false
       )
 
       assert_equal 'harness', suite.send(:benchmark_harness_for, 'custom_harness_bench')
-      assert_equal 'harness-ractor', suite.send(:benchmark_harness_for, 'simple')
+      assert_equal 'ractor', suite.send(:benchmark_harness_for, 'simple')
     end
 
     it 'ignores default_harness when harness is explicit' do
@@ -162,7 +163,7 @@ describe BenchmarkSuite do
         categories: ['ractor'],
         name_filters: [],
         out_path: @out_path,
-        harness: 'harness-ractor'
+        harness: 'ractor'
       )
 
       assert_equal true, suite.send(:ractor_category_run?)
@@ -357,6 +358,7 @@ describe BenchmarkSuite do
       assert_includes bench_data, 'ractor_test'
       refute_includes bench_data, 'simple'
       assert_empty bench_failures
+
     end
 
     it 'runs each Ractor count in its own process and merges the results' do

@@ -9,7 +9,7 @@
 #
 # harness/loader.rb selects this harness automatically when RUBY_ENGINE is
 # "spinel", so `spinel -E benchmarks/fib.rb` works without any -I option. It
-# also runs on CRuby (`ruby -Iharness-spinel benchmarks/fib.rb`), which is how
+# also runs on CRuby (`ruby -Iharness -rspinel benchmarks/fib.rb`), which is how
 # its output is kept compatible with the default harness.
 require "json"
 

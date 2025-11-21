@@ -1,4 +1,4 @@
-require_relative '../harness/harness-common'
+require_relative 'harness-common'
 
 # Ex: HARNESS_CHAIN="vernier,ractor"
 # Wraps the ractor harness in ther vernier harness
@@ -10,7 +10,7 @@ if CHAIN.size < 2
 end
 
 if CHAIN.include?("vernier") && CHAIN.last != "vernier"
-  require_relative "../harness/harness-extra"
+  require_relative "harness-extra"
   def run_enough_to_profile(n, **kwargs, &block)
     block.call
   end
@@ -30,12 +30,12 @@ end
 def run_benchmark(n, **kwargs, &block)
   CHAIN.each do |h|
     begin
-      path = "../harness-#{h}/harness"
+      path = "#{h}"
       $current_harness = h
       require_relative path
     rescue LoadError => e
       if e.path == path
-        $stderr.puts "Can't find harness harness-#{h}/harness.rb. Exiting."
+        $stderr.puts "Can't find harness #{h}.rb in harness/. Exiting."
         exit 1
       end
       raise

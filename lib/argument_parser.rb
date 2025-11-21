@@ -77,7 +77,7 @@ class ArgumentParser
       opts.on("--category=headline,other,micro,ractor", "when given, only benchmarks with specified categories will run") do |v|
         args.categories += v.split(",")
         if args.categories == ["ractor"]
-          args.harness = "harness-ractor"
+          args.harness = "ractor"
         end
       end
 
@@ -101,8 +101,9 @@ class ArgumentParser
         args.skip_zjit = true
       end
 
-      opts.on("--harness=HARNESS_DIR", "which harness to use") do |v|
-        v = "harness-#{v}" unless v.start_with?('harness')
+      opts.on("--harness=HARNESS_NAME", "which harness to use (default: harness, options: once, bips, perf, ractor, gc, stackprof, vernier, warmup, stats, continuous, chain, mplr)") do |v|
+        # Strip 'harness-' prefix if provided for backward compatibility
+        v = v.sub(/^harness-/, '')
         args.harness = v
         args.harness_explicit = true
       end

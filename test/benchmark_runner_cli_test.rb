@@ -108,12 +108,12 @@ describe BenchmarkRunner::CLI do
       }
       bench_harnesses = {
         'fib' => 'harness',
-        'symbol-name-ractor' => 'harness-ractor'
+        'symbol-name-ractor' => 'ractor'
       }
 
       sections = cli.send(:build_output_sections, ['ruby'], bench_data, bench_harnesses, {})
 
-      assert_equal ['harness-ractor', 'harness'], sections.map { |section| section[:title] }
+      assert_equal ['ractor', 'harness'], sections.map { |section| section[:title] }
       assert_equal ['bench', 'ractors', 'ruby (ms)'], sections[0][:table][0]
       assert_equal ['symbol-name-ractor', '0', '1000.0 ± 0.0%'], sections[0][:table][1]
       assert_equal ['', '2', '2000.0 ± 0.0%'], sections[0][:table][2]
@@ -153,10 +153,10 @@ describe BenchmarkRunner::CLI do
           }
         }
       }
-      bench_harnesses = { 'fib' => 'harness', 'object-new' => 'harness-ractor' }
+      bench_harnesses = { 'fib' => 'harness', 'object-new' => 'ractor' }
 
       sections = cli.send(:build_output_sections, ['ruby'], bench_data, bench_harnesses, {})
-      ractor = sections.find { |section| section[:title] == 'harness-ractor' }
+      ractor = sections.find { |section| section[:title] == 'ractor' }
       normal = sections.find { |section| section[:title] == 'harness' }
 
       assert_equal 'ractor-local-workload', ractor[:gc_scope]
@@ -195,7 +195,7 @@ describe BenchmarkRunner::CLI do
         }
       }
 
-      sections = cli.send(:build_output_sections, ['ruby'], bench_data, { 'object-new' => 'harness-ractor' }, {})
+      sections = cli.send(:build_output_sections, ['ruby'], bench_data, { 'object-new' => 'ractor' }, {})
 
       assert sections.one?, 'single-harness fixture must produce exactly one section'
       section = sections.first
@@ -230,7 +230,7 @@ describe BenchmarkRunner::CLI do
         }
       }
 
-      sections = cli.send(:build_output_sections, ['ruby'], bench_data, { 'ractor-dead-set' => 'harness-ractor' }, {})
+      sections = cli.send(:build_output_sections, ['ruby'], bench_data, { 'ractor-dead-set' => 'ractor' }, {})
 
       output = BenchmarkRunner.build_output_text({ 'ruby' => 'ruby 4.1.0dev' }, nil, nil, {}, sections: sections)
       assert_match(/Scenario benchmarks sample only the worker Ractors whose bodies the scenario wraps in measure_worker_gc/, output)
@@ -259,7 +259,7 @@ describe BenchmarkRunner::CLI do
         }
       }
 
-      sections = cli.send(:build_output_sections, ['ruby'], bench_data, { 'ractor-dead-set' => 'harness-ractor' }, {})
+      sections = cli.send(:build_output_sections, ['ruby'], bench_data, { 'ractor-dead-set' => 'ractor' }, {})
       memory = sections.first[:memory_tables]
 
       assert_equal 1, memory.size
@@ -314,7 +314,7 @@ describe BenchmarkRunner::CLI do
         data
       end
       bench_data = { 'ruby' => { 'object-new' => blob.call(%w[0 2], nil), 'ractor-dead-set' => blob.call(%w[1 2], 'scenario') } }
-      harnesses = { 'object-new' => 'harness-ractor', 'ractor-dead-set' => 'harness-ractor' }
+      harnesses = { 'object-new' => 'ractor', 'ractor-dead-set' => 'ractor' }
 
       sections = cli.send(:build_output_sections, ['ruby'], bench_data, harnesses, {})
 

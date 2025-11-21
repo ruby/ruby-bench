@@ -104,7 +104,8 @@ def run_benchmark(bench_name, no_yjit, logs_path, run_time, ruby_version, metada
   cmd = [
     'ruby',
     *test_options,
-    "-I#{harness}",
+    "-Iharness",
+    *(harness == 'harness' ? [] : ["-r#{harness}"]),
     script_path,
   ].compact
   cmd_str = cmd.shelljoin
@@ -225,7 +226,7 @@ else
   metadata.each do |name, entry|
     category = entry.fetch('category', 'other')
     is_ractor_only = entry['ractor_only'] ||
-      (entry['ractor'] && entry['default_harness'] == 'harness-ractor')
+      (entry['ractor'] && entry['default_harness'] == 'ractor')
     if args.categories.include?(category) && !is_ractor_only
       bench_names << name
     end

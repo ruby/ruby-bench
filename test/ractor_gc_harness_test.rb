@@ -200,7 +200,7 @@ describe 'Ractor GC harness' do
         'MIN_BENCH_TIME' => '0',
         'RESULT_JSON_PATH' => result_path
       ).merge(env)
-      stdout, stderr, status = Open3.capture3(env, @ruby, "-I#{File.join(ROOT, 'harness-ractor')}", script, chdir: ROOT)
+      stdout, stderr, status = Open3.capture3(env, @ruby, "-I#{File.join(ROOT, 'harness')}", "-rractor", script, chdir: ROOT)
       yield stdout, stderr, status, result_path
     end
   end
@@ -465,7 +465,7 @@ describe 'Ractor GC harness' do
           'RESULT_JSON_PATH' => result_path
         )
         script = File.join(ROOT, 'benchmarks', bench, 'benchmark.rb')
-        stdout, stderr, status = Open3.capture3(env, @ruby, "-I#{File.join(ROOT, 'harness-ractor')}", script, chdir: ROOT)
+        stdout, stderr, status = Open3.capture3(env, @ruby, "-I#{File.join(ROOT, 'harness')}", "-rractor", script, chdir: ROOT)
         assert status.success?, "#{bench} failed:\n#{stdout}\n#{stderr}"
 
         data = JSON.parse(File.read(result_path))

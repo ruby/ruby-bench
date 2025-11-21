@@ -18,7 +18,8 @@ class BenchmarkSuite
   BENCHMARKS_DIR = "benchmarks"
   RACTOR_CATEGORY = ["ractor"].freeze
   RACTOR_ONLY_CATEGORY = ["ractor-only"].freeze
-  RACTOR_HARNESS = "harness-ractor"
+  RACTOR_HARNESS = "ractor"
+  HARNESS_DIR = File.expand_path("../harness", __dir__)
   PIN_CPU_ENV = "RUBY_BENCH_PIN_CPU"
 
   attr_reader :categories, :name_filters, :excludes, :out_path, :harness, :harness_explicit, :pre_init, :no_pinning, :force_pinning, :bench_dir
@@ -205,9 +206,18 @@ class BenchmarkSuite
     ENV["RESULT_JSON_PATH"] = result_json_path
 
     # Set up the benchmarking command
+    # If harness is 'harness', use default (no -r needed)
+    # Otherwise use -r to load the specific harness file
+    harness_args = if benchmark_harness == "harness"
+      []
+    else
+      ["-r", benchmark_harness]
+    end
+
     cmd = (cmd_prefix + [
       *ruby,
-      "-I", benchmark_harness,
+      "-I", HARNESS_DIR,
+      *harness_args,
       *pre_init,
       script_path,
     ].compact).map(&:to_s)

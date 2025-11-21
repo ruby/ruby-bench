@@ -474,7 +474,7 @@ describe BenchmarkRunner do
       ruby_descriptions = { 'ruby' => 'ruby 4.1.0dev' }
       sections = [
         {
-          title: 'harness-ractor',
+          title: 'ractor',
           table: [['bench', 'ractors', 'ruby (ms)'], ['object-new', '1', '200.0']],
           format: ['%s', '%s', '%.1f'],
           failures: {},
@@ -493,7 +493,7 @@ describe BenchmarkRunner do
         ruby_descriptions, sections.first[:table], sections.first[:format], {}, sections: sections
       )
 
-      assert_includes result, "GC summary (worker sum, harness-ractor):\n"
+      assert_includes result, "GC summary (worker sum, ractor):\n"
       assert_includes result, "Hidden columns (zero or N/A in every row): global/iter, compacts*\n"
       refute_includes result, 'GC metric notes:', 'a hidden compaction column needs no note'
       assert_includes result, '- Tables marked worker sum add Ractor-local counters'
@@ -580,7 +580,7 @@ describe BenchmarkRunner do
       ruby_descriptions = { 'ruby' => 'ruby 4.1.0dev' }
       sections = [
         {
-          title: 'harness-ractor',
+          title: 'ractor',
           table: [['bench', 'ractors', 'ruby (ms)'], ['object-new', '0', '200.0']],
           format: ['%s', '%s', '%.1f'],
           failures: {},
@@ -667,7 +667,7 @@ describe BenchmarkRunner do
           include_gc: false,
         },
         {
-          title: 'harness-ractor',
+          title: 'ractor',
           table: [['bench', 'ractors', 'ruby (ms)'], ['symbol-name-ractor', '0', '200.0']],
           format: ['%s', '%s', '%.1f'],
           failures: {},
@@ -680,7 +680,7 @@ describe BenchmarkRunner do
       )
 
       assert_includes result, "harness:\n"
-      assert_includes result, "harness-ractor:\n"
+      assert_includes result, "ractor:\n"
       assert_includes result, 'fib'
       assert_includes result, 'symbol-name-ractor'
     end
@@ -689,7 +689,7 @@ describe BenchmarkRunner do
       ruby_descriptions = { 'ruby' => 'ruby 3.3.0', 'exp' => 'ruby 3.3.0 exp' }
       sections = [
         {
-          title: 'harness-gc',
+          title: 'gc',
           table: [['bench', 'ruby (ms)', 'exp (ms)'], ['gcbench', '100.0', '90.0']],
           format: ['%s', '%.1f', '%.1f'],
           failures: {},
@@ -702,7 +702,7 @@ describe BenchmarkRunner do
         ruby_descriptions, sections.first[:table], sections.first[:format], {}, sections: sections
       )
 
-      assert_includes result, "GC time ratios (harness-gc):\n"
+      assert_includes result, "GC time ratios (gc):\n"
       assert_includes result, '- GC time ratios are ruby/comparison;'
     end
 
