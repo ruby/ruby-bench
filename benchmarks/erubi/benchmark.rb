@@ -58,7 +58,7 @@ RUBY
 
 # This is taken from actual "gem server" data
 VALUES = JSON.load(File.read "gem_specs.json")
-Ractor.make_shareable(VALUES)
+make_shareable(VALUES)
 check_result_size(ErbRenderer.new(VALUES).run_erb)
 
 run_benchmark(50) do

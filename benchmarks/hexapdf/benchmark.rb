@@ -19,8 +19,8 @@ EXPECTED_SIZE = 569797
 Dir["/tmp/hexapdf-result*.pdf"].each { |file| FileUtils.rm file }
 
 if ENV["RUBY_BENCH_RACTOR_HARNESS"]
-  Ractor.make_shareable(HexaPDF::DefaultDocumentConfiguration)
-  Ractor.make_shareable(HexaPDF::GlobalConfiguration)
+  make_shareable(HexaPDF::DefaultDocumentConfiguration)
+  make_shareable(HexaPDF::GlobalConfiguration)
   # TODO... still doesn't work
 end
 

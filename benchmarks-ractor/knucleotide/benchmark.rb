@@ -52,7 +52,7 @@ def generate_test_sequence(size)
 end
 
 # Make sequence shareable for Ractors
-TEST_SEQUENCE = Ractor.make_shareable(generate_test_sequence(100_000))
+TEST_SEQUENCE = make_shareable(generate_test_sequence(100_000))
 
 run_benchmark(5) do |num_ractors, ractor_args|
   freqs = [1, 2]

@@ -176,7 +176,7 @@ require_relative "../../harness/loader"
 
 FILE = File.join(__dir__, "test.bin")
 
-Ractor.make_shareable(ARRAY = File.read(FILE).bytes)
+make_shareable(ARRAY = File.read(FILE).bytes)
 
 run_benchmark(10) do
   Blurhash.encode_rb(204, 204, ARRAY)

@@ -16,7 +16,7 @@ if test_yaml_files.size < 1
   raise "Not loading any YAML files!"
 end
 
-TEST_YAML = Ractor.make_shareable(test_yaml_files.map { |p| File.read(p) })
+TEST_YAML = make_shareable(test_yaml_files.map { |p| File.read(p) })
 
 run_benchmark(10) do
   test_yaml = TEST_YAML

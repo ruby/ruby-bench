@@ -12,7 +12,7 @@ list = ELEMENTS.times.map do
     rand, rand, rand, rand, rand, rand, rand, rand, rand, rand,
   ].to_json
 end
-Ractor.make_shareable(list)
+make_shareable(list)
 
 # Work is divided between ractors
 run_benchmark(5, ractor_args: [list]) do |num_rs, list|

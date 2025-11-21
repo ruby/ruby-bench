@@ -5,16 +5,16 @@ use_gemfile
 
 require "graphql"
 
-DATA = Ractor.make_shareable(File.read "negotiate.gql")
+DATA = make_shareable(File.read "negotiate.gql")
 
 if ENV["RUBY_BENCH_RACTOR_HARNESS"]
   GraphQL.default_parser
-  Ractor.make_shareable(GraphQL::Tracing::NullTrace)
+  make_shareable(GraphQL::Tracing::NullTrace)
   GraphQL::Language::Lexer.constants.each do |constant|
-    Ractor.make_shareable(GraphQL::Language::Lexer.const_get(constant))
+    make_shareable(GraphQL::Language::Lexer.const_get(constant))
   end
   GraphQL::Language::Parser.constants.each do |constant|
-    Ractor.make_shareable(GraphQL::Language::Parser.const_get(constant))
+    make_shareable(GraphQL::Language::Parser.const_get(constant))
   end
 end
 

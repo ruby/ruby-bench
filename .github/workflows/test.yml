@@ -65,7 +65,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ruby: [ruby, head, truffleruby]
+        ruby: [ruby, head]
     if: ${{ github.event_name != 'schedule' || github.repository == 'ruby/ruby-bench' }}
     steps:
       - uses: actions/checkout@v3
@@ -80,14 +80,13 @@ jobs:
           WARMUP_ITRS: '1'
           MIN_BENCH_ITRS: '1'
           MIN_BENCH_TIME: '0'
-        continue-on-error: ${{ matrix.ruby == 'truffleruby' }}
 
   benchmark-ractor-only:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        ruby: [ruby, head, truffleruby]
+        ruby: [ruby, head]
     if: ${{ github.event_name != 'schedule' || github.repository == 'ruby/ruby-bench' }}
     steps:
       - uses: actions/checkout@v3
@@ -102,7 +101,6 @@ jobs:
           WARMUP_ITRS: '1'
           MIN_BENCH_ITRS: '1'
           MIN_BENCH_TIME: '0'
-        continue-on-error: ${{ matrix.ruby == 'truffleruby' }}
 
   benchmark-graph:
     runs-on: ubuntu-latest

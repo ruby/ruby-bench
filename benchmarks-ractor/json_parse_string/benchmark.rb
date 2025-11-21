@@ -30,7 +30,7 @@ list = ELEMENTS.times.map do |i|
     "string #{i}" => "value #{i}",
   }.to_json
 end
-Ractor.make_shareable(list)
+make_shareable(list)
 
 # Work is divided between ractors
 run_benchmark(5, ractor_args: [list]) do |num_rs, list|

@@ -13,10 +13,13 @@ GC.auto_compact = !!ENV["RUBY_GC_AUTO_COMPACT"]
 # Seed the global random number generator for repeatability between runs
 Random.srand(1337)
 
-if !Ractor.respond_to?(:make_shareable)
-  class Ractor
-    #noop
-    def make_shareable(obj, copy: false); obj; end
+if defined?(Ractor.make_shareable)
+  def make_shareable(obj, copy: false)
+    Ractor.make_shareable(obj, copy: copy)
+  end
+else
+  def make_shareable(obj, copy: false)
+    obj # noop
   end
 end
 
