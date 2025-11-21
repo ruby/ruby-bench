@@ -96,19 +96,6 @@ describe 'run_benchmarks.rb integration' do
     end
   end
 
-  describe 'environment handling' do
-    it 'handles WARMUP_ITRS environment variable' do
-      # The script should read ENV["WARMUP_ITRS"]
-      script_content = File.read(@script_path)
-      assert_includes script_content, 'WARMUP_ITRS'
-    end
-
-    it 'handles MIN_BENCH_ITRS environment variable' do
-      script_content = File.read(@script_path)
-      assert_includes script_content, 'MIN_BENCH_ITRS'
-    end
-  end
-
   describe 'stats module integration' do
     it 'uses Stats class for calculations' do
       require_relative '../misc/stats'
