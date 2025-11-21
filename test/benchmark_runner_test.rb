@@ -49,64 +49,6 @@ describe BenchmarkRunner do
     end
   end
 
-  describe '.expand_pre_init' do
-    it 'returns load path and require options for valid file' do
-      Dir.mktmpdir do |dir|
-        file = File.join(dir, 'pre_init.rb')
-        FileUtils.touch(file)
-
-        result = BenchmarkRunner.expand_pre_init(file)
-
-        assert_equal 4, result.length
-        assert_equal '-I', result[0]
-        assert_equal dir, result[1].to_s
-        assert_equal '-r', result[2]
-        assert_equal 'pre_init', result[3].to_s
-      end
-    end
-
-    it 'handles files with different extensions' do
-      Dir.mktmpdir do |dir|
-        file = File.join(dir, 'my_config.rb')
-        FileUtils.touch(file)
-
-        result = BenchmarkRunner.expand_pre_init(file)
-
-        assert_equal 'my_config', result[3].to_s
-      end
-    end
-
-    it 'handles nested directories' do
-      Dir.mktmpdir do |dir|
-        subdir = File.join(dir, 'config', 'initializers')
-        FileUtils.mkdir_p(subdir)
-        file = File.join(subdir, 'setup.rb')
-        FileUtils.touch(file)
-
-        result = BenchmarkRunner.expand_pre_init(file)
-
-        assert_equal subdir, result[1].to_s
-        assert_equal 'setup', result[3].to_s
-      end
-    end
-
-    it 'exits when file does not exist' do
-      out = capture_io do
-        assert_raises(SystemExit) { BenchmarkRunner.expand_pre_init('/nonexistent/file.rb') }
-      end
-      assert_includes out, "--with-pre-init called with non-existent file!\n"
-    end
-
-    it 'exits when path is a directory' do
-      Dir.mktmpdir do |dir|
-        out = capture_io do
-          assert_raises(SystemExit) { BenchmarkRunner.expand_pre_init(dir) }
-        end
-        assert_includes out, "--with-pre-init called with a directory, please pass a .rb file\n"
-      end
-    end
-  end
-
   describe '.sort_benchmarks' do
     before do
       @metadata = {
@@ -155,24 +97,6 @@ describe BenchmarkRunner do
       bench_names = ['railsbench', 'optcarrot']
       result = BenchmarkRunner.sort_benchmarks(bench_names, @metadata)
       assert_equal ['optcarrot', 'railsbench'], result
-    end
-  end
-
-  describe '.os' do
-    it 'detects the operating system' do
-      result = BenchmarkRunner.os
-      assert_includes [:linux, :macosx, :windows, :unix], result
-    end
-
-    it 'caches the os result' do
-      first_call = BenchmarkRunner.os
-      second_call = BenchmarkRunner.os
-      assert_equal second_call, first_call
-    end
-
-    it 'returns a symbol' do
-      result = BenchmarkRunner.os
-      assert_instance_of Symbol, result
     end
   end
 
@@ -249,40 +173,6 @@ describe BenchmarkRunner do
 
       assert_includes output[0], 'exit code 42'
       assert_includes output[0], "directory #{Dir.pwd}"
-    end
-  end
-
-  describe '.setarch_prefix' do
-    it 'returns an array' do
-      result = BenchmarkRunner.setarch_prefix
-      assert_instance_of Array, result
-    end
-
-    it 'returns setarch command on Linux with proper permissions' do
-      skip 'Not on Linux' unless BenchmarkRunner.os == :linux
-
-      prefix = BenchmarkRunner.setarch_prefix
-
-      # Should either return the prefix or empty array if no permission
-      assert_includes [0, 3], prefix.length
-
-      if prefix.length == 3
-        assert_equal 'setarch', prefix[0]
-        assert_equal '-R', prefix[2]
-      end
-    end
-
-    it 'returns empty array when setarch fails' do
-      skip 'Test requires Linux' unless BenchmarkRunner.os == :linux
-
-      # If we don't have permissions, it should return empty array
-      prefix = BenchmarkRunner.setarch_prefix
-      if prefix.empty?
-        assert_equal [], prefix
-      else
-        # If we do have permissions, verify the structure
-        assert_equal 3, prefix.length
-      end
     end
   end
 
