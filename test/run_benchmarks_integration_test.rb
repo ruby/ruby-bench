@@ -3,50 +3,38 @@ require 'shellwords'
 require 'tmpdir'
 require 'fileutils'
 
+# Tests for run_benchmarks.rb script integration
+# This complements benchmark_runner_cli_test.rb by testing:
+# - The script itself as a subprocess
+# - Script structure and permissions
+# - Benchmark metadata validation
 describe 'run_benchmarks.rb integration' do
   before do
     @script_path = File.expand_path('../run_benchmarks.rb', __dir__)
     @ruby_path = RbConfig.ruby
+    @original_env = ENV['BENCHMARK_QUIET']
   end
 
-  describe 'command-line parsing' do
-    it 'shows help with --help flag' do
-      skip 'Skipping integration test - requires full setup'
+  after do
+    if @original_env.nil?
+      ENV.delete('BENCHMARK_QUIET')
+    else
+      ENV['BENCHMARK_QUIET'] = @original_env
     end
+  end
 
-    it 'handles --once flag' do
+  describe 'script execution as subprocess' do
+    it 'runs successfully as a standalone script' do
       Dir.mktmpdir do |tmpdir|
-        # This would set ENV["WARMUP_ITRS"] = "0" and ENV["MIN_BENCH_ITRS"] = "1"
-        cmd = "#{@ruby_path} #{@script_path} --once --name_filters=fib --out_path=#{tmpdir} 2>&1"
+        # Test that the script can be invoked as a subprocess
+        ENV['BENCHMARK_QUIET'] = '1'
+        cmd = "#{@ruby_path} #{@script_path} --once --name_filters=fib --out_path=#{tmpdir} --no-pinning --turbo 2>&1"
         result = `#{cmd}`
+        exit_status = $?.exitstatus
 
-        # Should run but may fail due to missing benchmarks - that's okay
-        # We're just checking the script can parse arguments
-        skip 'Requires benchmark environment' unless $?.success? || result.include?('Running benchmark')
+        assert_equal 0, exit_status, "Script should exit successfully. Output: #{result}"
+        assert_match(/Total time spent benchmarking:/, result)
       end
-    end
-  end
-
-  describe 'output files' do
-    it 'creates output files with correct naming convention' do
-      Dir.mktmpdir do |tmpdir|
-        # Create some mock output files
-        File.write(File.join(tmpdir, 'output_001.csv'), 'test')
-        File.write(File.join(tmpdir, 'output_002.csv'), 'test')
-
-        # The output_path function should find the next number
-        require_relative '../lib/benchmark_runner'
-        output_path = BenchmarkRunner.output_path(tmpdir)
-        expected_path = File.join(tmpdir, 'output_003')
-        assert_equal expected_path, output_path
-      end
-    end
-
-    it 'uses correct output file format' do
-      file_no = 42
-      expected = 'output_042.csv'
-      actual = 'output_%03d.csv' % file_no
-      assert_equal expected, actual
     end
   end
 
