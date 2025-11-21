@@ -18,8 +18,8 @@ ROM_PATH = File.expand_path("../../roms/tobu.gb", $".detect { |x| x.end_with?("/
 # needing to re-initialize but not sure how to determine that.
 COUNT = 500
 
-Ractor.make_shareable(Rubyboy::ApuChannels::Channel1::WAVE_DUTY)
-Ractor.make_shareable(Rubyboy::ApuChannels::Channel2::WAVE_DUTY)
+make_shareable(Rubyboy::ApuChannels::Channel1::WAVE_DUTY)
+make_shareable(Rubyboy::ApuChannels::Channel2::WAVE_DUTY)
 
 run_benchmark(200) do
   # Results are much more consistent if we re-initialize each time.

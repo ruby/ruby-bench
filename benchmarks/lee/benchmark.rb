@@ -87,10 +87,10 @@ require_relative "../../harness/loader"
 Dir.chdir __dir__
 use_gemfile
 
-BOARD = Ractor.make_shareable(board)
-OBSTRUCTED = Ractor.make_shareable(obstructed)
-OUTPUT_FILENAME = Ractor.make_shareable(output_filename)
-EXPANSIONS_DIR = Ractor.make_shareable(expansions_dir)
+BOARD = make_shareable(board)
+OBSTRUCTED = make_shareable(obstructed)
+OUTPUT_FILENAME = make_shareable(output_filename)
+EXPANSIONS_DIR = make_shareable(expansions_dir)
 
 run_benchmark(10) do
   depth = Lee::Matrix.new(BOARD.height, BOARD.width)

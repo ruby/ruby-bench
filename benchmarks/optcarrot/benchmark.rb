@@ -24,7 +24,7 @@ if ENV["RUBY_BENCH_RACTOR_HARNESS"]
     Optcarrot::PPU::NMT_TABLE,
     Optcarrot::CPU::DISPATCH,
     Optcarrot::ROM::MAPPER_DB,
-  ].each { |const| Ractor.make_shareable(const) }
+  ].each { |const| make_shareable(const) }
 
   ROM_PATH = File.join(__dir__, "examples/Lan_Master.nes").freeze
   ENV["WARMUP_ITRS"] = "1"

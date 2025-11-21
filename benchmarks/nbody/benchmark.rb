@@ -134,7 +134,7 @@ offset_momentum(BODIES)
 N = 20000
 NBODIES = BODIES.size
 if ENV["RUBY_BENCH_RACTOR_HARNESS"]
-  Ractor.make_shareable(BODIES)
+  make_shareable(BODIES)
 end
 DT = 0.01
 

@@ -141,6 +141,6 @@ end
 
 # Public domain football data taken from:
 # https://github.com/openfootball/football.json/blob/master/2011-12/at.1.json
-SOURCE = Ractor.make_shareable(IO.read("#{__dir__}/data.json"))
+SOURCE = make_shareable(IO.read("#{__dir__}/data.json"))
 
 run_benchmark(10) { source = SOURCE; 100.times { JSONParser.new(source).parse } }
