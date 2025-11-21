@@ -121011,7 +121011,7 @@ class LotsOfFunctionCalls
   end
 end
 
-require_relative '../harness/loader'
+require_relative '../lib/harness/loader'
 
 INTERNAL_ITRS = Integer(ENV.fetch("INTERNAL_ITRS", 200))
 

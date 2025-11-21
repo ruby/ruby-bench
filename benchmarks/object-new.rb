@@ -1,4 +1,4 @@
-require_relative '../harness/loader'
+require_relative '../lib/harness/loader'
 
 run_benchmark(100) do
   i = 0

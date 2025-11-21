@@ -1,4 +1,4 @@
-require_relative '../harness/loader'
+require_relative '../lib/harness/loader'
 
 TheClass = Struct.new(:v0, :v1, :v2, :levar)
 

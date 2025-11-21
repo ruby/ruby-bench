@@ -5,7 +5,7 @@
 # Intended only for checking whether the benchmark can set itself up properly
 # and can run to completion.
 
-require_relative '../harness/harness-common'
+require_relative '../lib/harness'
 
 def run_benchmark(_hint, **)
   yield

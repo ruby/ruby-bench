@@ -52,7 +52,7 @@ describe BenchmarkSuite do
         categories: ['micro'],
         name_filters: [],
         out_path: @out_path,
-        harness: 'harness'
+        harness: 'default'
       )
 
       assert_equal ['ruby'], suite.ruby
@@ -60,7 +60,7 @@ describe BenchmarkSuite do
       assert_equal ['micro'], suite.categories
       assert_equal [], suite.name_filters
       assert_equal @out_path, suite.out_path
-      assert_equal 'harness', suite.harness
+      assert_equal 'default', suite.harness
       assert_nil suite.pre_init
       assert_equal false, suite.no_pinning
     end
@@ -72,7 +72,7 @@ describe BenchmarkSuite do
         categories: [],
         name_filters: [],
         out_path: @out_path,
-        harness: 'harness',
+        harness: 'default',
         no_pinning: true
       )
 
@@ -86,12 +86,12 @@ describe BenchmarkSuite do
         categories: ['micro'],
         name_filters: [],
         out_path: @out_path,
-        harness: 'harness'
+        harness: 'default'
       )
 
       assert_equal 'benchmarks', suite.bench_dir
       assert_equal 'benchmarks-ractor', suite.ractor_bench_dir
-      assert_equal 'harness', suite.harness
+      assert_equal 'default', suite.harness
       assert_equal ['micro'], suite.categories
     end
 
@@ -102,12 +102,12 @@ describe BenchmarkSuite do
         categories: ['ractor-only'],
         name_filters: [],
         out_path: @out_path,
-        harness: 'harness'
+        harness: 'default'
       )
 
       assert_equal 'benchmarks-ractor', suite.bench_dir
       assert_equal 'benchmarks-ractor', suite.ractor_bench_dir
-      assert_equal 'harness-ractor', suite.harness
+      assert_equal 'ractor', suite.harness
       assert_equal [], suite.categories
     end
 
@@ -118,12 +118,12 @@ describe BenchmarkSuite do
         categories: ['ractor'],
         name_filters: [],
         out_path: @out_path,
-        harness: 'harness'
+        harness: 'default'
       )
 
       assert_equal 'benchmarks', suite.bench_dir
       assert_equal 'benchmarks-ractor', suite.ractor_bench_dir
-      assert_equal 'harness', suite.harness
+      assert_equal 'default', suite.harness
       assert_equal ['ractor'], suite.categories
     end
   end
@@ -136,7 +136,7 @@ describe BenchmarkSuite do
         categories: [],
         name_filters: ['simple'],
         out_path: @out_path,
-        harness: 'harness',
+        harness: 'default',
         no_pinning: true
       )
 
@@ -160,7 +160,7 @@ describe BenchmarkSuite do
         categories: [],
         name_filters: ['simple'],
         out_path: @out_path,
-        harness: 'harness',
+        harness: 'default',
         no_pinning: true
       )
 
@@ -185,7 +185,7 @@ describe BenchmarkSuite do
         categories: [],
         name_filters: ['simple'],
         out_path: @out_path,
-        harness: 'harness',
+        harness: 'default',
         no_pinning: true
       )
 
@@ -208,7 +208,7 @@ describe BenchmarkSuite do
         categories: [],
         name_filters: ['failing'],
         out_path: @out_path,
-        harness: 'harness',
+        harness: 'default',
         no_pinning: true
       )
 
@@ -241,7 +241,7 @@ describe BenchmarkSuite do
         categories: [],
         name_filters: ['subdir'],
         out_path: @out_path,
-        harness: 'harness',
+        harness: 'default',
         no_pinning: true
       )
 
@@ -272,7 +272,7 @@ describe BenchmarkSuite do
         categories: ['ractor-only'],
         name_filters: [],
         out_path: @out_path,
-        harness: 'harness',
+        harness: 'default',
         no_pinning: true
       )
 
@@ -285,8 +285,8 @@ describe BenchmarkSuite do
       assert_includes bench_data, 'ractor_test'
       assert_empty bench_failures
 
-      # harness should be updated to harness-ractor
-      assert_equal 'harness-ractor', suite.harness
+      # harness should be updated to ractor
+      assert_equal 'ractor', suite.harness
     end
 
     it 'includes both regular and ractor benchmarks with ractor category' do
@@ -306,7 +306,7 @@ describe BenchmarkSuite do
         categories: ['ractor'],
         name_filters: [],
         out_path: @out_path,
-        harness: 'harness',
+        harness: 'default',
         no_pinning: true
       )
 
@@ -331,7 +331,7 @@ describe BenchmarkSuite do
         categories: [],
         name_filters: ['simple'],
         out_path: @out_path,
-        harness: 'harness',
+        harness: 'default',
         pre_init: pre_init_file,
         no_pinning: true
       )
@@ -355,7 +355,7 @@ describe BenchmarkSuite do
         categories: [],
         name_filters: ['simple'],
         out_path: @out_path,
-        harness: 'harness',
+        harness: 'default',
         pre_init: pre_init_file,
         no_pinning: true
       )
@@ -377,7 +377,7 @@ describe BenchmarkSuite do
         categories: [],
         name_filters: ['simple'],
         out_path: @out_path,
-        harness: 'harness',
+        harness: 'default',
         pre_init: pre_init_file,
         no_pinning: true
       )
@@ -396,7 +396,7 @@ describe BenchmarkSuite do
             categories: [],
             name_filters: ['simple'],
             out_path: @out_path,
-            harness: 'harness',
+            harness: 'default',
             pre_init: '/nonexistent/file.rb',
             no_pinning: true
           )
@@ -414,7 +414,7 @@ describe BenchmarkSuite do
             categories: [],
             name_filters: ['simple'],
             out_path: @out_path,
-            harness: 'harness',
+            harness: 'default',
             pre_init: @temp_dir,
             no_pinning: true
           )
@@ -430,7 +430,7 @@ describe BenchmarkSuite do
         categories: [],
         name_filters: ['simple'],
         out_path: @out_path,
-        harness: 'harness',
+        harness: 'default',
         no_pinning: true
       )
 
@@ -451,7 +451,7 @@ describe BenchmarkSuite do
         categories: [],
         name_filters: ['simple'],
         out_path: @out_path,
-        harness: 'harness',
+        harness: 'default',
         no_pinning: true
       )
 
@@ -484,7 +484,7 @@ describe BenchmarkSuite do
         categories: [],
         name_filters: ['bench_a'],
         out_path: @out_path,
-        harness: 'harness',
+        harness: 'default',
         no_pinning: true
       )
 
@@ -519,7 +519,7 @@ describe BenchmarkSuite do
         categories: ['micro'],
         name_filters: [],
         out_path: @out_path,
-        harness: 'harness',
+        harness: 'default',
         no_pinning: true
       )
 

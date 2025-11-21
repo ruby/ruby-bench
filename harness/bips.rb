@@ -1,5 +1,5 @@
 require 'benchmark/ips'
-require_relative "../harness/harness-common"
+require_relative "../lib/harness"
 
 puts RUBY_DESCRIPTION
 

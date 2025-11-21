@@ -6,7 +6,7 @@ Small set of benchmarks and scripts for the Ruby programming language.
 The benchmarks are found in the `benchmarks` directory. Individual Ruby files
 in `benchmarks` are microbenchmarks. Subdirectories under `benchmarks` are
 larger macrobenchmarks. Each benchmark relies on a harness found in
-[./harness/harness.rb](harness/harness.rb). The harness controls the number of times a benchmark is
+[./harness/default.rb](harness/default.rb). The harness controls the number of times a benchmark is
 run, and writes timing values into an output file.
 
 The `run_benchmarks.rb` script (optional) traverses the `benchmarks` directory and
@@ -111,19 +111,19 @@ There are two Ractor-related categories:
 
 * **`--category ractor`** - Runs both regular benchmarks marked with `ractor:
   true` in `benchmarks.yml` AND all benchmarks from the `benchmarks-ractor`
-  directory. The `harness-ractor` harness is used for both types of benchmark.
+  directory. The `ractor` harness is used for both types of benchmark.
 
 * **`--category ractor-only`** - Runs ONLY benchmarks from the
   `benchmarks-ractor` directory, ignoring regular benchmarks even if they are
   marked with `ractor: true`. This category also automatically uses the
-  `harness-ractor` harness.
+  `ractor` harness.
 
 ### Directory Structure
 
 The `benchmarks-ractor/` directory sits at the same level as the main
 `benchmarks` directory, and contains Ractor-specific benchmark
 implementations that are designed to test Ractor functionality. They are not
-intended to be used with any harness except `harness-ractor`.
+intended to be used with any harness except `ractor`.
 
 ### Usage Examples
 
@@ -135,7 +135,7 @@ intended to be used with any harness except `harness-ractor`.
 ./run_benchmarks.rb --category ractor-only
 ```
 
-Note: The `harness-ractor` harness is automatically selected when using these
+Note: The `ractor` harness is automatically selected when using these
 categories, so there's no need to specify `--harness` manually.
 
 ## Ruby options
@@ -184,22 +184,38 @@ This file will then be passed to the underlying Ruby interpreter with
 
 ## Harnesses
 
-You can find several test harnesses in this repository:
+You can find several test harnesses in the `harness/` directory:
 
-* harness - the normal default harness, with duration controlled by warmup iterations and time/count limits
-* harness-bips - a harness that measures iterations/second until stable
-* harness-continuous - a harness that adjusts the batch sizes of iterations to run in stable iteration size batches
-* harness-once - a simplified harness that simply runs once
-* harness-perf - a simplified harness that runs for exactly the hinted number of iterations
-* harness-stackprof - a harness to profile the benchmark with stackprof
-* harness-stats - count method calls and loop iterations
-* harness-vernier - a harness to profile the benchmark with vernier
-* harness-warmup - a harness which runs as long as needed to find warmed up (peak) performance
+* `default` - the normal default harness, with duration controlled by warmup iterations and time/count limits
+* `bips` - a harness that measures iterations/second until stable
+* `continuous` - a harness that adjusts the batch sizes of iterations to run in stable iteration size batches
+* `once` - a simplified harness that simply runs once
+* `perf` - a simplified harness that runs for exactly the hinted number of iterations
+* `stackprof` - a harness to profile the benchmark with stackprof
+* `stats` - count method calls and loop iterations
+* `vernier` - a harness to profile the benchmark with vernier
+* `warmup` - a harness which runs as long as needed to find warmed up (peak) performance
+* `chain` - a harness to chain multiple harnesses together
+* `mplr` - a harness for multiple iterations with time limits
 
-To use it, run a benchmark script directly, specifying a harness directory with `-I`:
+To use a specific harness, run a benchmark script directly with `-I` to add the harness directory to the load path, and `-r` to require the specific harness:
 
 ```
+# Use default harness
 ruby -Iharness benchmarks/railsbench/benchmark.rb
+
+# Use the 'once' harness
+ruby -Iharness -ronce benchmarks/railsbench/benchmark.rb
+
+# Use the 'perf' harness
+ruby -Iharness -rperf benchmarks/railsbench/benchmark.rb
+```
+
+When using `run_benchmarks.rb`, you can specify a harness with the `--harness` option:
+
+```
+./run_benchmarks.rb --harness=once
+./run_benchmarks.rb --harness=perf
 ```
 
 There is also a robust but complex CI harness in [the yjit-metrics repo](https://github.com/Shopify/yjit-metrics).
@@ -238,10 +254,10 @@ If `PERF` environment variable is present, it starts the perf subcommand after w
 
 ```sh
 # Use `perf record` for both warmup and benchmark
-perf record ruby --yjit-perf=map -Iharness-perf benchmarks/railsbench/benchmark.rb
+perf record ruby --yjit-perf=map -Iharness -rperf benchmarks/railsbench/benchmark.rb
 
 # Use `perf record` only for benchmark
-PERF=record ruby --yjit-perf=map -Iharness-perf benchmarks/railsbench/benchmark.rb
+PERF=record ruby --yjit-perf=map -Iharness -rperf benchmarks/railsbench/benchmark.rb
 ```
 
 This is the only harness that uses `run_benchmark`'s argument, `num_itrs_hint`.
