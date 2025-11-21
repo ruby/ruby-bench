@@ -157,4 +157,24 @@ describe BenchmarkRunner do
       end
     end
   end
+
+  describe '.render_graph' do
+    it 'delegates to GraphRenderer and returns calculated png_path' do
+      Dir.mktmpdir do |dir|
+        json_path = File.join(dir, 'test.json')
+        expected_png_path = File.join(dir, 'test.png')
+
+        json_data = {
+          metadata: { 'ruby-a' => 'version A' },
+          raw_data: { 'ruby-a' => { 'bench1' => { 'bench' => [1.0] } } }
+        }
+        File.write(json_path, JSON.generate(json_data))
+
+        result = BenchmarkRunner.render_graph(json_path)
+
+        assert_equal expected_png_path, result
+        assert File.exist?(expected_png_path)
+      end
+    end
+  end
 end

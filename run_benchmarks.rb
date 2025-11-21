@@ -126,11 +126,9 @@ puts(output_str)
 puts
 puts "Output:"
 puts out_json_path
+
 if args.graph
-  require_relative 'misc/graph'
-  out_graph_path = output_path + ".png"
-  render_graph(out_json_path, out_graph_path)
-  puts out_graph_path
+  puts BenchmarkRunner.render_graph(out_json_path)
 end
 
 if !bench_failures.empty?
