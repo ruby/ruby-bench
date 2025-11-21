@@ -211,22 +211,38 @@ This file will then be passed to the underlying Ruby interpreter with
 
 ## Harnesses
 
-You can find several test harnesses in this repository:
+You can find several test harnesses in the `harness/` directory:
 
-* harness - the normal default harness, with duration controlled by warmup iterations and time/count limits
-* harness-bips - a harness that measures iterations/second until stable
-* harness-continuous - a harness that adjusts the batch sizes of iterations to run in stable iteration size batches
-* harness-once - a simplified harness that simply runs once
-* harness-perf - a simplified harness that runs for exactly the hinted number of iterations
-* harness-stackprof - a harness to profile the benchmark with stackprof
-* harness-stats - count method calls and loop iterations
-* harness-vernier - a harness to profile the benchmark with vernier
-* harness-warmup - a harness which runs as long as needed to find warmed up (peak) performance
+* `harness` - the normal default harness, with duration controlled by warmup iterations and time/count limits
+* `bips` - a harness that measures iterations/second until stable
+* `continuous` - a harness that adjusts the batch sizes of iterations to run in stable iteration size batches
+* `once` - a simplified harness that simply runs once
+* `perf` - a simplified harness that runs for exactly the hinted number of iterations
+* `stackprof` - a harness to profile the benchmark with stackprof
+* `stats` - count method calls and loop iterations
+* `vernier` - a harness to profile the benchmark with vernier
+* `warmup` - a harness which runs as long as needed to find warmed up (peak) performance
+* `chain` - a harness to chain multiple harnesses together
+* `mplr` - a harness for multiple iterations with time limits
 
-To use it, run a benchmark script directly, specifying a harness directory with `-I`:
+To use a specific harness, run a benchmark script directly with `-I` to add the harness directory to the load path, and `-r` to require the specific harness:
 
 ```
+# Use default harness
 ruby -Iharness benchmarks/railsbench/benchmark.rb
+
+# Use the 'once' harness
+ruby -Iharness -ronce benchmarks/railsbench/benchmark.rb
+
+# Use the 'perf' harness
+ruby -Iharness -rperf benchmarks/railsbench/benchmark.rb
+```
+
+When using `run_benchmarks.rb`, you can specify a harness with the `--harness` option:
+
+```
+./run_benchmarks.rb --harness=once
+./run_benchmarks.rb --harness=perf
 ```
 
 There is also a robust but complex CI harness in [the yjit-metrics repo](https://github.com/Shopify/yjit-metrics).
@@ -265,10 +281,10 @@ If `PERF` environment variable is present, it starts the perf subcommand after w
 
 ```sh
 # Use `perf record` for both warmup and benchmark
-perf record ruby --yjit-perf=map -Iharness-perf benchmarks/railsbench/benchmark.rb
+perf record ruby --yjit-perf=map -Iharness -rperf benchmarks/railsbench/benchmark.rb
 
 # Use `perf record` only for benchmark
-PERF=record ruby --yjit-perf=map -Iharness-perf benchmarks/railsbench/benchmark.rb
+PERF=record ruby --yjit-perf=map -Iharness -rperf benchmarks/railsbench/benchmark.rb
 ```
 
 This is the only harness that uses `run_benchmark`'s argument, `num_itrs_hint`.

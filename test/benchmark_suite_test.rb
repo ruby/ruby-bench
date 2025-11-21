@@ -97,7 +97,7 @@ describe BenchmarkSuite do
 
       assert_equal 'benchmarks-ractor', suite.bench_dir
       assert_equal 'benchmarks-ractor', suite.ractor_bench_dir
-      assert_equal 'harness-ractor', suite.harness
+      assert_equal 'ractor', suite.harness
       assert_equal [], suite.categories
     end
 
@@ -261,8 +261,8 @@ describe BenchmarkSuite do
       assert_includes bench_data, 'ractor_test'
       assert_empty bench_failures
 
-      # harness should be updated to harness-ractor
-      assert_equal 'harness-ractor', suite.harness
+      # harness should be updated to ractor
+      assert_equal 'ractor', suite.harness
     end
 
     it 'includes both regular and ractor benchmarks with ractor category' do

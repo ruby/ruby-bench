@@ -3,11 +3,11 @@
 # Profile the benchmark (ignoring initialization code) using vernier and display the profile.
 # Set NO_VIERWER=1 to disable automatically opening the profile in a browser.
 # Usage:
-# MIN_BENCH_TIME=1 MIN_BENCH_ITRS=1 ruby -v -I harness-vernier benchmarks/...
-# NO_VIEWER=1 MIN_BENCH_TIME=1 MIN_BENCH_ITRS=1 ruby -v -I harness-vernier benchmarks/...
+# MIN_BENCH_TIME=1 MIN_BENCH_ITRS=1 ruby -v -Iharness -rvernier benchmarks/...
+# NO_VIEWER=1 MIN_BENCH_TIME=1 MIN_BENCH_ITRS=1 ruby -v -Iharness -rvernier benchmarks/...
 
-require_relative "../harness/harness-common"
-require_relative "../harness/harness-extra"
+require_relative "harness-common"
+require_relative "harness-extra"
 
 ensure_global_gem("vernier")
 ensure_global_gem_exe("profile-viewer")

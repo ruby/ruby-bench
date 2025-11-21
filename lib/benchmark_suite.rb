@@ -17,7 +17,8 @@ class BenchmarkSuite
   RACTOR_BENCHMARKS_DIR = "benchmarks-ractor"
   RACTOR_ONLY_CATEGORY = ["ractor-only"].freeze
   RACTOR_CATEGORY = ["ractor"].freeze
-  RACTOR_HARNESS = "harness-ractor"
+  RACTOR_HARNESS = "ractor"
+  HARNESS_DIR = File.expand_path("../harness", __dir__)
 
   attr_reader :categories, :name_filters, :excludes, :out_path, :harness, :pre_init, :no_pinning, :bench_dir, :ractor_bench_dir
 
@@ -150,9 +151,18 @@ class BenchmarkSuite
     ENV["RESULT_JSON_PATH"] = result_json_path
 
     # Set up the benchmarking command
+    # If harness is 'harness', use default (no -r needed)
+    # Otherwise use -r to load the specific harness file
+    harness_args = if harness == "harness"
+      []
+    else
+      ["-r", harness]
+    end
+
     cmd = cmd_prefix + [
       *ruby,
-      "-I", harness,
+      "-I", HARNESS_DIR,
+      *harness_args,
       *pre_init,
       script_path,
     ].compact

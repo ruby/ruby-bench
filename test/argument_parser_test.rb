@@ -281,12 +281,12 @@ describe ArgumentParser do
         assert_equal ['headline', 'micro'], args.categories
       end
 
-      it 'sets harness to harness-ractor when category is ractor' do
+      it 'sets harness to ractor when category is ractor' do
         parser = ArgumentParser.new
         args = parser.parse(['--category=ractor'])
 
         assert_equal ['ractor'], args.categories
-        assert_equal 'harness-ractor', args.harness
+        assert_equal 'ractor', args.harness
       end
 
       it 'allows multiple category flags' do
@@ -339,18 +339,18 @@ describe ArgumentParser do
     end
 
     describe '--harness option' do
-      it 'sets harness directory' do
+      it 'sets harness name' do
         parser = ArgumentParser.new
         args = parser.parse(['--harness=once'])
 
-        assert_equal 'harness-once', args.harness
+        assert_equal 'once', args.harness
       end
 
-      it 'accepts harness- prefix' do
+      it 'strips harness- prefix for backward compatibility' do
         parser = ArgumentParser.new
         args = parser.parse(['--harness=harness-stats'])
 
-        assert_equal 'harness-stats', args.harness
+        assert_equal 'stats', args.harness
       end
     end
 

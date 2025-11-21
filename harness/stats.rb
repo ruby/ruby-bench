@@ -1,4 +1,4 @@
-require_relative '../harness/harness'
+require_relative 'harness'
 
 # Using Module#prepend to enable TracePoint right before #run_benchmark
 # while also reusing the original implementation.
