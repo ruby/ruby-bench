@@ -154,11 +154,15 @@ class ResultsTableBuilder
 
   # Sort benchmarks with headlines first, then others, then micro
   def sort_benchmarks(bench_names, metadata)
-    headline_benchmarks = metadata.select { |_, meta| meta['category'] == 'headline' }.keys
-    micro_benchmarks = metadata.select { |_, meta| meta['category'] == 'micro' }.keys
+    bench_names.sort_by { |name| [category_priority(name, metadata), name] }
+  end
 
-    headline_names, bench_names = bench_names.partition { |name| headline_benchmarks.include?(name) }
-    micro_names, other_names = bench_names.partition { |name| micro_benchmarks.include?(name) }
-    headline_names.sort + other_names.sort + micro_names.sort
+  def category_priority(bench_name, metadata)
+    category = metadata.dig(bench_name, 'category') || 'other'
+    case category
+    when 'headline' then 0
+    when 'micro' then 2
+    else 1
+    end
   end
 end
