@@ -1,5 +1,5 @@
 require 'benchmark'
-require_relative 'harness-common'
+require_relative '../lib/harness'
 require_relative '../misc/stats'
 
 MIN_ITERS = Integer(ENV['MIN_ITERS'] || 10)

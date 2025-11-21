@@ -1,7 +1,7 @@
 # Microbenchmark to test the performance of respond_to?
 # This is one of the top most called methods in rack/railsbench
 
-require_relative '../harness/loader'
+require_relative '../lib/harness/loader'
 
 class A
   def foo

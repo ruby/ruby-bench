@@ -6,7 +6,7 @@ Small set of benchmarks and scripts for the Ruby programming language.
 The benchmarks are found in the `benchmarks` directory. Individual Ruby files
 in `benchmarks` are microbenchmarks. Subdirectories under `benchmarks` are
 larger macrobenchmarks. Each benchmark relies on a harness found in
-[./harness/harness.rb](harness/harness.rb). The harness controls the number of times a benchmark is
+[./harness/default.rb](harness/default.rb). The harness controls the number of times a benchmark is
 run, and writes timing values into an output file.
 
 The `run_benchmarks.rb` script (optional) traverses the `benchmarks` directory and
@@ -111,19 +111,19 @@ There are two Ractor-related categories:
 
 * **`--category ractor`** - Runs both regular benchmarks marked with `ractor:
   true` in `benchmarks.yml` AND all benchmarks from the `benchmarks-ractor`
-  directory. The `harness-ractor` harness is used for both types of benchmark.
+  directory. The `ractor` harness is used for both types of benchmark.
 
 * **`--category ractor-only`** - Runs ONLY benchmarks from the
   `benchmarks-ractor` directory, ignoring regular benchmarks even if they are
   marked with `ractor: true`. This category also automatically uses the
-  `harness-ractor` harness.
+  `ractor` harness.
 
 ### Directory Structure
 
 The `benchmarks-ractor/` directory sits at the same level as the main
 `benchmarks` directory, and contains Ractor-specific benchmark
 implementations that are designed to test Ractor functionality. They are not
-intended to be used with any harness except `harness-ractor`.
+intended to be used with any harness except `ractor`.
 
 ### Usage Examples
 
@@ -135,7 +135,7 @@ intended to be used with any harness except `harness-ractor`.
 ./run_benchmarks.rb --category ractor-only
 ```
 
-Note: The `harness-ractor` harness is automatically selected when using these
+Note: The `ractor` harness is automatically selected when using these
 categories, so there's no need to specify `--harness` manually.
 
 ## Ruby options
@@ -186,7 +186,7 @@ This file will then be passed to the underlying Ruby interpreter with
 
 You can find several test harnesses in the `harness/` directory:
 
-* `harness` - the normal default harness, with duration controlled by warmup iterations and time/count limits
+* `default` - the normal default harness, with duration controlled by warmup iterations and time/count limits
 * `bips` - a harness that measures iterations/second until stable
 * `continuous` - a harness that adjusts the batch sizes of iterations to run in stable iteration size batches
 * `once` - a simplified harness that simply runs once

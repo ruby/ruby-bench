@@ -97,9 +97,9 @@ class BenchmarkSuite
     ENV["RESULT_JSON_PATH"] = result_json_path
 
     # Set up the benchmarking command
-    # If harness is 'harness', use default (no -r needed)
+    # If harness is 'default', use default (no -r needed)
     # Otherwise use -r to load the specific harness file
-    harness_args = if harness == "harness"
+    harness_args = if harness == "default"
       []
     else
       ["-r", harness]

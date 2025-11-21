@@ -37,7 +37,7 @@ describe BenchmarkRunner::CLI do
       executables: { 'interp' => [RbConfig.ruby], 'yjit' => [RbConfig.ruby, '--yjit'] },
       out_path: nil,
       out_override: nil,
-      harness: 'harness',
+      harness: 'default',
       yjit_opts: '',
       categories: [],
       name_filters: [],

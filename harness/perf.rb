@@ -10,7 +10,7 @@
 # condition is possible where the benchmark finishes before the perf(1)
 # subprocess has a chance to attach, in which case perf outputs no profile.
 
-require_relative "harness-common"
+require_relative "../lib/harness"
 
 # Run $WARMUP_ITRS or 10 iterations of a given block. Then run $MIN_BENCH_ITRS
 # or `num_itrs_int` iterations of the block, attaching a perf command to the

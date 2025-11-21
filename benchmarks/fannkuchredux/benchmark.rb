@@ -56,7 +56,7 @@ end
 #n = (ARGV[0] || 1).to_i
 N = 9 # Benchmarks Game uses n = 12, but it's too slow
 
-require_relative '../../harness/loader'
+require_relative '../../lib/harness/loader'
 
 run_benchmark(10) do
   sum, flips = fannkuch(N)
