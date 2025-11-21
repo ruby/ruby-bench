@@ -146,10 +146,12 @@ class ResultsTableBuilder
   end
 
   def compute_bench_names
-    # Get keys from all rows in case a benchmark failed for only some executables
-    all_bench_names = @bench_data.map { |k, v| v.keys }.flatten.uniq
     benchmarks_metadata = YAML.load_file('benchmarks.yml')
-    sort_benchmarks(all_bench_names, benchmarks_metadata)
+    sort_benchmarks(all_benchmark_names, benchmarks_metadata)
+  end
+
+  def all_benchmark_names
+    @bench_data.values.flat_map(&:keys).uniq
   end
 
   # Sort benchmarks with headlines first, then others, then micro
