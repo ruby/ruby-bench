@@ -2,15 +2,15 @@
 
 # Filters benchmarks based on categories and name patterns
 class BenchmarkFilter
-  def initialize(categories:, name_filters:, metadata:)
+  def initialize(categories:, name_filters:, metadata:, directory_map: {})
     @categories = categories
     @name_filters = process_name_filters(name_filters)
     @metadata = metadata
     @category_cache = {}
+    @directory_map = directory_map
   end
 
-  def match?(entry)
-    name = entry.sub(/\.rb\z/, '')
+  def match?(name)
     matches_category?(name) && matches_name_filter?(name)
   end
 
@@ -26,7 +26,27 @@ class BenchmarkFilter
   def matches_name_filter?(name)
     return true if @name_filters.empty?
 
-    @name_filters.any? { |filter| filter === name }
+    @name_filters.any? do |filter|
+      if filter.is_a?(Regexp)
+        filter === name
+      else
+        # Exact match
+        next true if filter == name
+
+        matches_prefix_in_same_directory?(name, filter)
+      end
+    end
+  end
+
+  # Prefix match only for benchmarks in the same directory
+  # e.g., "addressable" matches "addressable-equality" if they're in the same dir
+  # but "erubi" does NOT match "erubi-rails" if they're in different dirs
+  def matches_prefix_in_same_directory?(name, filter)
+    return false unless name.start_with?("#{filter}-")
+
+    benchmark_dir = @directory_map[name]
+    # Only match if the benchmark is in a directory with the filter name
+    benchmark_dir == filter
   end
 
   def get_benchmark_categories(name)
