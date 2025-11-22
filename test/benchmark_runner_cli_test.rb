@@ -33,8 +33,13 @@ describe BenchmarkRunner::CLI do
 
   # Helper method to create args directly without parsing
   def create_args(overrides = {})
+    if RUBY_ENGINE == 'truffleruby'
+      executables = { 'truffleruby' => [RbConfig.ruby] }
+    else
+      executables = { 'interp' => [RbConfig.ruby], 'yjit' => [RbConfig.ruby, '--yjit'] }
+    end
     defaults = {
-      executables: { 'interp' => [RbConfig.ruby], 'yjit' => [RbConfig.ruby, '--yjit'] },
+      executables: executables,
       out_path: nil,
       out_override: nil,
       harness: 'harness',
