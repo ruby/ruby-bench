@@ -40,6 +40,7 @@ module BenchmarkRunner
           ruby_description: ruby_descriptions[name],
           categories: args.categories,
           name_filters: args.name_filters,
+          excludes: args.excludes,
           out_path: args.out_path,
           harness: args.harness,
           pre_init: args.with_pre_init,

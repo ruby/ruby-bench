@@ -18,13 +18,14 @@ class BenchmarkSuite
   RACTOR_CATEGORY = ["ractor"].freeze
   RACTOR_HARNESS = "harness-ractor"
 
-  attr_reader :ruby, :ruby_description, :categories, :name_filters, :out_path, :harness, :pre_init, :no_pinning, :bench_dir, :ractor_bench_dir
+  attr_reader :ruby, :ruby_description, :categories, :name_filters, :excludes, :out_path, :harness, :pre_init, :no_pinning, :bench_dir, :ractor_bench_dir
 
-  def initialize(ruby:, ruby_description:, categories:, name_filters:, out_path:, harness:, pre_init: nil, no_pinning: false)
+  def initialize(ruby:, ruby_description:, categories:, name_filters:, excludes: [], out_path:, harness:, pre_init: nil, no_pinning: false)
     @ruby = ruby
     @ruby_description = ruby_description
     @categories = categories
     @name_filters = name_filters
+    @excludes = excludes
     @out_path = out_path
     @harness = harness
     @pre_init = pre_init ? expand_pre_init(pre_init) : nil
@@ -148,6 +149,7 @@ class BenchmarkSuite
     @main_benchmark_filter ||= BenchmarkFilter.new(
       categories: categories,
       name_filters: name_filters,
+      excludes: excludes,
       metadata: benchmarks_metadata
     )
   end
@@ -156,6 +158,7 @@ class BenchmarkSuite
     @ractor_benchmark_filter ||= BenchmarkFilter.new(
       categories: [],
       name_filters: name_filters,
+      excludes: excludes,
       metadata: benchmarks_metadata
     )
   end

@@ -41,6 +41,7 @@ describe BenchmarkRunner::CLI do
       yjit_opts: '',
       categories: [],
       name_filters: [],
+      excludes: [],
       rss: false,
       graph: false,
       no_pinning: true,
