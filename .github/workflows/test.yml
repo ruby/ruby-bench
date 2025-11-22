@@ -36,7 +36,6 @@ jobs:
 
       - name: Run tests
         run: rake test
-        continue-on-error: ${{ matrix.ruby == 'truffleruby' }}
 
   benchmark-default:
     runs-on: ubuntu-latest
