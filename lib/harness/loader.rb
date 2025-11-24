@@ -1,9 +1,9 @@
-# Use harness/default.rb by default. You can change it with -r option.
-# The -r option should be specified BEFORE requiring loader.
+# Use harness/default.rb by default. You can change it with the --harness option in run_once.rb
+# or with -r option when calling Ruby directly.
 # Examples:
-#   ruby benchmarks/railsbench/benchmark.rb                      # uses harness/default.rb
-#   ruby -r./harness/once benchmarks/railsbench/benchmark.rb     # uses harness/once.rb
-#   ruby -r./harness/ractor benchmarks/railsbench/benchmark.rb   # uses harness/ractor.rb
+#   ./run_once.rb benchmarks/railsbench/benchmark.rb                  # uses harness/default.rb
+#   ./run_once.rb --harness=once benchmarks/railsbench/benchmark.rb   # uses harness/once.rb
+#   ./run_once.rb --harness=ractor benchmarks/railsbench/benchmark.rb # uses harness/ractor.rb
 
 # Only load the default harness if no other harness has defined run_benchmark
 unless defined?(run_benchmark)

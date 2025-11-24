@@ -141,8 +141,8 @@ jobs:
         with:
           ruby-version: head
 
-      - name: Test run_once.sh
-        run: ./run_once.sh --yjit-stats benchmarks/railsbench/benchmark.rb
+      - name: Test run_once.rb
+        run: ./run_once.rb -- --yjit-stats benchmarks/railsbench/benchmark.rb
 
   all-tests:
     runs-on: ubuntu-latest

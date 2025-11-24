@@ -3,8 +3,8 @@
 # Profile the benchmark (ignoring initialization code) with stackprof.
 # Customize stackprof options with an env var of STACKPROF_OPTS='key:value,...'.
 # Usage:
-# STACKPROF_OPTS='mode:object' MIN_BENCH_TIME=0 MIN_BENCH_ITRS=1 ruby -v -r./harness/stackprof benchmarks/.../benchmark.rb
-# STACKPROF_OPTS='mode:cpu,interval:10' MIN_BENCH_TIME=1 MIN_BENCH_ITRS=10 ruby -v -r./harness/stackprof benchmarks/.../benchmark.rb
+# STACKPROF_OPTS='mode:object' ./run_once.rb --harness=stackprof benchmarks/.../benchmark.rb
+# STACKPROF_OPTS='mode:cpu,interval:10' MIN_BENCH_ITRS=10 ./run_once.rb --harness=stackprof benchmarks/.../benchmark.rb
 
 require_relative "../lib/harness"
 require_relative "../lib/harness/extra"
