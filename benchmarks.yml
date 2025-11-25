@@ -170,6 +170,11 @@ getivar:
   category: micro
   single_file: true
   ractor: true
+getivar-module:
+  desc: getivar tests the performance of getting instance variable values from modules.
+  category: micro
+  single_file: true
+  ractor: true
 structaref:
   desc: structaref tests the performance of getting Struct members
   category: micro
