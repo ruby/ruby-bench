@@ -34,7 +34,8 @@ def run_benchmark(n, **kwargs, &block)
       $current_harness = h
       require_relative path
     rescue LoadError => e
-      if e.path == path
+      expected_path = File.expand_path(h, __dir__)
+      if e.path == expected_path
         $stderr.puts "Can't find harness #{h}.rb in harness/. Exiting."
         exit 1
       end
