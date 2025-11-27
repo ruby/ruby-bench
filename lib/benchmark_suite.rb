@@ -9,6 +9,7 @@ require 'yaml'
 require 'rbconfig'
 require_relative 'benchmark_filter'
 require_relative 'benchmark_runner'
+require_relative 'benchmark_discovery'
 
 # BenchmarkSuite runs a collection of benchmarks and collects their results
 class BenchmarkSuite
@@ -41,20 +42,18 @@ class BenchmarkSuite
     bench_data = {}
     bench_failures = {}
 
-    bench_file_grouping.each do |bench_dir, bench_files|
-      bench_files.each_with_index do |entry, idx|
-        bench_name = entry.delete_suffix('.rb')
+    benchmark_entries = discover_benchmarks
 
-        puts("Running benchmark \"#{bench_name}\" (#{idx+1}/#{bench_files.length})")
+    benchmark_entries.each_with_index do |entry, idx|
+      puts("Running benchmark \"#{entry.name}\" (#{idx+1}/#{benchmark_entries.length})")
 
-        result_json_path = File.join(out_path, "temp#{Process.pid}.json")
-        result = run_single_benchmark(bench_dir, entry, result_json_path)
+      result_json_path = File.join(out_path, "temp#{Process.pid}.json")
+      result = run_single_benchmark(entry.script_path, result_json_path)
 
-        if result[:success]
-          bench_data[bench_name] = process_benchmark_result(result_json_path, result[:command])
-        else
-          bench_failures[bench_name] = result[:status].exitstatus
-        end
+      if result[:success]
+        bench_data[entry.name] = process_benchmark_result(result_json_path, result[:command])
+      else
+        bench_failures[entry.name] = result[:status].exitstatus
       end
     end
 
@@ -82,14 +81,68 @@ class BenchmarkSuite
     end
   end
 
-  def run_single_benchmark(bench_dir, entry, result_json_path)
-    # Path to the benchmark runner script
-    script_path = File.join(bench_dir, entry)
+  def discover_benchmarks
+    all_entries = discover_all_benchmark_entries
+    directory_map = build_directory_map(all_entries)
+    filter_benchmarks(all_entries, directory_map)
+  end
 
-    unless script_path.end_with?('.rb')
-      script_path = File.join(script_path, 'benchmark.rb')
+  def discover_all_benchmark_entries
+    main_discovery = BenchmarkDiscovery.new(bench_dir)
+    main_entries = main_discovery.discover
+
+    ractor_entries = if benchmark_ractor_directory?
+      ractor_discovery = BenchmarkDiscovery.new(ractor_bench_dir)
+      ractor_discovery.discover
+    else
+      []
     end
 
+    { main: main_entries, ractor: ractor_entries }
+  end
+
+  def build_directory_map(all_entries)
+    combined_entries = all_entries[:main] + all_entries[:ractor]
+    combined_entries.each_with_object({}) do |entry, map|
+      map[entry.name] = entry.directory
+    end
+  end
+
+  def filter_benchmarks(all_entries, directory_map)
+    main_benchmarks = filter_entries(
+      all_entries[:main],
+      categories: categories,
+      name_filters: name_filters,
+      excludes: excludes,
+      directory_map: directory_map
+    )
+
+    if benchmark_ractor_directory?
+      ractor_benchmarks = filter_entries(
+        all_entries[:ractor],
+        categories: [],
+        name_filters: name_filters,
+        excludes: excludes,
+        directory_map: directory_map
+      )
+      main_benchmarks + ractor_benchmarks
+    else
+      main_benchmarks
+    end
+  end
+
+  def filter_entries(entries, categories:, name_filters:, excludes:, directory_map:)
+    filter = BenchmarkFilter.new(
+      categories: categories,
+      name_filters: name_filters,
+      excludes: excludes,
+      metadata: benchmarks_metadata,
+      directory_map: directory_map
+    )
+    entries.select { |entry| filter.match?(entry.name) }
+  end
+
+  def run_single_benchmark(script_path, result_json_path)
     # Fix for jruby/jruby#7394 in JRuby 9.4.2.0
     script_path = File.expand_path(script_path)
 
@@ -132,45 +185,8 @@ class BenchmarkSuite
     end
   end
 
-  def bench_file_grouping
-    grouping = { bench_dir => filtered_bench_entries(bench_dir, main_benchmark_filter) }
-
-    if benchmark_ractor_directory?
-      # We ignore the category filter here because everything in the
-      # benchmarks-ractor directory should be included when we're benchmarking the
-      # Ractor category
-      grouping[ractor_bench_dir] = filtered_bench_entries(ractor_bench_dir, ractor_benchmark_filter)
-    end
-
-    grouping
-  end
-
-  def main_benchmark_filter
-    @main_benchmark_filter ||= BenchmarkFilter.new(
-      categories: categories,
-      name_filters: name_filters,
-      excludes: excludes,
-      metadata: benchmarks_metadata
-    )
-  end
-
-  def ractor_benchmark_filter
-    @ractor_benchmark_filter ||= BenchmarkFilter.new(
-      categories: [],
-      name_filters: name_filters,
-      excludes: excludes,
-      metadata: benchmarks_metadata
-    )
-  end
-
   def benchmarks_metadata
     @benchmarks_metadata ||= YAML.load_file('benchmarks.yml')
-  end
-
-  def filtered_bench_entries(dir, filter)
-    Dir.children(dir).sort.filter do |entry|
-      filter.match?(entry)
-    end
   end
 
   def benchmark_ractor_directory?
