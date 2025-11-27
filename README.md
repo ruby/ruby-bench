@@ -260,6 +260,25 @@ When using `run_benchmarks.rb`, you can specify a harness with the `--harness` o
 
 There is also a robust but complex CI harness in [the yjit-metrics repo](https://github.com/Shopify/yjit-metrics).
 
+### Chain harness
+
+The `chain` harness allows you to combine multiple harnesses together. This is useful when you want to run a benchmark through multiple analysis tools or measurement approaches in sequence.
+
+Use the `HARNESS_CHAIN` environment variable to specify which harnesses to chain (comma-separated, at least 2 required):
+
+```bash
+# Chain the 'once' and 'default' harnesses (runs benchmark once, then with default iterations)
+HARNESS=chain HARNESS_CHAIN="once,default" ruby benchmarks/fib.rb
+
+# Profile with vernier while using ractor harness
+HARNESS=chain HARNESS_CHAIN="vernier,ractor" ruby benchmarks-ractor/some_benchmark.rb
+
+# Using run_once.rb
+HARNESS_CHAIN="once,default" ./run_once.rb --harness=chain benchmarks/fib.rb
+```
+
+The harnesses are executed in the order specified, with each harness wrapping the previous one.
+
 ### Iterations and duration
 
 With the default harness, the number of iterations and duration
