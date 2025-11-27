@@ -93,13 +93,13 @@ To run one or more specific benchmarks and record the data:
 
 ### Running a single benchmark
 
-The easiest way to run a single benchmark once is using the `run_once.rb` script:
+This is the easiest way to run a single benchmark.
+It requires no setup at all and assumes nothing about the Ruby you are benchmarking.
+It's also convenient for profiling, debugging, etc, especially since all benchmarked code runs in that process.
 
+```bash
+ruby benchmarks/fib.rb
 ```
-./run_once.rb benchmarks/some_benchmark.rb
-```
-
-This automatically sets the environment to run the benchmark once (no warmup iterations).
 
 ### Benchmark organization
 
@@ -225,34 +225,35 @@ You can find several test harnesses in the `harness/` directory:
 * `chain` - a harness to chain multiple harnesses together
 * `mplr` - a harness for multiple iterations with time limits
 
-To use a specific harness, use the `run_once.rb` script:
+### Selecting a harness
 
+**Using the `HARNESS` environment variable**
+
+```bash
+# Run with specific harness
+HARNESS=perf ruby benchmarks/fib.rb
+HARNESS=stackprof ruby benchmarks/railsbench/benchmark.rb
+HARNESS=vernier ruby benchmarks/optcarrot/benchmark.rb
+
+# Combine with Ruby options
+HARNESS=perf ruby --yjit benchmarks/fib.rb
+HARNESS=once ruby --yjit-stats benchmarks/railsbench/benchmark.rb
 ```
-# Use default harness
-./run_once.rb benchmarks/railsbench/benchmark.rb
 
-# Use the 'once' harness
-./run_once.rb --harness=once benchmarks/railsbench/benchmark.rb
+**Alternative: Use `run_once.rb` with `--harness` option**:
 
-# Use the 'perf' harness
+```bash
 ./run_once.rb --harness=perf benchmarks/railsbench/benchmark.rb
+./run_once.rb --harness=stackprof benchmarks/fib.rb
 
-# Use the 'stackprof' harness
-./run_once.rb --harness=stackprof benchmarks/railsbench/benchmark.rb
-
-# Use the 'vernier' harness
-./run_once.rb --harness=vernier benchmarks/railsbench/benchmark.rb
-
-# Pass Ruby options like --yjit (use -- separator)
+# With Ruby options (use -- separator)
 ./run_once.rb -- --yjit benchmarks/railsbench/benchmark.rb
-
-# Combine harness option with Ruby options
-./run_once.rb --harness=default -- --yjit-stats benchmarks/railsbench/benchmark.rb
+./run_once.rb --harness=perf -- --yjit-stats benchmarks/fib.rb
 ```
 
 When using `run_benchmarks.rb`, you can specify a harness with the `--harness` option:
 
-```
+```bash
 ./run_benchmarks.rb --harness=once
 ./run_benchmarks.rb --harness=perf
 ```
@@ -278,10 +279,13 @@ You can also use `--warmup`, `--bench`, or `--once` to set these environment var
 ./run_benchmarks.rb railsbench --once
 ```
 
-You can also use the `run_once.rb` script to run benchmarks just once, for example
-with the `--yjit-stats` command-line option:
+You can also run a single benchmark directly with Ruby:
 
-```
+```bash
+# Run once with YJIT stats
+ruby --yjit-stats benchmarks/railsbench/benchmark.rb
+
+# Or use run_once.rb script
 ./run_once.rb -- --yjit-stats benchmarks/railsbench/benchmark.rb
 ```
 
@@ -290,13 +294,12 @@ with the `--yjit-stats` command-line option:
 There is also a harness to use Linux perf. By default, it only runs a fixed number of iterations.
 If `PERF` environment variable is present, it starts the perf subcommand after warmup.
 
-```sh
+```bash
 # Use `perf record` for both warmup and benchmark
-perf record ./run_once.rb --harness=perf -- --yjit-perf=map benchmarks/railsbench/benchmark.rb
+HARNESS=perf perf record ruby --yjit-perf=map benchmarks/railsbench/benchmark.rb
 
 # Use `perf record` only for benchmark
-PERF=record ./run_once.rb --harness=perf -- --yjit-perf=map benchmarks/railsbench/benchmark.rb
-```
+HARNESS=perf PERF=record ruby --yjit-perf=map benchmarks/railsbench/benchmark.rb
 
 This is the only harness that uses `run_benchmark`'s argument, `num_itrs_hint`.
 

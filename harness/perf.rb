@@ -3,7 +3,7 @@
 # This is a relatively minimal harness meant for use with Linux perf(1).
 # Example usage:
 #
-#    $ PERF='record -e cycles' ./run_once.rb --harness=perf benchmarks/fib.rb
+#    $ PERF='record -e cycles' HARNESS=perf ruby benchmarks/fib.rb
 #
 # When recording with perf(1), make sure the benchmark runs long enough; you
 # can tweak the MIN_BENCH_ITRS environment variable to lengthen the run. A race
