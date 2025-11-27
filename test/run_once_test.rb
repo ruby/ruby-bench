@@ -8,10 +8,11 @@ describe 'run_once.rb' do
     @script_path = File.expand_path('../run_once.rb', __dir__)
     @original_env = ENV.to_h
 
-    # Create a temp directory with test benchmarks
     @tmpdir = Dir.mktmpdir
     @test_benchmark = File.join(@tmpdir, 'test_benchmark.rb')
+    loader_path = File.expand_path('../lib/harness/loader', __dir__)
     File.write(@test_benchmark, <<~RUBY)
+      require "#{loader_path}"
       puts "Benchmark executed"
       puts "WARMUP_ITRS=\#{ENV['WARMUP_ITRS']}"
       puts "MIN_BENCH_ITRS=\#{ENV['MIN_BENCH_ITRS']}"
@@ -21,12 +22,10 @@ describe 'run_once.rb' do
 
   after do
     FileUtils.rm_rf(@tmpdir) if @tmpdir && Dir.exist?(@tmpdir)
-    # Restore original environment
     ENV.replace(@original_env)
   end
 
   def run_script(*args)
-    # Run the script and capture output
     Open3.capture3('ruby', @script_path, *args)
   end
 
@@ -71,7 +70,6 @@ describe 'run_once.rb' do
     end
 
     it 'loads custom harness when specified' do
-      # Create a test harness
       harness_dir = File.join(File.dirname(@script_path), 'harness')
       FileUtils.mkdir_p(harness_dir)
       test_harness = File.join(harness_dir, 'test_harness.rb')
@@ -82,6 +80,26 @@ describe 'run_once.rb' do
         RUBY
 
         stdout, _stderr, status = run_script('--harness=test_harness', @test_benchmark)
+
+        assert status.success?
+        assert_match(/TEST HARNESS LOADED/, stdout)
+      ensure
+        File.delete(test_harness) if File.exist?(test_harness)
+      end
+    end
+
+    it 'respects HARNESS environment variable when no --harness option provided' do
+      harness_dir = File.join(File.dirname(@script_path), 'harness')
+      FileUtils.mkdir_p(harness_dir)
+      test_harness = File.join(harness_dir, 'test_harness.rb')
+
+      begin
+        File.write(test_harness, <<~RUBY)
+          puts "TEST HARNESS LOADED"
+        RUBY
+
+        env = { 'HARNESS' => 'test_harness' }
+        stdout, _stderr, status = Open3.capture3(env, 'ruby', @script_path, @test_benchmark)
 
         assert status.success?
         assert_match(/TEST HARNESS LOADED/, stdout)
@@ -101,7 +119,6 @@ describe 'run_once.rb' do
 
   describe 'ractor benchmark detection' do
     it 'automatically uses ractor harness for ractor benchmarks' do
-      # Create a ractor benchmark
       ractor_dir = File.join(@tmpdir, 'benchmarks-ractor', 'test')
       FileUtils.mkdir_p(ractor_dir)
       ractor_benchmark = File.join(ractor_dir, 'benchmark.rb')
@@ -109,15 +126,12 @@ describe 'run_once.rb' do
 
       _stdout, _stderr, _status = run_script(ractor_benchmark)
 
-      # The script will try to load ractor harness
-      # We just verify it detected the ractor path
       assert_match(/benchmarks-ractor/, ractor_benchmark)
     end
   end
 
   describe 'Ruby options pass-through' do
     it 'passes Ruby options after -- separator' do
-      # Create a benchmark that checks for a warning flag
       warning_benchmark = File.join(@tmpdir, 'warning_test.rb')
       File.write(warning_benchmark, <<~RUBY)
         x = 1
@@ -187,7 +201,6 @@ describe 'run_once.rb' do
 
   describe 'script examples' do
     it 'works with simple benchmark path' do
-      # Simulates: ./run_once.rb benchmarks/fib.rb
       fib_benchmark = File.join(@tmpdir, 'fib.rb')
       File.write(fib_benchmark, 'puts "Fibonacci benchmark"')
 
@@ -198,7 +211,6 @@ describe 'run_once.rb' do
     end
 
     it 'works with harness option' do
-      # Simulates: ./run_once.rb --harness=default benchmarks/fib.rb
       stdout, _stderr, status = run_script('--harness=default', @test_benchmark)
 
       assert status.success?
@@ -206,7 +218,6 @@ describe 'run_once.rb' do
     end
 
     it 'works with Ruby options after -- separator' do
-      # Simulates: ./run_once.rb -- --yjit benchmarks/fib.rb
       stdout, _stderr, status = run_script('--', '--yjit', @test_benchmark)
 
       assert status.success?
@@ -228,7 +239,6 @@ describe 'run_once.rb' do
     end
 
     it 'identifies first .rb file as benchmark' do
-      # Even if multiple .rb files mentioned (shouldn't happen), first one wins
       other_file = File.join(@tmpdir, 'other.rb')
       File.write(other_file, 'puts "Wrong file"')
 
@@ -244,6 +254,38 @@ describe 'run_once.rb' do
 
       refute status.success?
       assert_match(/invalid option|Error/, stdout)
+    end
+  end
+
+  describe 'direct ruby execution with HARNESS env var' do
+    it 'uses HARNESS environment variable when running benchmark directly' do
+      harness_dir = File.join(File.dirname(@script_path), 'harness')
+      FileUtils.mkdir_p(harness_dir)
+      direct_harness = File.join(harness_dir, 'direct_test.rb')
+
+      begin
+        File.write(direct_harness, <<~RUBY)
+          puts "DIRECT HARNESS RUNNING"
+        RUBY
+
+        env = { 'HARNESS' => 'direct_test' }
+        stdout, _stderr, status = Open3.capture3(env, 'ruby', @test_benchmark)
+
+        assert status.success?, "Direct Ruby execution should work with HARNESS env var"
+        assert_match(/DIRECT HARNESS RUNNING/, stdout)
+        assert_match(/Benchmark executed/, stdout)
+      ensure
+        File.delete(direct_harness) if File.exist?(direct_harness)
+      end
+    end
+
+    it 'shows helpful error for invalid HARNESS value' do
+      env = { 'HARNESS' => 'nonexistent_harness' }
+      _stdout, stderr, status = Open3.capture3(env, 'ruby', @test_benchmark)
+
+      refute status.success?
+      assert_match(/Harness 'nonexistent_harness' not found/, stderr)
+      assert_match(/Available harnesses/, stderr)
     end
   end
 end
