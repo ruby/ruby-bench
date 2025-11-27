@@ -11,6 +11,7 @@ class ArgumentParser
     :yjit_opts,
     :categories,
     :name_filters,
+    :excludes,
     :rss,
     :graph,
     :no_pinning,
@@ -80,6 +81,10 @@ class ArgumentParser
 
       opts.on("--name_filters=x,y,z", Array, "when given, only benchmarks with names that contain one of these strings will run") do |list|
         args.name_filters = list
+      end
+
+      opts.on("--excludes=x,y,z", Array, "excludes the listed benchmarks") do |list|
+        args.excludes = list
       end
 
       opts.on("--skip-yjit", "Don't run with yjit after interpreter") do
@@ -174,6 +179,7 @@ class ArgumentParser
       yjit_opts: "",
       categories: [],
       name_filters: [],
+      excludes: [],
       rss: false,
       graph: false,
       no_pinning: false,

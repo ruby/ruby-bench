@@ -2,16 +2,17 @@
 
 # Filters benchmarks based on categories and name patterns
 class BenchmarkFilter
-  def initialize(categories:, name_filters:, metadata:)
+  def initialize(categories:, name_filters:, excludes:, metadata:)
     @categories = categories
     @name_filters = process_name_filters(name_filters)
+    @excludes = excludes
     @metadata = metadata
     @category_cache = {}
   end
 
   def match?(entry)
     name = entry.sub(/\.rb\z/, '')
-    matches_category?(name) && matches_name_filter?(name)
+    matches_category?(name) && matches_name_filter?(name) && !matches_excludes?(name)
   end
 
   private
@@ -27,6 +28,10 @@ class BenchmarkFilter
     return true if @name_filters.empty?
 
     @name_filters.any? { |filter| filter === name }
+  end
+
+  def matches_excludes?(name)
+    @excludes.include?(name)
   end
 
   def get_benchmark_categories(name)
