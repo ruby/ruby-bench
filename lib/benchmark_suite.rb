@@ -206,18 +206,9 @@ class BenchmarkSuite
     ENV["RESULT_JSON_PATH"] = result_json_path
 
     # Set up the benchmarking command
-    # If harness is 'default', use default (no -r needed)
-    # Otherwise use -r to load the specific harness file with full path
-    harness_args = if benchmark_harness == "default"
-      []
-    else
-      harness_path = File.join(HARNESS_DIR, benchmark_harness)
-      ["-r", harness_path]
-    end
-
     cmd = (cmd_prefix + [
       *ruby,
-      *harness_args,
+      *harness_args_for(benchmark_harness),
       *pre_init,
       script_path,
     ].compact).map(&:to_s)
@@ -337,6 +328,17 @@ class BenchmarkSuite
     return [] unless system(*prefix, "true", out: File::NULL, err: File::NULL)
 
     prefix
+  end
+
+  # If harness is 'default', use default (no -r needed)
+  # Otherwise use -r to load the specific harness file with full path
+  def harness_args_for(benchmark_harness)
+    @harness_args ||= {}
+    @harness_args[benchmark_harness] ||= if benchmark_harness == "default"
+      []
+    else
+      ["-r", File.join(HARNESS_DIR, benchmark_harness)]
+    end
   end
 
   # Resolve the pre_init file path into a form that can be required
