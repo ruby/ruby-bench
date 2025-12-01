@@ -47,16 +47,12 @@ describe BenchmarkSuite do
   describe '#initialize' do
     it 'sets all required attributes' do
       suite = BenchmarkSuite.new(
-        ruby: ['ruby'],
-        ruby_description: 'ruby 3.2.0',
         categories: ['micro'],
         name_filters: [],
         out_path: @out_path,
         harness: 'harness'
       )
 
-      assert_equal ['ruby'], suite.ruby
-      assert_equal 'ruby 3.2.0', suite.ruby_description
       assert_equal ['micro'], suite.categories
       assert_equal [], suite.name_filters
       assert_equal @out_path, suite.out_path
@@ -67,8 +63,6 @@ describe BenchmarkSuite do
 
     it 'accepts optional parameters' do
       suite = BenchmarkSuite.new(
-        ruby: ['ruby'],
-        ruby_description: 'ruby 3.2.0',
         categories: [],
         name_filters: [],
         out_path: @out_path,
@@ -81,8 +75,6 @@ describe BenchmarkSuite do
 
     it 'sets bench_dir to BENCHMARKS_DIR by default' do
       suite = BenchmarkSuite.new(
-        ruby: ['ruby'],
-        ruby_description: 'ruby 3.2.0',
         categories: ['micro'],
         name_filters: [],
         out_path: @out_path,
@@ -97,8 +89,6 @@ describe BenchmarkSuite do
 
     it 'sets bench_dir to ractor directory and updates harness when ractor-only category is used' do
       suite = BenchmarkSuite.new(
-        ruby: ['ruby'],
-        ruby_description: 'ruby 3.2.0',
         categories: ['ractor-only'],
         name_filters: [],
         out_path: @out_path,
@@ -113,8 +103,6 @@ describe BenchmarkSuite do
 
     it 'keeps bench_dir as BENCHMARKS_DIR when ractor category is used' do
       suite = BenchmarkSuite.new(
-        ruby: ['ruby'],
-        ruby_description: 'ruby 3.2.0',
         categories: ['ractor'],
         name_filters: [],
         out_path: @out_path,
@@ -131,8 +119,6 @@ describe BenchmarkSuite do
   describe '#run' do
     it 'returns bench_data and bench_failures as a tuple' do
       suite = BenchmarkSuite.new(
-        ruby: [RbConfig.ruby],
-        ruby_description: 'ruby 3.2.0',
         categories: [],
         name_filters: ['simple'],
         out_path: @out_path,
@@ -142,7 +128,7 @@ describe BenchmarkSuite do
 
       result = nil
       capture_io do
-        result = suite.run
+        result = suite.run(ruby: [RbConfig.ruby], ruby_description: 'ruby 3.2.0')
       end
 
       assert_instance_of Array, result
@@ -155,8 +141,6 @@ describe BenchmarkSuite do
 
     it 'runs matching benchmarks and collects results' do
       suite = BenchmarkSuite.new(
-        ruby: [RbConfig.ruby],
-        ruby_description: 'ruby 3.2.0',
         categories: [],
         name_filters: ['simple'],
         out_path: @out_path,
@@ -166,7 +150,7 @@ describe BenchmarkSuite do
 
       bench_data, bench_failures = nil
       capture_io do
-        bench_data, bench_failures = suite.run
+        bench_data, bench_failures = suite.run(ruby: [RbConfig.ruby], ruby_description: 'ruby 3.2.0')
       end
 
       assert_includes bench_data, 'simple'
@@ -180,8 +164,6 @@ describe BenchmarkSuite do
 
     it 'prints progress messages while running' do
       suite = BenchmarkSuite.new(
-        ruby: [RbConfig.ruby],
-        ruby_description: 'ruby 3.2.0',
         categories: [],
         name_filters: ['simple'],
         out_path: @out_path,
@@ -190,7 +172,7 @@ describe BenchmarkSuite do
       )
 
       output = capture_io do
-        suite.run
+        suite.run(ruby: [RbConfig.ruby], ruby_description: 'ruby 3.2.0')
       end
 
       assert_includes output[0], 'Running benchmark "simple"'
@@ -203,8 +185,6 @@ describe BenchmarkSuite do
       RUBY
 
       suite = BenchmarkSuite.new(
-        ruby: [RbConfig.ruby],
-        ruby_description: 'ruby 3.2.0',
         categories: [],
         name_filters: ['failing'],
         out_path: @out_path,
@@ -214,7 +194,7 @@ describe BenchmarkSuite do
 
       bench_data, bench_failures = nil
       capture_io do
-        bench_data, bench_failures = suite.run
+        bench_data, bench_failures = suite.run(ruby: [RbConfig.ruby], ruby_description: 'ruby 3.2.0')
       end
 
       assert_empty bench_data
@@ -236,8 +216,6 @@ describe BenchmarkSuite do
       RUBY
 
       suite = BenchmarkSuite.new(
-        ruby: [RbConfig.ruby],
-        ruby_description: 'ruby 3.2.0',
         categories: [],
         name_filters: ['subdir'],
         out_path: @out_path,
@@ -247,7 +225,7 @@ describe BenchmarkSuite do
 
       bench_data, bench_failures = nil
       capture_io do
-        bench_data, bench_failures = suite.run
+        bench_data, bench_failures = suite.run(ruby: [RbConfig.ruby], ruby_description: 'ruby 3.2.0')
       end
 
       assert_includes bench_data, 'subdir'
@@ -267,8 +245,6 @@ describe BenchmarkSuite do
       RUBY
 
       suite = BenchmarkSuite.new(
-        ruby: [RbConfig.ruby],
-        ruby_description: 'ruby 3.2.0',
         categories: ['ractor-only'],
         name_filters: [],
         out_path: @out_path,
@@ -278,7 +254,7 @@ describe BenchmarkSuite do
 
       bench_data, bench_failures = nil
       capture_io do
-        bench_data, bench_failures = suite.run
+        bench_data, bench_failures = suite.run(ruby: [RbConfig.ruby], ruby_description: 'ruby 3.2.0')
       end
 
       # When ractor-only is specified, it should use benchmarks-ractor directory
@@ -301,8 +277,6 @@ describe BenchmarkSuite do
       RUBY
 
       suite = BenchmarkSuite.new(
-        ruby: [RbConfig.ruby],
-        ruby_description: 'ruby 3.2.0',
         categories: ['ractor'],
         name_filters: [],
         out_path: @out_path,
@@ -312,7 +286,7 @@ describe BenchmarkSuite do
 
       bench_data = nil
       capture_io do
-        bench_data, _ = suite.run
+        bench_data, _ = suite.run(ruby: [RbConfig.ruby], ruby_description: 'ruby 3.2.0')
       end
 
       # With ractor category, both directories should be scanned
@@ -326,8 +300,6 @@ describe BenchmarkSuite do
       File.write(pre_init_file, "# Pre-initialization code\n")
 
       suite = BenchmarkSuite.new(
-        ruby: [RbConfig.ruby],
-        ruby_description: 'ruby 3.2.0',
         categories: [],
         name_filters: ['simple'],
         out_path: @out_path,
@@ -350,8 +322,6 @@ describe BenchmarkSuite do
       File.write(pre_init_file, "# Config code\n")
 
       suite = BenchmarkSuite.new(
-        ruby: [RbConfig.ruby],
-        ruby_description: 'ruby 3.2.0',
         categories: [],
         name_filters: ['simple'],
         out_path: @out_path,
@@ -372,8 +342,6 @@ describe BenchmarkSuite do
       File.write(pre_init_file, "# Setup code\n")
 
       suite = BenchmarkSuite.new(
-        ruby: [RbConfig.ruby],
-        ruby_description: 'ruby 3.2.0',
         categories: [],
         name_filters: ['simple'],
         out_path: @out_path,
@@ -391,8 +359,6 @@ describe BenchmarkSuite do
       output = capture_io do
         assert_raises(SystemExit) do
           BenchmarkSuite.new(
-            ruby: [RbConfig.ruby],
-            ruby_description: 'ruby 3.2.0',
             categories: [],
             name_filters: ['simple'],
             out_path: @out_path,
@@ -409,8 +375,6 @@ describe BenchmarkSuite do
       output = capture_io do
         assert_raises(SystemExit) do
           BenchmarkSuite.new(
-            ruby: [RbConfig.ruby],
-            ruby_description: 'ruby 3.2.0',
             categories: [],
             name_filters: ['simple'],
             out_path: @out_path,
@@ -425,8 +389,6 @@ describe BenchmarkSuite do
 
     it 'stores command_line in benchmark results' do
       suite = BenchmarkSuite.new(
-        ruby: [RbConfig.ruby],
-        ruby_description: 'ruby 3.2.0',
         categories: [],
         name_filters: ['simple'],
         out_path: @out_path,
@@ -436,7 +398,7 @@ describe BenchmarkSuite do
 
       bench_data, _ = nil
       capture_io do
-        bench_data, _ = suite.run
+        bench_data, _ = suite.run(ruby: [RbConfig.ruby], ruby_description: 'ruby 3.2.0')
       end
 
       assert_includes bench_data['simple'], 'command_line'
@@ -446,8 +408,6 @@ describe BenchmarkSuite do
 
     it 'cleans up temporary JSON files after successful run' do
       suite = BenchmarkSuite.new(
-        ruby: [RbConfig.ruby],
-        ruby_description: 'ruby 3.2.0',
         categories: [],
         name_filters: ['simple'],
         out_path: @out_path,
@@ -456,7 +416,7 @@ describe BenchmarkSuite do
       )
 
       capture_io do
-        suite.run
+        suite.run(ruby: [RbConfig.ruby], ruby_description: 'ruby 3.2.0')
       end
 
       # Temporary files should be cleaned up
@@ -479,8 +439,6 @@ describe BenchmarkSuite do
       RUBY
 
       suite = BenchmarkSuite.new(
-        ruby: [RbConfig.ruby],
-        ruby_description: 'ruby 3.2.0',
         categories: [],
         name_filters: ['bench_a'],
         out_path: @out_path,
@@ -490,7 +448,7 @@ describe BenchmarkSuite do
 
       bench_data = nil
       capture_io do
-        bench_data, _ = suite.run
+        bench_data, _ = suite.run(ruby: [RbConfig.ruby], ruby_description: 'ruby 3.2.0')
       end
 
       assert_includes bench_data, 'bench_a'
@@ -514,8 +472,6 @@ describe BenchmarkSuite do
       File.write('benchmarks.yml', YAML.dump(metadata))
 
       suite = BenchmarkSuite.new(
-        ruby: [RbConfig.ruby],
-        ruby_description: 'ruby 3.2.0',
         categories: ['micro'],
         name_filters: [],
         out_path: @out_path,
@@ -525,7 +481,7 @@ describe BenchmarkSuite do
 
       bench_data = nil
       capture_io do
-        bench_data, _ = suite.run
+        bench_data, _ = suite.run(ruby: [RbConfig.ruby], ruby_description: 'ruby 3.2.0')
       end
 
       # Should only include micro category benchmarks

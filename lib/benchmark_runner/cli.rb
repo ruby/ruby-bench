@@ -28,6 +28,16 @@ module BenchmarkRunner
 
       ruby_descriptions = {}
 
+      suite = BenchmarkSuite.new(
+        categories: args.categories,
+        name_filters: args.name_filters,
+        excludes: args.excludes,
+        out_path: args.out_path,
+        harness: args.harness,
+        pre_init: args.with_pre_init,
+        no_pinning: args.no_pinning
+      )
+
       # Benchmark with and without YJIT
       bench_start_time = Time.now.to_f
       bench_data = {}
@@ -35,18 +45,10 @@ module BenchmarkRunner
       args.executables.each do |name, executable|
         ruby_descriptions[name] = `#{executable.shelljoin} -v`.chomp
 
-        suite = BenchmarkSuite.new(
+        bench_data[name], failures = suite.run(
           ruby: executable,
-          ruby_description: ruby_descriptions[name],
-          categories: args.categories,
-          name_filters: args.name_filters,
-          excludes: args.excludes,
-          out_path: args.out_path,
-          harness: args.harness,
-          pre_init: args.with_pre_init,
-          no_pinning: args.no_pinning
+          ruby_description: ruby_descriptions[name]
         )
-        bench_data[name], failures = suite.run
         # Make it easier to query later.
         bench_failures[name] = failures unless failures.empty?
       end
