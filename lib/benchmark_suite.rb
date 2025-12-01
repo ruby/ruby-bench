@@ -33,6 +33,7 @@ class BenchmarkSuite
     @ractor_only = (categories == RACTOR_ONLY_CATEGORY)
 
     setup_benchmark_directories
+    @harness_args = build_harness_args
   end
 
   # Run all the benchmarks and record execution times
@@ -62,6 +63,8 @@ class BenchmarkSuite
   end
 
   private
+
+  attr_reader :harness_args
 
   def setup_benchmark_directories
     if @ractor_only
@@ -151,15 +154,6 @@ class BenchmarkSuite
     ENV["RESULT_JSON_PATH"] = result_json_path
 
     # Set up the benchmarking command
-    # If harness is 'default', use default (no -r needed)
-    # Otherwise use -r to load the specific harness file with full path
-    harness_args = if harness == "default"
-      []
-    else
-      harness_path = File.join(HARNESS_DIR, harness)
-      ["-r", harness_path]
-    end
-
     cmd = cmd_prefix + [
       *ruby,
       *harness_args,
@@ -234,6 +228,17 @@ class BenchmarkSuite
     return [] unless system(*prefix, "true", out: File::NULL, err: File::NULL)
 
     prefix
+  end
+
+  # If harness is 'default', use default (no -r needed)
+  # Otherwise use -r to load the specific harness file with full path
+  def build_harness_args
+    if harness == "default"
+      []
+    else
+      harness_path = File.join(HARNESS_DIR, harness)
+      ["-r", harness_path]
+    end
   end
 
   # Resolve the pre_init file path into a form that can be required
