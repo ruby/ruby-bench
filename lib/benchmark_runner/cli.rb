@@ -35,7 +35,8 @@ module BenchmarkRunner
         out_path: args.out_path,
         harness: args.harness,
         pre_init: args.with_pre_init,
-        no_pinning: args.no_pinning
+        no_pinning: args.no_pinning,
+        force_pinning: args.force_pinning
       )
 
       # Benchmark with and without YJIT

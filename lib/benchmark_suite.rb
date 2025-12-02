@@ -19,9 +19,9 @@ class BenchmarkSuite
   RACTOR_CATEGORY = ["ractor"].freeze
   RACTOR_HARNESS = "harness-ractor"
 
-  attr_reader :categories, :name_filters, :excludes, :out_path, :harness, :pre_init, :no_pinning, :bench_dir, :ractor_bench_dir
+  attr_reader :categories, :name_filters, :excludes, :out_path, :harness, :pre_init, :no_pinning, :force_pinning, :bench_dir, :ractor_bench_dir
 
-  def initialize(categories:, name_filters:, excludes: [], out_path:, harness:, pre_init: nil, no_pinning: false)
+  def initialize(categories:, name_filters:, excludes: [], out_path:, harness:, pre_init: nil, no_pinning: false, force_pinning: false)
     @categories = categories
     @name_filters = name_filters
     @excludes = excludes
@@ -29,6 +29,7 @@ class BenchmarkSuite
     @harness = harness
     @pre_init = pre_init ? expand_pre_init(pre_init) : nil
     @no_pinning = no_pinning
+    @force_pinning = force_pinning
     @ractor_only = (categories == RACTOR_ONLY_CATEGORY)
 
     setup_benchmark_directories
@@ -41,7 +42,6 @@ class BenchmarkSuite
     bench_failures = {}
 
     benchmark_entries = discover_benchmarks
-    cmd_prefix = base_cmd(ruby_description)
     env = benchmark_env(ruby)
     caller_json_path = ENV["RESULT_JSON_PATH"]
 
@@ -49,6 +49,7 @@ class BenchmarkSuite
       puts("Running benchmark \"#{entry.name}\" (#{idx+1}/#{benchmark_entries.length})")
 
       result_json_path = caller_json_path || File.join(out_path, "temp#{Process.pid}.json")
+      cmd_prefix = base_cmd(ruby_description, entry.name)
       result = run_single_benchmark(entry.script_path, result_json_path, ruby, cmd_prefix, env)
 
       if result[:success]
@@ -199,13 +200,13 @@ class BenchmarkSuite
   end
 
   # Set up the base command with CPU pinning if needed
-  def base_cmd(ruby_description)
+  def base_cmd(ruby_description, benchmark_name)
     if linux?
       cmd = setarch_prefix
 
       # Pin the process to one given core to improve caching and reduce variance on CRuby
       # Other Rubies need to use multiple cores, e.g., for JIT threads
-      if ruby_description.start_with?('ruby ') && !no_pinning
+      if ruby_description.start_with?('ruby ') && should_pin?(benchmark_name)
         # The last few cores of Intel CPU may be slow E-Cores, so avoid using the last one.
         cpu = [(Etc.nprocessors / 2) - 1, 0].max
         cmd.concat(["taskset", "-c", "#{cpu}"])
@@ -215,6 +216,14 @@ class BenchmarkSuite
     else
       []
     end
+  end
+
+  def should_pin?(benchmark_name)
+    return false if no_pinning
+    return true if force_pinning
+
+    benchmark_meta = benchmarks_metadata[benchmark_name] || {}
+    !benchmark_meta["no_pinning"]
   end
 
   # Generate setarch prefix for Linux

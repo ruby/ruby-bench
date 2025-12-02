@@ -93,6 +93,7 @@ knucleotide:
   desc: k-nucleotide from the Computer Language Benchmarks Game - counts nucleotide frequencies using hash tables in parallel using Process.fork
 knucleotide-ractor:
   desc: k-nucleotide from the Computer Language Benchmarks Game - counts nucleotide frequencies using hash tables in parallel using Ractors
+  no_pinning: true
 lee:
   desc: lee is a circuit-board layout solver, deployed in a plausibly reality-like way
 matmul:

@@ -15,6 +15,7 @@ class ArgumentParser
     :rss,
     :graph,
     :no_pinning,
+    :force_pinning,
     :turbo,
     :skip_yjit,
     :with_pre_init,
@@ -140,6 +141,10 @@ class ArgumentParser
         args.no_pinning = true
       end
 
+      opts.on("--force-pinning", "force pinning even for benchmarks marked no_pinning") do
+        args.force_pinning = true
+      end
+
       opts.on("--turbo", "don't disable CPU turbo boost") do
         args.turbo = true
       end
@@ -183,6 +188,7 @@ class ArgumentParser
       rss: false,
       graph: false,
       no_pinning: false,
+      force_pinning: false,
       turbo: false,
       skip_yjit: false,
       with_pre_init: nil,
