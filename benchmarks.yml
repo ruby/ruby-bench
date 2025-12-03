@@ -236,8 +236,6 @@ throw:
 #
 # Ractor-only benchmarks
 #
-ractor/knucleotide:
-  desc: k-nucleotide from the Computer Language Benchmarks Game - counts nucleotide frequencies using hash tables. Counts groups in parallel using Ractors.
 ractor/gvl_release_acquire:
   desc: microbenchmark designed to test how fast the gvl can be acquired and released between ractors.
 ractor/json_parse_float:
