@@ -8,6 +8,7 @@ class ArgumentParser
     :out_path,
     :out_override,
     :harness,
+    :harness_explicit,
     :yjit_opts,
     :categories,
     :name_filters,
@@ -93,6 +94,7 @@ class ArgumentParser
       opts.on("--harness=HARNESS_DIR", "which harness to use") do |v|
         v = "harness-#{v}" unless v.start_with?('harness')
         args.harness = v
+        args.harness_explicit = true
       end
 
       opts.on("--warmup=N", "the number of warmup iterations for the default harness (default: 15)") do |n|
@@ -188,6 +190,7 @@ class ArgumentParser
       out_path: File.expand_path("./data"),
       out_override: nil,
       harness: "harness",
+      harness_explicit: false,
       yjit_opts: "",
       categories: [],
       name_filters: [],

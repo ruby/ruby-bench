@@ -93,7 +93,9 @@ knucleotide:
   desc: k-nucleotide from the Computer Language Benchmarks Game - counts nucleotide frequencies using hash tables in parallel using Process.fork
 knucleotide-ractor:
   desc: k-nucleotide from the Computer Language Benchmarks Game - counts nucleotide frequencies using hash tables in parallel using Ractors
-  no_pinning: true
+  ractor: true
+  ractor_only: true
+  default_harness: harness
 lee:
   desc: lee is a circuit-board layout solver, deployed in a plausibly reality-like way
 matmul:
@@ -234,11 +236,20 @@ throw:
   ractor: true
 
 #
-# Ractor-only benchmarks
+# Ractor scaling benchmarks
 #
-ractor/gvl_release_acquire:
+gvl_release_acquire:
   desc: microbenchmark designed to test how fast the gvl can be acquired and released between ractors.
-ractor/json_parse_float:
+  ractor: true
+  ractor_only: true
+  default_harness: harness-ractor
+json_parse_float:
   desc: test the performance of parsing multiple lists of json floats with ractors.
-ractor/json_parse_string:
+  ractor: true
+  ractor_only: true
+  default_harness: harness-ractor
+json_parse_string:
   desc: test the performance of parsing multiple lists of strings with ractors.
+  ractor: true
+  ractor_only: true
+  default_harness: harness-ractor
