@@ -53,10 +53,8 @@ class ArgumentParser
             name = name.shellsplit.first
           end
           version, *options = version.shellsplit
-          rubies_dir = ENV["RUBIES_DIR"] || "#{ENV["HOME"]}/.rubies"
-          unless executable = ["/opt/rubies/#{version}/bin/ruby", "#{rubies_dir}/#{version}/bin/ruby"].find { |path| File.executable?(path) }
-            abort "Cannot find '#{version}' in /opt/rubies or #{rubies_dir}"
-          end
+          executable = find_chruby_ruby(version)
+          abort "Cannot find '#{version}' in chruby paths" unless executable
           args.executables[name] = [executable, *options]
         end
       end
@@ -169,6 +167,15 @@ class ArgumentParser
   end
 
   private
+
+  def find_chruby_ruby(version)
+    rubies_dir = ENV["RUBIES_DIR"] || "#{ENV["HOME"]}/.rubies"
+    chruby_search_paths(version, rubies_dir).find { |path| File.executable?(path) }
+  end
+
+  def chruby_search_paths(version, rubies_dir)
+    ["/opt/rubies/#{version}/bin/ruby", "#{rubies_dir}/#{version}/bin/ruby"]
+  end
 
   def have_yjit?(ruby)
     ruby_version = `#{ruby} -v --yjit 2> #{File::NULL}`.strip
