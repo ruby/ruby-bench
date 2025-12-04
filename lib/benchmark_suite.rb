@@ -43,15 +43,16 @@ class BenchmarkSuite
     benchmark_entries = discover_benchmarks
     cmd_prefix = base_cmd(ruby_description)
     env = benchmark_env(ruby)
+    caller_json_path = ENV["RESULT_JSON_PATH"]
 
     benchmark_entries.each_with_index do |entry, idx|
       puts("Running benchmark \"#{entry.name}\" (#{idx+1}/#{benchmark_entries.length})")
 
-      result_json_path = File.join(out_path, "temp#{Process.pid}.json")
+      result_json_path = caller_json_path || File.join(out_path, "temp#{Process.pid}.json")
       result = run_single_benchmark(entry.script_path, result_json_path, ruby, cmd_prefix, env)
 
       if result[:success]
-        bench_data[entry.name] = process_benchmark_result(result_json_path, result[:command])
+        bench_data[entry.name] = process_benchmark_result(result_json_path, result[:command], delete_file: !caller_json_path)
       else
         bench_failures[entry.name] = result[:status].exitstatus
       end
@@ -74,10 +75,10 @@ class BenchmarkSuite
     end
   end
 
-  def process_benchmark_result(result_json_path, command)
+  def process_benchmark_result(result_json_path, command, delete_file: true)
     JSON.parse(File.read(result_json_path)).tap do |json|
       json["command_line"] = command
-      File.unlink(result_json_path)
+      File.unlink(result_json_path) if delete_file
     end
   end
 

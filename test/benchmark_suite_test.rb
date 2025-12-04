@@ -40,6 +40,7 @@ describe BenchmarkSuite do
   end
 
   after do
+    ENV.delete('RESULT_JSON_PATH')
     Dir.chdir(@original_dir)
     FileUtils.rm_rf(@temp_dir)
   end
@@ -422,6 +423,30 @@ describe BenchmarkSuite do
       # Temporary files should be cleaned up
       temp_files = Dir.glob(File.join(@out_path, 'temp*.json'))
       assert_empty temp_files
+    end
+
+    it 'uses RESULT_JSON_PATH env var when set and preserves the file' do
+      custom_json_path = File.join(@out_path, 'custom_result.json')
+      ENV['RESULT_JSON_PATH'] = custom_json_path
+
+      suite = BenchmarkSuite.new(
+        categories: [],
+        name_filters: ['simple'],
+        out_path: @out_path,
+        harness: 'harness',
+        no_pinning: true
+      )
+
+      capture_io do
+        suite.run(ruby: [RbConfig.ruby], ruby_description: 'ruby 3.2.0')
+      end
+
+      assert File.exist?(custom_json_path), "Expected #{custom_json_path} to exist but it was deleted"
+      result = JSON.parse(File.read(custom_json_path))
+      assert_includes result, 'bench'
+    ensure
+      ENV.delete('RESULT_JSON_PATH')
+      FileUtils.rm_f(custom_json_path)
     end
 
     it 'filters benchmarks by name_filters' do
