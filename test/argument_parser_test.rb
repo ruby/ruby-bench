@@ -103,15 +103,11 @@ describe ArgumentParser do
           ruby_path = File.join(tmpdir, 'opt/rubies/3.2.0/bin/ruby')
           setup_mock_ruby(ruby_path)
 
-          File.stub :executable?, ->(path) {
-            if path == "/opt/rubies/3.2.0/bin/ruby"
-              File.exist?(ruby_path) && File.stat(ruby_path).executable?
-            end
-          } do
-            parser = ArgumentParser.new
+          parser = ArgumentParser.new
+          parser.stub :chruby_search_paths, ->(version, rubies_dir) { [ruby_path] } do
             args = parser.parse(['--chruby=ruby-3.2.0::3.2.0'])
 
-            assert_equal '/opt/rubies/3.2.0/bin/ruby', args.executables['ruby-3.2.0'].first
+            assert_equal ruby_path, args.executables['ruby-3.2.0'].first
           end
         end
       end
@@ -126,9 +122,11 @@ describe ArgumentParser do
           ENV['HOME'] = tmpdir
 
           parser = ArgumentParser.new
-          args = parser.parse(['--chruby=my-ruby::3.3.0'])
+          parser.stub :chruby_search_paths, ->(version, rd) { ["#{rd}/#{version}/bin/ruby"] } do
+            args = parser.parse(['--chruby=my-ruby::3.3.0'])
 
-          assert_equal ruby_path, args.executables['my-ruby'].first
+            assert_equal ruby_path, args.executables['my-ruby'].first
+          end
         end
       end
 
@@ -143,20 +141,11 @@ describe ArgumentParser do
 
           ENV['HOME'] = tmpdir
 
-          File.stub :executable?, ->(path) {
-            case path
-            when "/opt/rubies/3.2.0/bin/ruby"
-              File.exist?(opt_ruby) && File.stat(opt_ruby).executable?
-            when "#{tmpdir}/.rubies/3.2.0/bin/ruby"
-              File.exist?(home_ruby) && File.stat(home_ruby).executable?
-            else
-              File.method(:executable?).super_method.call(path)
-            end
-          } do
-            parser = ArgumentParser.new
+          parser = ArgumentParser.new
+          parser.stub :chruby_search_paths, ->(version, rd) { [opt_ruby, home_ruby] } do
             args = parser.parse(['--chruby=test::3.2.0'])
 
-            assert_equal '/opt/rubies/3.2.0/bin/ruby', args.executables['test'].first
+            assert_equal opt_ruby, args.executables['test'].first
           end
         end
       end
@@ -171,9 +160,11 @@ describe ArgumentParser do
           ENV['RUBIES_DIR'] = custom_rubies
 
           parser = ArgumentParser.new
-          args = parser.parse(['--chruby=custom::3.4.0'])
+          parser.stub :chruby_search_paths, ->(version, rd) { ["#{rd}/#{version}/bin/ruby"] } do
+            args = parser.parse(['--chruby=custom::3.4.0'])
 
-          assert_equal ruby_path, args.executables['custom'].first
+            assert_equal ruby_path, args.executables['custom'].first
+          end
         end
       end
 
@@ -183,10 +174,11 @@ describe ArgumentParser do
           ENV['HOME'] = tmpdir
 
           parser = ArgumentParser.new
-
-          assert_raises(SystemExit) do
-            capture_io do
-              parser.parse(['--chruby=nonexistent::nonexistent-version-999'])
+          parser.stub :chruby_search_paths, ->(version, rd) { ["#{rd}/#{version}/bin/ruby"] } do
+            assert_raises(SystemExit) do
+              capture_io do
+                parser.parse(['--chruby=nonexistent::nonexistent-version-999'])
+              end
             end
           end
         end
@@ -202,10 +194,12 @@ describe ArgumentParser do
           ENV['HOME'] = tmpdir
 
           parser = ArgumentParser.new
-          args = parser.parse(['--chruby=yjit::3.2.0 --yjit'])
+          parser.stub :chruby_search_paths, ->(version, rd) { ["#{rd}/#{version}/bin/ruby"] } do
+            args = parser.parse(['--chruby=yjit::3.2.0 --yjit'])
 
-          assert_equal ruby_path, args.executables['yjit'].first
-          assert_equal '--yjit', args.executables['yjit'].last
+            assert_equal ruby_path, args.executables['yjit'].first
+            assert_equal '--yjit', args.executables['yjit'].last
+          end
         end
       end
 
@@ -219,10 +213,12 @@ describe ArgumentParser do
           ENV['HOME'] = tmpdir
 
           parser = ArgumentParser.new
-          args = parser.parse(['--chruby=3.2.0 --yjit'])
+          parser.stub :chruby_search_paths, ->(version, rd) { ["#{rd}/#{version}/bin/ruby"] } do
+            args = parser.parse(['--chruby=3.2.0 --yjit'])
 
-          assert args.executables.key?('3.2.0')
-          assert_equal ruby_path, args.executables['3.2.0'].first
+            assert args.executables.key?('3.2.0')
+            assert_equal ruby_path, args.executables['3.2.0'].first
+          end
         end
       end
 
@@ -238,12 +234,14 @@ describe ArgumentParser do
           ENV['HOME'] = tmpdir
 
           parser = ArgumentParser.new
-          args = parser.parse(['--chruby=ruby32::3.2.0;ruby33::3.3.0 --yjit'])
+          parser.stub :chruby_search_paths, ->(version, rd) { ["#{rd}/#{version}/bin/ruby"] } do
+            args = parser.parse(['--chruby=ruby32::3.2.0;ruby33::3.3.0 --yjit'])
 
-          assert_equal 2, args.executables.size
-          assert_equal ruby_path_32, args.executables['ruby32'].first
-          assert_equal ruby_path_33, args.executables['ruby33'].first
-          assert_equal '--yjit', args.executables['ruby33'].last
+            assert_equal 2, args.executables.size
+            assert_equal ruby_path_32, args.executables['ruby32'].first
+            assert_equal ruby_path_33, args.executables['ruby33'].first
+            assert_equal '--yjit', args.executables['ruby33'].last
+          end
         end
       end
     end
@@ -589,10 +587,12 @@ describe ArgumentParser do
           parser = ArgumentParser.new(ruby_executable: mock_ruby)
 
           parser.stub :have_yjit?, true do
-            args = parser.parse(['--chruby=test::3.2.0'])
+            parser.stub :chruby_search_paths, ->(version, rd) { ["#{rd}/#{version}/bin/ruby"] } do
+              args = parser.parse(['--chruby=test::3.2.0'])
 
-            assert_equal 1, args.executables.size
-            assert_equal ruby_path, args.executables['test'].first
+              assert_equal 1, args.executables.size
+              assert_equal ruby_path, args.executables['test'].first
+            end
           end
         end
       end

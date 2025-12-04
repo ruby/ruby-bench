@@ -47,6 +47,23 @@ describe BenchmarkFilter do
       assert_equal true, filter.match?('ractor_bench')
     end
 
+    it 'excludes ractor harness benchmarks from default runs' do
+      metadata = @metadata.merge('ractor_harness_bench' => { 'category' => 'other', 'ractor' => true, 'default_harness' => 'harness-ractor' })
+      filter = BenchmarkFilter.new(categories: [], name_filters: [], excludes: [], metadata: metadata)
+
+      assert_equal true, filter.match?('fib')
+      assert_equal true, filter.match?('ractor_bench') # ractor: true without harness-ractor runs in default
+      assert_equal false, filter.match?('ractor_harness_bench') # ractor: true with harness-ractor excluded
+    end
+
+    it 'includes ractor harness benchmarks in ractor category' do
+      metadata = @metadata.merge('ractor_harness_bench' => { 'category' => 'other', 'ractor' => true, 'default_harness' => 'harness-ractor' })
+      filter = BenchmarkFilter.new(categories: ['ractor'], name_filters: [], excludes: [], metadata: metadata)
+
+      assert_equal true, filter.match?('ractor_harness_bench')
+      assert_equal true, filter.match?('ractor_bench')
+    end
+
     it 'handles regex filters' do
       filter = BenchmarkFilter.new(categories: [], name_filters: ['/rails/'], excludes: [], metadata: @metadata)
 

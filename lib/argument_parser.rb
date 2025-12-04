@@ -8,6 +8,7 @@ class ArgumentParser
     :out_path,
     :out_override,
     :harness,
+    :harness_explicit,
     :yjit_opts,
     :categories,
     :name_filters,
@@ -15,6 +16,7 @@ class ArgumentParser
     :rss,
     :graph,
     :no_pinning,
+    :force_pinning,
     :turbo,
     :skip_yjit,
     :with_pre_init,
@@ -52,10 +54,8 @@ class ArgumentParser
             name = name.shellsplit.first
           end
           version, *options = version.shellsplit
-          rubies_dir = ENV["RUBIES_DIR"] || "#{ENV["HOME"]}/.rubies"
-          unless executable = ["/opt/rubies/#{version}/bin/ruby", "#{rubies_dir}/#{version}/bin/ruby"].find { |path| File.executable?(path) }
-            abort "Cannot find '#{version}' in /opt/rubies or #{rubies_dir}"
-          end
+          executable = find_chruby_ruby(version)
+          abort "Cannot find '#{version}' in chruby paths" unless executable
           args.executables[name] = [executable, *options]
         end
       end
@@ -94,6 +94,7 @@ class ArgumentParser
       opts.on("--harness=HARNESS_DIR", "which harness to use") do |v|
         v = "harness-#{v}" unless v.start_with?('harness')
         args.harness = v
+        args.harness_explicit = true
       end
 
       opts.on("--warmup=N", "the number of warmup iterations for the default harness (default: 15)") do |n|
@@ -140,6 +141,10 @@ class ArgumentParser
         args.no_pinning = true
       end
 
+      opts.on("--force-pinning", "force pinning even for benchmarks marked no_pinning") do
+        args.force_pinning = true
+      end
+
       opts.on("--turbo", "don't disable CPU turbo boost") do
         args.turbo = true
       end
@@ -165,6 +170,15 @@ class ArgumentParser
 
   private
 
+  def find_chruby_ruby(version)
+    rubies_dir = ENV["RUBIES_DIR"] || "#{ENV["HOME"]}/.rubies"
+    chruby_search_paths(version, rubies_dir).find { |path| File.executable?(path) }
+  end
+
+  def chruby_search_paths(version, rubies_dir)
+    ["/opt/rubies/#{version}/bin/ruby", "#{rubies_dir}/#{version}/bin/ruby"]
+  end
+
   def have_yjit?(ruby)
     ruby_version = `#{ruby} -v --yjit 2> #{File::NULL}`.strip
     ruby_version.downcase.include?("yjit")
@@ -176,6 +190,7 @@ class ArgumentParser
       out_path: File.expand_path("./data"),
       out_override: nil,
       harness: "harness",
+      harness_explicit: false,
       yjit_opts: "",
       categories: [],
       name_filters: [],
@@ -183,6 +198,7 @@ class ArgumentParser
       rss: false,
       graph: false,
       no_pinning: false,
+      force_pinning: false,
       turbo: false,
       skip_yjit: false,
       with_pre_init: nil,

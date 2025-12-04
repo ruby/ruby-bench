@@ -2,9 +2,11 @@
 # https://salsa.debian.org/benchmarksgame-team/benchmarksgame/
 #
 # k-nucleotide benchmark - Ractor implementation
-# Mirrors the Process.fork version structure as closely as possible
+# Mirrors the Process.fork version: spawns 7 ractors (one per task)
 
-require_relative "../../harness/loader"
+Warning[:experimental] = false
+
+require_relative '../../harness/loader'
 
 def frequency(seq, length)
   frequencies = Hash.new(0)
@@ -25,9 +27,9 @@ def sort_by_freq(seq, length)
   table.sort { |a, b|
     cmp = b[1] <=> a[1]
     cmp == 0 ? a[0] <=> b[0] : cmp
-  }.map! { |seq, count|
+  }.map { |seq, count|
     "#{seq} #{'%.3f' % ((count * 100.0) / n)}"
-  }.join("\n") << "\n\n"
+  }.join("\n") + "\n\n"
 end
 
 def find_seq(seq, s)
@@ -48,19 +50,22 @@ def generate_test_sequence(size)
   full_copies.times { sequence << alu }
   sequence << alu[0, remainder] if remainder > 0
 
-  sequence.upcase.freeze
+  sequence.upcase
 end
 
-# Make sequence shareable for Ractors
-TEST_SEQUENCE = make_shareable(generate_test_sequence(100_000))
+TEST_SEQUENCE = Ractor.make_shareable(generate_test_sequence(100_000))
 
-run_benchmark(5) do |num_ractors, ractor_args|
+run_benchmark(5) do
   freqs = [1, 2]
   nucleos = %w(GGT GGTA GGTATT GGTATTTTAATT GGTATTTTAATTTATAGT)
 
-  # Sequential version - mirrors Process version but without Workers
-  results = []
-  freqs.each { |i| results << sort_by_freq(TEST_SEQUENCE, i) }
-  nucleos.each { |s| results << find_seq(TEST_SEQUENCE, s) }
+  ractors = freqs.map { |i|
+    Ractor.new(TEST_SEQUENCE, i) { |seq, len| sort_by_freq(seq, len) }
+  }
+  ractors += nucleos.map { |s|
+    Ractor.new(TEST_SEQUENCE, s) { |seq, nucleo| find_seq(seq, nucleo) }
+  }
+
+  results = ractors.map(&:value)
   results
 end

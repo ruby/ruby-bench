@@ -59,14 +59,10 @@ def free_file_path(parent_dir, name_prefix)
   end
 end
 
-def run_benchmark(bench_id, no_yjit, logs_path, run_time, ruby_version)
-  # Determine the path to the benchmark script
-  bench_name = bench_id.sub('ractor/', '')
-  bench_dir, harness = if bench_name == bench_id
-    ['benchmarks', 'harness']
-  else
-    ['benchmarks-ractor', 'harness-ractor']
-  end
+def run_benchmark(bench_name, no_yjit, logs_path, run_time, ruby_version, metadata)
+  bench_dir = 'benchmarks'
+  entry = metadata[bench_name] || {}
+  harness = entry.fetch('default_harness', 'harness')
 
   script_path = File.join(bench_dir, bench_name, 'benchmark.rb')
   if not File.exist?(script_path)
@@ -153,12 +149,12 @@ def run_benchmark(bench_id, no_yjit, logs_path, run_time, ruby_version)
   return false
 end
 
-def test_loop(bench_names, no_yjit, logs_path, run_time, ruby_version)
+def test_loop(bench_names, no_yjit, logs_path, run_time, ruby_version, metadata)
   error_found = false
 
   while true
     bench_name = bench_names.sample()
-    error = run_benchmark(bench_name, no_yjit, logs_path, run_time, ruby_version)
+    error = run_benchmark(bench_name, no_yjit, logs_path, run_time, ruby_version, metadata)
     error_found ||= error
 
     if error_found
@@ -201,12 +197,16 @@ metadata = YAML.load_file('benchmarks.yml')
 bench_names = []
 
 if args.categories.include?('ractor-only')
-  # Only include benchmarks with ractor/ prefix (from benchmarks-ractor directory)
-  bench_names = metadata.keys.select { |name| name.start_with?('ractor/') }
-elsif args.categories.include?('ractor')
-  # Include both ractor/ prefixed benchmarks and those with ractor: true
+  # Include only benchmarks with ractor_only: true
   metadata.each do |name, entry|
-    if name.start_with?('ractor/') || entry['ractor']
+    if entry['ractor_only']
+      bench_names << name
+    end
+  end
+elsif args.categories.include?('ractor')
+  # Include benchmarks with ractor: true or ractor_only: true
+  metadata.each do |name, entry|
+    if entry['ractor'] || entry['ractor_only']
       bench_names << name
     end
   end
@@ -221,10 +221,12 @@ elsif args.categories.include?('ractor')
     end
   end
 else
-  # Regular category filtering
+  # Regular category filtering - exclude ractor-only and ractor harness benchmarks
   metadata.each do |name, entry|
     category = entry.fetch('category', 'other')
-    if args.categories.include?(category)
+    is_ractor_only = entry['ractor_only'] ||
+      (entry['ractor'] && entry['default_harness'] == 'harness-ractor')
+    if args.categories.include?(category) && !is_ractor_only
       bench_names << name
     end
   end
@@ -237,7 +239,7 @@ puts "num processes: #{args.num_procs}"
 args.num_procs.times do |i|
   pid = Process.fork do
     run_time = (i < args.num_long_runs)? (3600 * 2):10
-    test_loop(bench_names, args.no_yjit, args.logs_path, run_time, ruby_version)
+    test_loop(bench_names, args.no_yjit, args.logs_path, run_time, ruby_version, metadata)
   end
 end
 

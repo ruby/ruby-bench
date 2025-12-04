@@ -18,10 +18,19 @@ class BenchmarkFilter
   private
 
   def matches_category?(name)
-    return true if @categories.empty?
+    if @categories.empty?
+      return false if ractor_harness_benchmark?(name)
+      return true
+    end
 
     benchmark_categories = get_benchmark_categories(name)
     @categories.intersect?(benchmark_categories)
+  end
+
+  def ractor_harness_benchmark?(name)
+    benchmark_metadata = @metadata[name] || {}
+    benchmark_metadata['ractor_only'] ||
+      (benchmark_metadata['ractor'] && benchmark_metadata['default_harness'] == 'harness-ractor')
   end
 
   def matches_name_filter?(name)
@@ -58,7 +67,8 @@ class BenchmarkFilter
     @category_cache[name] ||= begin
       benchmark_metadata = @metadata[name] || {}
       categories = [benchmark_metadata.fetch('category', 'other')]
-      categories << 'ractor' if benchmark_metadata['ractor']
+      categories << 'ractor' if benchmark_metadata['ractor'] || benchmark_metadata['ractor_only']
+      categories << 'ractor-only' if benchmark_metadata['ractor_only']
       categories
     end
   end
