@@ -8,6 +8,7 @@ require 'yaml'
 
 describe BenchmarkSuite do
   before do
+    ENV.delete('RESULT_JSON_PATH')
     @original_dir = Dir.pwd
     @temp_dir = Dir.mktmpdir
     Dir.chdir(@temp_dir)

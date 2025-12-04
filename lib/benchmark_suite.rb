@@ -55,6 +55,7 @@ class BenchmarkSuite
         bench_data[entry.name] = process_benchmark_result(result_json_path, result[:command], delete_file: !caller_json_path)
       else
         bench_failures[entry.name] = result[:status].exitstatus
+        FileUtils.rm_f(result_json_path) unless caller_json_path
       end
     end
 
