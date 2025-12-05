@@ -33,11 +33,12 @@ end
 # Get name of harness (stackprof, vernier, etc) from the file path of the loaded harness.
 def harness_name
   $LOADED_FEATURES.reverse_each do |feat|
-    if m = feat.match(%r{/harness-([^/]+)/harness\.rb$})
+    if m = feat.match(%r{/harness/([^/]+)\.rb$})
       return m[1]
     end
   end
-  raise "Unable to determine harness name"
+  # Default to 'harness' if we can't determine the name
+  'harness'
 end
 
 # Share a single timestamp for everything from this execution.

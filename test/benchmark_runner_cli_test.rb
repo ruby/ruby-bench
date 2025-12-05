@@ -42,7 +42,7 @@ describe BenchmarkRunner::CLI do
       executables: executables,
       out_path: nil,
       out_override: nil,
-      harness: 'harness',
+      harness: 'default',
       yjit_opts: '',
       categories: [],
       name_filters: [],

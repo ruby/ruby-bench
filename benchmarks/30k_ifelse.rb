@@ -1,4 +1,4 @@
-require_relative '../harness/loader'
+require_relative '../lib/harness/loader'
 if ENV["RUBY_BENCH_RACTOR_HARNESS"]
   eval_recv = Object.new
   eval_meth = :instance_eval

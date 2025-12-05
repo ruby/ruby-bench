@@ -6,7 +6,7 @@ Small set of benchmarks and scripts for the Ruby programming language.
 The benchmarks are found in the `benchmarks` directory. Individual Ruby files
 in `benchmarks` are microbenchmarks. Subdirectories under `benchmarks` are
 larger macrobenchmarks. Each benchmark relies on a harness found in
-[./harness/harness.rb](harness/harness.rb). The harness controls the number of times a benchmark is
+[./harness/default.rb](harness/default.rb). The harness controls the number of times a benchmark is
 run, and writes timing values into an output file.
 
 The `run_benchmarks.rb` script (optional) traverses the `benchmarks` directory and
@@ -97,8 +97,8 @@ This is the easiest way to run a single benchmark.
 It requires no setup at all and assumes nothing about the Ruby you are benchmarking.
 It's also convenient for profiling, debugging, etc, especially since all benchmarked code runs in that process.
 
-```
-ruby benchmarks/some_benchmark.rb
+```bash
+ruby benchmarks/fib.rb
 ```
 
 ### Benchmark organization
@@ -138,19 +138,19 @@ There are two Ractor-related categories:
 
 * **`--category ractor`** - Runs both regular benchmarks marked with `ractor:
   true` in `benchmarks.yml` AND all benchmarks from the `benchmarks-ractor`
-  directory. The `harness-ractor` harness is used for both types of benchmark.
+  directory. The `ractor` harness is used for both types of benchmark.
 
 * **`--category ractor-only`** - Runs ONLY benchmarks from the
   `benchmarks-ractor` directory, ignoring regular benchmarks even if they are
   marked with `ractor: true`. This category also automatically uses the
-  `harness-ractor` harness.
+  `ractor` harness.
 
 ### Directory Structure
 
 The `benchmarks-ractor/` directory sits at the same level as the main
 `benchmarks` directory, and contains Ractor-specific benchmark
 implementations that are designed to test Ractor functionality. They are not
-intended to be used with any harness except `harness-ractor`.
+intended to be used with any harness except `ractor`.
 
 ### Usage Examples
 
@@ -162,7 +162,7 @@ intended to be used with any harness except `harness-ractor`.
 ./run_benchmarks.rb --category ractor-only
 ```
 
-Note: The `harness-ractor` harness is automatically selected when using these
+Note: The `ractor` harness is automatically selected when using these
 categories, so there's no need to specify `--harness` manually.
 
 ## Ruby options
@@ -211,25 +211,73 @@ This file will then be passed to the underlying Ruby interpreter with
 
 ## Harnesses
 
-You can find several test harnesses in this repository:
+You can find several test harnesses in the `harness/` directory:
 
-* harness - the normal default harness, with duration controlled by warmup iterations and time/count limits
-* harness-bips - a harness that measures iterations/second until stable
-* harness-continuous - a harness that adjusts the batch sizes of iterations to run in stable iteration size batches
-* harness-once - a simplified harness that simply runs once
-* harness-perf - a simplified harness that runs for exactly the hinted number of iterations
-* harness-stackprof - a harness to profile the benchmark with stackprof
-* harness-stats - count method calls and loop iterations
-* harness-vernier - a harness to profile the benchmark with vernier
-* harness-warmup - a harness which runs as long as needed to find warmed up (peak) performance
+* `default` - the normal default harness, with duration controlled by warmup iterations and time/count limits
+* `bips` - a harness that measures iterations/second until stable
+* `continuous` - a harness that adjusts the batch sizes of iterations to run in stable iteration size batches
+* `once` - a simplified harness that simply runs once
+* `perf` - a simplified harness that runs for exactly the hinted number of iterations
+* `stackprof` - a harness to profile the benchmark with stackprof
+* `stats` - count method calls and loop iterations
+* `vernier` - a harness to profile the benchmark with vernier
+* `warmup` - a harness which runs as long as needed to find warmed up (peak) performance
+* `chain` - a harness to chain multiple harnesses together
+* `mplr` - a harness for multiple iterations with time limits
 
-To use it, run a benchmark script directly, specifying a harness directory with `-I`:
+### Selecting a harness
 
+**Using the `HARNESS` environment variable**
+
+```bash
+# Run with specific harness
+HARNESS=perf ruby benchmarks/fib.rb
+HARNESS=stackprof ruby benchmarks/railsbench/benchmark.rb
+HARNESS=vernier ruby benchmarks/optcarrot/benchmark.rb
+
+# Combine with Ruby options
+HARNESS=perf ruby --yjit benchmarks/fib.rb
+HARNESS=once ruby --yjit-stats benchmarks/railsbench/benchmark.rb
 ```
-ruby -Iharness benchmarks/railsbench/benchmark.rb
+
+**Alternative: Use `run_once.rb` with `--harness` option**:
+
+```bash
+./run_once.rb --harness=perf benchmarks/railsbench/benchmark.rb
+./run_once.rb --harness=stackprof benchmarks/fib.rb
+
+# With Ruby options (use -- separator)
+./run_once.rb -- --yjit benchmarks/railsbench/benchmark.rb
+./run_once.rb --harness=perf -- --yjit-stats benchmarks/fib.rb
+```
+
+When using `run_benchmarks.rb`, you can specify a harness with the `--harness` option:
+
+```bash
+./run_benchmarks.rb --harness=once
+./run_benchmarks.rb --harness=perf
 ```
 
 There is also a robust but complex CI harness in [the yjit-metrics repo](https://github.com/Shopify/yjit-metrics).
+
+### Chain harness
+
+The `chain` harness allows you to combine multiple harnesses together. This is useful when you want to run a benchmark through multiple analysis tools or measurement approaches in sequence.
+
+Use the `HARNESS_CHAIN` environment variable to specify which harnesses to chain (comma-separated, at least 2 required):
+
+```bash
+# Chain the 'once' and 'default' harnesses (runs benchmark once, then with default iterations)
+HARNESS=chain HARNESS_CHAIN="once,default" ruby benchmarks/fib.rb
+
+# Profile with vernier while using ractor harness
+HARNESS=chain HARNESS_CHAIN="vernier,ractor" ruby benchmarks-ractor/some_benchmark.rb
+
+# Using run_once.rb
+HARNESS_CHAIN="once,default" ./run_once.rb --harness=chain benchmarks/fib.rb
+```
+
+The harnesses are executed in the order specified, with each harness wrapping the previous one.
 
 ### Iterations and duration
 
@@ -250,12 +298,14 @@ You can also use `--warmup`, `--bench`, or `--once` to set these environment var
 ./run_benchmarks.rb railsbench --once
 ```
 
-There is also a handy script for running benchmarks just once using
-`WARMUP_ITRS=0 MIN_BENCH_ITRS=1 MIN_BENCH_TIME=0`, for example
-with the `--yjit-stats` command-line option:
+You can also run a single benchmark directly with Ruby:
 
-```
-./run_once.sh --yjit-stats benchmarks/railsbench/benchmark.rb
+```bash
+# Run once with YJIT stats
+ruby --yjit-stats benchmarks/railsbench/benchmark.rb
+
+# Or use run_once.rb script
+./run_once.rb -- --yjit-stats benchmarks/railsbench/benchmark.rb
 ```
 
 ### Using perf
@@ -263,13 +313,12 @@ with the `--yjit-stats` command-line option:
 There is also a harness to use Linux perf. By default, it only runs a fixed number of iterations.
 If `PERF` environment variable is present, it starts the perf subcommand after warmup.
 
-```sh
+```bash
 # Use `perf record` for both warmup and benchmark
-perf record ruby --yjit-perf=map -Iharness-perf benchmarks/railsbench/benchmark.rb
+HARNESS=perf perf record ruby --yjit-perf=map benchmarks/railsbench/benchmark.rb
 
 # Use `perf record` only for benchmark
-PERF=record ruby --yjit-perf=map -Iharness-perf benchmarks/railsbench/benchmark.rb
-```
+HARNESS=perf PERF=record ruby --yjit-perf=map benchmarks/railsbench/benchmark.rb
 
 This is the only harness that uses `run_benchmark`'s argument, `num_itrs_hint`.
 

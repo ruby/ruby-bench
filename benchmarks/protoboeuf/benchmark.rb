@@ -1,4 +1,4 @@
-require_relative '../../harness/loader'
+require_relative '../../lib/harness/loader'
 
 # Protoboeuf decoder
 require_relative 'benchmark_pb'

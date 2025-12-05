@@ -22,7 +22,7 @@ MIN_DEPTH = 4
 MAX_DEPTH = MIN_DEPTH + 2 if MIN_DEPTH + 2 > MAX_DEPTH
 STRETCH_DEPTH = MAX_DEPTH + 1
 
-require_relative '../../harness/loader'
+require_relative '../../lib/harness/loader'
 
 run_benchmark(60) do
   max_depth = MAX_DEPTH

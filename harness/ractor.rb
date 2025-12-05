@@ -1,5 +1,5 @@
 # frozen_string_literal: true
-require_relative '../harness/harness-common'
+require_relative '../lib/harness'
 
 Warning[:experimental] = false
 ENV["RUBY_BENCH_RACTOR_HARNESS"] = "1"
