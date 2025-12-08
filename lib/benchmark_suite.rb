@@ -14,24 +14,23 @@ require_relative 'benchmark_discovery'
 # BenchmarkSuite runs a collection of benchmarks and collects their results
 class BenchmarkSuite
   BENCHMARKS_DIR = "benchmarks"
-  RACTOR_BENCHMARKS_DIR = "benchmarks-ractor"
-  RACTOR_ONLY_CATEGORY = ["ractor-only"].freeze
   RACTOR_CATEGORY = ["ractor"].freeze
+  RACTOR_ONLY_CATEGORY = ["ractor-only"].freeze
   RACTOR_HARNESS = "harness-ractor"
 
-  attr_reader :categories, :name_filters, :excludes, :out_path, :harness, :pre_init, :no_pinning, :bench_dir, :ractor_bench_dir
+  attr_reader :categories, :name_filters, :excludes, :out_path, :harness, :harness_explicit, :pre_init, :no_pinning, :force_pinning, :bench_dir
 
-  def initialize(categories:, name_filters:, excludes: [], out_path:, harness:, pre_init: nil, no_pinning: false)
+  def initialize(categories:, name_filters:, excludes: [], out_path:, harness:, harness_explicit: false, pre_init: nil, no_pinning: false, force_pinning: false)
     @categories = categories
     @name_filters = name_filters
     @excludes = excludes
     @out_path = out_path
     @harness = harness
+    @harness_explicit = harness_explicit
     @pre_init = pre_init ? expand_pre_init(pre_init) : nil
     @no_pinning = no_pinning
-    @ractor_only = (categories == RACTOR_ONLY_CATEGORY)
-
-    setup_benchmark_directories
+    @force_pinning = force_pinning
+    @bench_dir = BENCHMARKS_DIR
   end
 
   # Run all the benchmarks and record execution times
@@ -41,7 +40,6 @@ class BenchmarkSuite
     bench_failures = {}
 
     benchmark_entries = discover_benchmarks
-    cmd_prefix = base_cmd(ruby_description)
     env = benchmark_env(ruby)
     caller_json_path = ENV["RESULT_JSON_PATH"]
 
@@ -49,7 +47,8 @@ class BenchmarkSuite
       puts("Running benchmark \"#{entry.name}\" (#{idx+1}/#{benchmark_entries.length})")
 
       result_json_path = caller_json_path || File.join(out_path, "temp#{Process.pid}.json")
-      result = run_single_benchmark(entry.script_path, result_json_path, ruby, cmd_prefix, env)
+      cmd_prefix = base_cmd(ruby_description, entry.name)
+      result = run_single_benchmark(entry.script_path, result_json_path, ruby, cmd_prefix, env, entry.name)
 
       if result[:success]
         bench_data[entry.name] = process_benchmark_result(result_json_path, result[:command], delete_file: !caller_json_path)
@@ -90,47 +89,24 @@ class BenchmarkSuite
   end
 
   def discover_all_benchmark_entries
-    main_discovery = BenchmarkDiscovery.new(bench_dir)
-    main_entries = main_discovery.discover
-
-    ractor_entries = if benchmark_ractor_directory?
-      ractor_discovery = BenchmarkDiscovery.new(ractor_bench_dir)
-      ractor_discovery.discover
-    else
-      []
-    end
-
-    { main: main_entries, ractor: ractor_entries }
+    discovery = BenchmarkDiscovery.new(bench_dir)
+    { main: discovery.discover }
   end
 
   def build_directory_map(all_entries)
-    combined_entries = all_entries[:main] + all_entries[:ractor]
-    combined_entries.each_with_object({}) do |entry, map|
+    all_entries[:main].each_with_object({}) do |entry, map|
       map[entry.name] = entry.directory
     end
   end
 
   def filter_benchmarks(all_entries, directory_map)
-    main_benchmarks = filter_entries(
+    filter_entries(
       all_entries[:main],
       categories: categories,
       name_filters: name_filters,
       excludes: excludes,
       directory_map: directory_map
     )
-
-    if benchmark_ractor_directory?
-      ractor_benchmarks = filter_entries(
-        all_entries[:ractor],
-        categories: [],
-        name_filters: name_filters,
-        excludes: excludes,
-        directory_map: directory_map
-      )
-      main_benchmarks + ractor_benchmarks
-    else
-      main_benchmarks
-    end
   end
 
   def filter_entries(entries, categories:, name_filters:, excludes:, directory_map:)
@@ -144,17 +120,22 @@ class BenchmarkSuite
     entries.select { |entry| filter.match?(entry.name) }
   end
 
-  def run_single_benchmark(script_path, result_json_path, ruby, cmd_prefix, env)
+  def run_single_benchmark(script_path, result_json_path, ruby, cmd_prefix, env, benchmark_name)
     # Fix for jruby/jruby#7394 in JRuby 9.4.2.0
     script_path = File.expand_path(script_path)
 
-    # Set up the environment for the benchmarking command
+    # Save and restore ENV["RESULT_JSON_PATH"] to avoid polluting the environment
+    # for subsequent runs (e.g., when running multiple executables)
+    original_result_json_path = ENV["RESULT_JSON_PATH"]
     ENV["RESULT_JSON_PATH"] = result_json_path
+
+    # Use per-benchmark default_harness if set, otherwise use global harness
+    benchmark_harness = benchmark_harness_for(benchmark_name)
 
     # Set up the benchmarking command
     cmd = cmd_prefix + [
       *ruby,
-      "-I", harness,
+      "-I", benchmark_harness,
       *pre_init,
       script_path,
     ].compact
@@ -163,6 +144,20 @@ class BenchmarkSuite
     result = BenchmarkRunner.check_call(cmd.shelljoin, env: env, raise_error: false)
     result[:command] = cmd.shelljoin
     result
+  ensure
+    if original_result_json_path
+      ENV["RESULT_JSON_PATH"] = original_result_json_path
+    else
+      ENV.delete("RESULT_JSON_PATH")
+    end
+  end
+
+  def benchmark_harness_for(benchmark_name)
+    return harness if harness_explicit
+
+    benchmark_meta = benchmarks_metadata[benchmark_name] || {}
+    default = ractor_category_run? ? RACTOR_HARNESS : harness
+    benchmark_meta.fetch('default_harness', default)
   end
 
   def benchmark_env(ruby)
@@ -189,23 +184,19 @@ class BenchmarkSuite
     @benchmarks_metadata ||= YAML.load_file('benchmarks.yml')
   end
 
-  def benchmark_ractor_directory?
-    categories == RACTOR_CATEGORY
-  end
-
   # Check if running on Linux
   def linux?
     @linux ||= RbConfig::CONFIG['host_os'] =~ /linux/
   end
 
   # Set up the base command with CPU pinning if needed
-  def base_cmd(ruby_description)
+  def base_cmd(ruby_description, benchmark_name)
     if linux?
       cmd = setarch_prefix
 
       # Pin the process to one given core to improve caching and reduce variance on CRuby
       # Other Rubies need to use multiple cores, e.g., for JIT threads
-      if ruby_description.start_with?('ruby ') && !no_pinning
+      if ruby_description.start_with?('ruby ') && should_pin?(benchmark_name)
         # The last few cores of Intel CPU may be slow E-Cores, so avoid using the last one.
         cpu = [(Etc.nprocessors / 2) - 1, 0].max
         cmd.concat(["taskset", "-c", "#{cpu}"])
@@ -215,6 +206,19 @@ class BenchmarkSuite
     else
       []
     end
+  end
+
+  def should_pin?(benchmark_name)
+    return false if no_pinning
+    return true if force_pinning
+    return false if ractor_category_run?
+
+    benchmark_meta = benchmarks_metadata[benchmark_name] || {}
+    !benchmark_meta["no_pinning"]
+  end
+
+  def ractor_category_run?
+    categories == RACTOR_CATEGORY || categories == RACTOR_ONLY_CATEGORY
   end
 
   # Generate setarch prefix for Linux

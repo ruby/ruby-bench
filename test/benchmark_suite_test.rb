@@ -15,7 +15,6 @@ describe BenchmarkSuite do
 
     # Create mock benchmarks directory structure
     FileUtils.mkdir_p('benchmarks')
-    FileUtils.mkdir_p('benchmarks-ractor')
     FileUtils.mkdir_p('harness')
 
     # Create a simple benchmark file
@@ -75,7 +74,7 @@ describe BenchmarkSuite do
       assert_equal true, suite.no_pinning
     end
 
-    it 'sets bench_dir to BENCHMARKS_DIR by default' do
+    it 'sets bench_dir to BENCHMARKS_DIR' do
       suite = BenchmarkSuite.new(
         categories: ['micro'],
         name_filters: [],
@@ -84,23 +83,8 @@ describe BenchmarkSuite do
       )
 
       assert_equal 'benchmarks', suite.bench_dir
-      assert_equal 'benchmarks-ractor', suite.ractor_bench_dir
       assert_equal 'harness', suite.harness
       assert_equal ['micro'], suite.categories
-    end
-
-    it 'sets bench_dir to ractor directory and updates harness when ractor-only category is used' do
-      suite = BenchmarkSuite.new(
-        categories: ['ractor-only'],
-        name_filters: [],
-        out_path: @out_path,
-        harness: 'harness'
-      )
-
-      assert_equal 'benchmarks-ractor', suite.bench_dir
-      assert_equal 'benchmarks-ractor', suite.ractor_bench_dir
-      assert_equal 'harness-ractor', suite.harness
-      assert_equal [], suite.categories
     end
 
     it 'keeps bench_dir as BENCHMARKS_DIR when ractor category is used' do
@@ -112,9 +96,87 @@ describe BenchmarkSuite do
       )
 
       assert_equal 'benchmarks', suite.bench_dir
-      assert_equal 'benchmarks-ractor', suite.ractor_bench_dir
       assert_equal 'harness', suite.harness
       assert_equal ['ractor'], suite.categories
+    end
+
+    it 'tracks harness_explicit flag' do
+      suite_explicit = BenchmarkSuite.new(
+        categories: [],
+        name_filters: [],
+        out_path: @out_path,
+        harness: 'custom-harness',
+        harness_explicit: true
+      )
+      assert_equal true, suite_explicit.harness_explicit
+
+      suite_auto = BenchmarkSuite.new(
+        categories: [],
+        name_filters: [],
+        out_path: @out_path,
+        harness: 'harness-ractor'
+      )
+      assert_equal false, suite_auto.harness_explicit
+    end
+  end
+
+  describe '#benchmark_harness_for' do
+    before do
+      @metadata_with_harness = {
+        'simple' => { 'category' => 'micro' },
+        'custom_harness_bench' => { 'category' => 'other', 'default_harness' => 'harness' }
+      }
+      File.write('benchmarks.yml', YAML.dump(@metadata_with_harness))
+    end
+
+    it 'returns default_harness when set and harness not explicit' do
+      suite = BenchmarkSuite.new(
+        categories: [],
+        name_filters: [],
+        out_path: @out_path,
+        harness: 'harness-ractor',
+        harness_explicit: false
+      )
+
+      assert_equal 'harness', suite.send(:benchmark_harness_for, 'custom_harness_bench')
+      assert_equal 'harness-ractor', suite.send(:benchmark_harness_for, 'simple')
+    end
+
+    it 'ignores default_harness when harness is explicit' do
+      suite = BenchmarkSuite.new(
+        categories: [],
+        name_filters: [],
+        out_path: @out_path,
+        harness: 'custom-harness',
+        harness_explicit: true
+      )
+
+      assert_equal 'custom-harness', suite.send(:benchmark_harness_for, 'custom_harness_bench')
+      assert_equal 'custom-harness', suite.send(:benchmark_harness_for, 'simple')
+    end
+  end
+
+  describe '#ractor_category_run?' do
+    it 'returns true for ractor category' do
+      suite = BenchmarkSuite.new(
+        categories: ['ractor'],
+        name_filters: [],
+        out_path: @out_path,
+        harness: 'harness-ractor'
+      )
+
+      assert_equal true, suite.send(:ractor_category_run?)
+    end
+
+    it 'returns false for other categories' do
+      suite = BenchmarkSuite.new(
+        categories: ['micro'],
+        name_filters: [],
+        out_path: @out_path,
+        harness: 'harness'
+      )
+
+      assert_equal false, suite.send(:ractor_category_run?)
     end
   end
 
@@ -234,9 +296,9 @@ describe BenchmarkSuite do
       assert_empty bench_failures
     end
 
-    it 'handles ractor-only category' do
+    it 'handles ractor category with ractor benchmarks' do
       # Create a ractor benchmark
-      File.write('benchmarks-ractor/ractor_test.rb', <<~RUBY)
+      File.write('benchmarks/ractor_test.rb', <<~RUBY)
         require 'json'
         result = {
           'warmup' => [0.001],
@@ -246,8 +308,14 @@ describe BenchmarkSuite do
         File.write(ENV['RESULT_JSON_PATH'], JSON.generate(result))
       RUBY
 
+      metadata = {
+        'ractor_test' => { 'category' => 'other', 'ractor' => true },
+        'simple' => { 'category' => 'micro' }
+      }
+      File.write('benchmarks.yml', YAML.dump(metadata))
+
       suite = BenchmarkSuite.new(
-        categories: ['ractor-only'],
+        categories: ['ractor'],
         name_filters: [],
         out_path: @out_path,
         harness: 'harness',
@@ -259,41 +327,10 @@ describe BenchmarkSuite do
         bench_data, bench_failures = suite.run(ruby: [RbConfig.ruby], ruby_description: 'ruby 3.2.0')
       end
 
-      # When ractor-only is specified, it should use benchmarks-ractor directory
+      # Should only include ractor benchmarks when ractor category specified
       assert_includes bench_data, 'ractor_test'
+      refute_includes bench_data, 'simple'
       assert_empty bench_failures
-
-      # harness should be updated to harness-ractor
-      assert_equal 'harness-ractor', suite.harness
-    end
-
-    it 'includes both regular and ractor benchmarks with ractor category' do
-      File.write('benchmarks-ractor/ractor_bench.rb', <<~RUBY)
-        require 'json'
-        result = {
-          'warmup' => [0.001],
-          'bench' => [0.001],
-          'rss' => 10485760
-        }
-        File.write(ENV['RESULT_JSON_PATH'], JSON.generate(result))
-      RUBY
-
-      suite = BenchmarkSuite.new(
-        categories: ['ractor'],
-        name_filters: [],
-        out_path: @out_path,
-        harness: 'harness',
-        no_pinning: true
-      )
-
-      bench_data = nil
-      capture_io do
-        bench_data, _ = suite.run(ruby: [RbConfig.ruby], ruby_description: 'ruby 3.2.0')
-      end
-
-      # With ractor category, both directories should be scanned
-      # but we need appropriate filters
-      assert_instance_of Hash, bench_data
     end
 
     it 'expands pre_init when provided' do
