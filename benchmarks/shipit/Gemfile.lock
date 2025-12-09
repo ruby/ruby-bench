@@ -1,3 +1,9 @@
+GIT
+  remote: https://github.com/ruby-concurrency/concurrent-ruby.git
+  revision: 978eed6c317c523a5ce31769bdf46c0f947e6fdb
+  specs:
+    concurrent-ruby (1.3.5)
+
 GEM
   remote: https://rubygems.org/
   specs:
@@ -97,7 +103,6 @@ GEM
       coffee-script-source
       execjs
     coffee-script-source (1.12.2)
-    concurrent-ruby (1.3.5)
     connection_pool (2.5.3)
     crass (1.0.6)
     date (3.4.1)
@@ -381,6 +386,7 @@ PLATFORMS
   x86_64-linux
 
 DEPENDENCIES
+  concurrent-ruby!
   puma (>= 5.0)
   rails (~> 8.0.2)
   shipit-engine (>= 0.40.0)
@@ -412,7 +418,7 @@ CHECKSUMS
   coffee-rails (5.0.0) sha256=5daaa1ba51fd4907c98a333b6a9e7c1a99b1fff57fcef999b6c62d813cb91a9c
   coffee-script (2.4.1) sha256=82fe281e11b93c8117b98c5ea8063e71741870f1c4fbb27177d7d6333dd38765
   coffee-script-source (1.12.2) sha256=e12b16fd8927fbbf8b87cb2e9a85a6cf457c6881cc7ff8b1af15b31f70da07a4
-  concurrent-ruby (1.3.5) sha256=813b3e37aca6df2a21a3b9f1d497f8cbab24a2b94cab325bffe65ee0f6cbebc6
+  concurrent-ruby (1.3.5)
   connection_pool (2.5.3) sha256=cfd74a82b9b094d1ce30c4f1a346da23ee19dc8a062a16a85f58eab1ced4305b
   crass (1.0.6) sha256=dc516022a56e7b3b156099abc81b6d2b08ea1ed12676ac7a5657617f012bd45d
   date (3.4.1) sha256=bf268e14ef7158009bfeaec40b5fa3c7271906e88b196d958a89d4b408abe64f

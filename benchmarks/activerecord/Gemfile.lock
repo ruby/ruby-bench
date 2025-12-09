@@ -1,3 +1,9 @@
+GIT
+  remote: https://github.com/ruby-concurrency/concurrent-ruby.git
+  revision: 978eed6c317c523a5ce31769bdf46c0f947e6fdb
+  specs:
+    concurrent-ruby (1.3.5)
+
 GEM
   remote: https://rubygems.org/
   specs:
@@ -23,7 +29,6 @@ GEM
     base64 (0.3.0)
     benchmark (0.4.1)
     bigdecimal (3.2.2)
-    concurrent-ruby (1.3.5)
     connection_pool (2.5.3)
     drb (2.2.3)
     i18n (1.14.7)
@@ -50,6 +55,7 @@ DEPENDENCIES
   activerecord-jdbcsqlite3-adapter (~> 70)
   base64
   bigdecimal
+  concurrent-ruby!
   mutex_m
   sqlite3
 
@@ -60,7 +66,7 @@ CHECKSUMS
   base64 (0.3.0) sha256=27337aeabad6ffae05c265c450490628ef3ebd4b67be58257393227588f5a97b
   benchmark (0.4.1) sha256=d4ef40037bba27f03b28013e219b950b82bace296549ec15a78016552f8d2cce
   bigdecimal (3.2.2) sha256=39085f76b495eb39a79ce07af716f3a6829bc35eb44f2195e2753749f2fa5adc
-  concurrent-ruby (1.3.5) sha256=813b3e37aca6df2a21a3b9f1d497f8cbab24a2b94cab325bffe65ee0f6cbebc6
+  concurrent-ruby (1.3.5)
   connection_pool (2.5.3) sha256=cfd74a82b9b094d1ce30c4f1a346da23ee19dc8a062a16a85f58eab1ced4305b
   drb (2.2.3) sha256=0b00d6fdb50995fe4a45dea13663493c841112e4068656854646f418fda13373
   i18n (1.14.7) sha256=ceba573f8138ff2c0915427f1fc5bdf4aa3ab8ae88c8ce255eb3ecf0a11a5d0f
