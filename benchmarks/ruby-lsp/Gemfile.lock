@@ -29,4 +29,4 @@ CHECKSUMS
   sorbet-runtime (0.5.12366) sha256=67e432b5b3581ed0c991de2178dddcf9e397b6d9b31995849795b0a802837afe
 
 BUNDLED WITH
-   4.0.0.dev
+  4.0.0
