@@ -48,7 +48,6 @@ GEM
     benchmark (0.4.1)
     bigdecimal (3.2.2)
     builder (3.3.0)
-    byebug (12.0.0)
     capybara (3.40.0)
       addressable
       matrix
@@ -209,7 +208,6 @@ DEPENDENCIES
   activesupport (~> 8.0)
   base64
   bigdecimal
-  byebug
   capybara (>= 3.26)
   cgi
   jbuilder (~> 2.7)
@@ -239,7 +237,6 @@ CHECKSUMS
   benchmark (0.4.1) sha256=d4ef40037bba27f03b28013e219b950b82bace296549ec15a78016552f8d2cce
   bigdecimal (3.2.2) sha256=39085f76b495eb39a79ce07af716f3a6829bc35eb44f2195e2753749f2fa5adc
   builder (3.3.0) sha256=497918d2f9dca528fdca4b88d84e4ef4387256d984b8154e9d5d3fe5a9c8835f
-  byebug (12.0.0) sha256=d4a150d291cca40b66ec9ca31f754e93fed8aa266a17335f71bb0afa7fca1a1e
   capybara (3.40.0) sha256=42dba720578ea1ca65fd7a41d163dd368502c191804558f6e0f71b391054aeef
   cgi (0.5.0) sha256=fe99f65bb2c146e294372ebb27602adbc3b4c008e9ea7038c6bd48c1ec9759da
   childprocess (4.1.0) sha256=3616ce99ccb242361ce7f2b19bf9ff3e6bc1d98b927c7edc29af8ca617ba6cd3
