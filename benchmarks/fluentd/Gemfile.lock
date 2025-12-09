@@ -131,4 +131,4 @@ CHECKSUMS
   zstd-ruby (1.5.7.0) sha256=893819f6b95244ca8885c62f9b3be7edfbf604f055bdef0574f4ccca175e87db
 
 BUNDLED WITH
-   4.0.0.dev
+  4.0.0
