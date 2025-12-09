@@ -1,3 +1,9 @@
+GIT
+  remote: https://github.com/ruby-concurrency/concurrent-ruby.git
+  revision: 978eed6c317c523a5ce31769bdf46c0f947e6fdb
+  specs:
+    concurrent-ruby (1.3.5)
+
 GEM
   remote: https://rubygems.org/
   specs:
@@ -59,7 +65,6 @@ GEM
       xpath (~> 3.2)
     cgi (0.5.0)
     childprocess (4.1.0)
-    concurrent-ruby (1.3.5)
     connection_pool (2.5.3)
     crass (1.0.6)
     date (3.4.1)
@@ -210,6 +215,7 @@ DEPENDENCIES
   bigdecimal
   capybara (>= 3.26)
   cgi
+  concurrent-ruby!
   jbuilder (~> 2.7)
   mutex_m
   net-imap (~> 0.2.1)
@@ -240,7 +246,7 @@ CHECKSUMS
   capybara (3.40.0) sha256=42dba720578ea1ca65fd7a41d163dd368502c191804558f6e0f71b391054aeef
   cgi (0.5.0) sha256=fe99f65bb2c146e294372ebb27602adbc3b4c008e9ea7038c6bd48c1ec9759da
   childprocess (4.1.0) sha256=3616ce99ccb242361ce7f2b19bf9ff3e6bc1d98b927c7edc29af8ca617ba6cd3
-  concurrent-ruby (1.3.5) sha256=813b3e37aca6df2a21a3b9f1d497f8cbab24a2b94cab325bffe65ee0f6cbebc6
+  concurrent-ruby (1.3.5)
   connection_pool (2.5.3) sha256=cfd74a82b9b094d1ce30c4f1a346da23ee19dc8a062a16a85f58eab1ced4305b
   crass (1.0.6) sha256=dc516022a56e7b3b156099abc81b6d2b08ea1ed12676ac7a5657617f012bd45d
   date (3.4.1) sha256=bf268e14ef7158009bfeaec40b5fa3c7271906e88b196d958a89d4b408abe64f

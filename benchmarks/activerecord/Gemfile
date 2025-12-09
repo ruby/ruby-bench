@@ -5,3 +5,4 @@ gem "activerecord-jdbcsqlite3-adapter", "~> 70", platform: :jruby
 gem "mutex_m"
 gem "bigdecimal"
 gem "base64"
+gem "concurrent-ruby", github: "ruby-concurrency/concurrent-ruby"
