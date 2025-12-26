@@ -1,7 +1,6 @@
 GIT
-  remote: https://github.com/nobu/stackprof.git
+  remote: https://github.com/tmm1/stackprof.git
   revision: 7d4b181569c04c9a35d0b4250cfbc535760ac18d
-  branch: postponed_jobs
   specs:
     stackprof (0.2.27)
 
