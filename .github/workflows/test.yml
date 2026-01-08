@@ -33,9 +33,10 @@ jobs:
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: ${{ matrix.ruby }}
+          bundler-cache: true
 
       - name: Run tests
-        run: rake test
+        run: bundle exec rake test
 
   benchmark-default:
     runs-on: ubuntu-latest
