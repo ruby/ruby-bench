@@ -43,6 +43,9 @@ class BenchmarkSuite
     env = benchmark_env(ruby)
     caller_json_path = ENV["RESULT_JSON_PATH"]
 
+    # Capture quiet setting before entering unbundled env (which clears ENV)
+    quiet = ENV['BENCHMARK_QUIET'] == '1'
+
     benchmark_entries.each_with_index do |entry, idx|
       puts("Running benchmark \"#{entry.name}\" (#{idx+1}/#{benchmark_entries.length})")
 
@@ -54,10 +57,10 @@ class BenchmarkSuite
       # This is important when running tests under `bundle exec rake test`.
       result = if defined?(Bundler)
         Bundler.with_unbundled_env do
-          run_single_benchmark(entry.script_path, result_json_path, ruby, cmd_prefix, env, entry.name)
+          run_single_benchmark(entry.script_path, result_json_path, ruby, cmd_prefix, env, entry.name, quiet: quiet)
         end
       else
-        run_single_benchmark(entry.script_path, result_json_path, ruby, cmd_prefix, env, entry.name)
+        run_single_benchmark(entry.script_path, result_json_path, ruby, cmd_prefix, env, entry.name, quiet: quiet)
       end
 
       if result[:success]
@@ -130,7 +133,7 @@ class BenchmarkSuite
     entries.select { |entry| filter.match?(entry.name) }
   end
 
-  def run_single_benchmark(script_path, result_json_path, ruby, cmd_prefix, env, benchmark_name)
+  def run_single_benchmark(script_path, result_json_path, ruby, cmd_prefix, env, benchmark_name, quiet: false)
     # Fix for jruby/jruby#7394 in JRuby 9.4.2.0
     script_path = File.expand_path(script_path)
 
@@ -151,7 +154,7 @@ class BenchmarkSuite
     ].compact
 
     # Do the benchmarking
-    result = BenchmarkRunner.check_call(cmd.shelljoin, env: env, raise_error: false)
+    result = BenchmarkRunner.check_call(cmd.shelljoin, env: env, raise_error: false, quiet: quiet)
     result[:command] = cmd.shelljoin
     result
   ensure
@@ -185,6 +188,12 @@ class BenchmarkSuite
       ["GEM_HOME", "GEM_PATH"].each do |var|
         env[var] = nil if ENV.key?(var)
       end
+    end
+
+    # Pass benchmark configuration env vars to subprocess.
+    # These may be set after bundler loads, so they'd be lost with with_unbundled_env.
+    ["WARMUP_ITRS", "MIN_BENCH_ITRS", "MIN_BENCH_TIME", "YJIT_BENCH_STATS", "ZJIT_BENCH_STATS"].each do |var|
+      env[var] = ENV[var] if ENV.key?(var)
     end
 
     env
