@@ -48,7 +48,17 @@ class BenchmarkSuite
 
       result_json_path = caller_json_path || File.join(out_path, "temp#{Process.pid}.json")
       cmd_prefix = base_cmd(ruby_description, entry.name)
-      result = run_single_benchmark(entry.script_path, result_json_path, ruby, cmd_prefix, env, entry.name)
+
+      # Clear project-level Bundler environment so benchmarks run in a clean context.
+      # Benchmarks that need Bundler (e.g., railsbench) set up their own via use_gemfile.
+      # This is important when running tests under `bundle exec rake test`.
+      result = if defined?(Bundler)
+        Bundler.with_unbundled_env do
+          run_single_benchmark(entry.script_path, result_json_path, ruby, cmd_prefix, env, entry.name)
+        end
+      else
+        run_single_benchmark(entry.script_path, result_json_path, ruby, cmd_prefix, env, entry.name)
+      end
 
       if result[:success]
         bench_data[entry.name] = process_benchmark_result(result_json_path, result[:command], delete_file: !caller_json_path)
@@ -175,15 +185,6 @@ class BenchmarkSuite
       ["GEM_HOME", "GEM_PATH"].each do |var|
         env[var] = nil if ENV.key?(var)
       end
-    end
-
-    # Clear Bundler environment variables to prevent the parent's bundle context
-    # from leaking into benchmark subprocesses. Benchmarks that need Bundler will
-    # set up their own context via use_gemfile in the harness.
-    # This is especially important when running tests under `bundle exec rake test`.
-    ["BUNDLE_GEMFILE", "BUNDLE_BIN_PATH", "BUNDLE_PATH", "BUNDLER_VERSION",
-     "BUNDLER_SETUP", "RUBYOPT", "RUBYLIB"].each do |var|
-      env[var] = nil if ENV.key?(var)
     end
 
     env
