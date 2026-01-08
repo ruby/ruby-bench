@@ -177,6 +177,15 @@ class BenchmarkSuite
       end
     end
 
+    # Clear Bundler environment variables to prevent the parent's bundle context
+    # from leaking into benchmark subprocesses. Benchmarks that need Bundler will
+    # set up their own context via use_gemfile in the harness.
+    # This is especially important when running tests under `bundle exec rake test`.
+    ["BUNDLE_GEMFILE", "BUNDLE_BIN_PATH", "BUNDLE_PATH", "BUNDLER_VERSION",
+     "BUNDLER_SETUP", "RUBYOPT", "RUBYLIB"].each do |var|
+      env[var] = nil if ENV.key?(var)
+    end
+
     env
   end
 

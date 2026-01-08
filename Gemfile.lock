@@ -1,0 +1,46 @@
+GEM
+  remote: https://rubygems.org/
+  specs:
+    bigdecimal (4.0.1)
+    csv (3.3.5)
+    gruff (0.29.0)
+      bigdecimal (>= 3.0)
+      histogram
+      rmagick (>= 5.5)
+    histogram (0.2.4.1)
+    minitest (5.27.0)
+    minitest-mock (5.27.0)
+    observer (0.1.2)
+    pkg-config (1.6.5)
+    rake (13.3.1)
+    rmagick (6.1.5)
+      observer (~> 0.1)
+      pkg-config (~> 1.4)
+
+PLATFORMS
+  arm64-darwin-24
+  ruby
+  x86_64-linux
+
+DEPENDENCIES
+  csv
+  gruff
+  minitest (~> 5.0)
+  minitest-mock
+  rake
+  rmagick
+
+CHECKSUMS
+  bigdecimal (4.0.1) sha256=8b07d3d065a9f921c80ceaea7c9d4ae596697295b584c296fe599dd0ad01c4a7
+  csv (3.3.5) sha256=6e5134ac3383ef728b7f02725d9872934f523cb40b961479f69cf3afa6c8e73f
+  gruff (0.29.0) sha256=ab808cbf507abda7ffacd4ba5805a43c47ad0ec6aa2a7b125cf8a165110047a0
+  histogram (0.2.4.1) sha256=9a6e379172b88ea842ab71700a535dd037185a4e17abcce742c7444679ae2abc
+  minitest (5.27.0) sha256=2d3b17f8a36fe7801c1adcffdbc38233b938eb0b4966e97a6739055a45fa77d5
+  minitest-mock (5.27.0) sha256=7040ed7185417a966920987eaa6eaf1be4ea1fc5b25bb03ff4703f98564a55b0
+  observer (0.1.2) sha256=d8a3107131ba661138d748e7be3dbafc0d82e732fffba9fccb3d7829880950ac
+  pkg-config (1.6.5) sha256=33f9f81c5322983d22b439b8b672f27777b406fea23bfec74ff14bbeb42ec733
+  rake (13.3.1) sha256=8c9e89d09f66a26a01264e7e3480ec0607f0c497a861ef16063604b1b08eb19c
+  rmagick (6.1.5) sha256=91c1734cc0effc3b1be18e6705ea0353d73cb492547002f542763fa08445acd1
+
+BUNDLED WITH
+  4.0.3
