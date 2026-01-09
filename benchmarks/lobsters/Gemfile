@@ -45,7 +45,7 @@ gem "rqrcode_core", github: "whomwah/rqrcode_core"
 gem "pdf-reader"
 gem "nokogiri", ">= 1.13.9"
 gem "htmlentities"
-gem "commonmarker", github: "ianks/commonmarker", branch: "hotfix/ruby-4-1"
+gem "commonmarker", ">= 2.6.1"
 
 # perf - skip for benchmarking
 group :development do
