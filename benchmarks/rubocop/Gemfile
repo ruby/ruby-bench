@@ -6,4 +6,3 @@ gem "parser", ">= 3.2.2.3" # Avoid a fun ruby-lsp/rubocop bug
 gem "rubocop"
 gem "rubocop-performance"
 gem "rubocop-rails"
-gem "concurrent-ruby", github: "ruby-concurrency/concurrent-ruby"

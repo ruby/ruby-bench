@@ -28,7 +28,6 @@ gem 'webrick', '~> 1.8.2'
 # Build JSON APIs with ease. Read more: https://github.com/rails/jbuilder
 # Needed in the benchmark for json responses
 gem 'jbuilder', '~> 2.7'
-gem 'concurrent-ruby', github: 'ruby-concurrency/concurrent-ruby'
 
 # Transpile app-like JavaScript. Read more: https://github.com/rails/webpacker
 # gem 'webpacker', '~> 4.0'

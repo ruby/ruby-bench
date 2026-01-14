@@ -22,7 +22,6 @@ gem 'scenic'
 #gem 'scenic-mysql_adapter'
 gem "activerecord-typedstore"
 gem 'sprockets-rails', '2.3.3'
-gem 'concurrent-ruby', github: 'ruby-concurrency/concurrent-ruby'
 
 # js
 gem "jquery-rails", "~> 4.3"
