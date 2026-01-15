@@ -43,7 +43,16 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ruby: [ruby, head, truffleruby]
+        include:
+          - ruby: ruby
+          - ruby: head
+          - ruby: truffleruby
+            # knucleotide: needs fork
+            # lobsters: commonmarker fails to install
+            # railsbench: NoMethodError: undefined method `[]=' for class Fiber (NoMethodError)
+            # ruby-lsp: rbs_extension.so: undefined symbol: ruby_vm_at_exit
+            # shipit: cannot load such file -- pty
+            extra_args: "--excludes=knucleotide,lobsters,railsbench,ruby-lsp,shipit"
     if: ${{ github.event_name != 'schedule' || github.repository == 'ruby/ruby-bench' }}
     steps:
       - uses: actions/checkout@v3
@@ -53,12 +62,11 @@ jobs:
           ruby-version: ${{ matrix.ruby }}
 
       - name: Test run_benchmarks.rb
-        run: ./run_benchmarks.rb
+        run: ./run_benchmarks.rb ${{ matrix.extra_args }}
         env:
           WARMUP_ITRS: '1'
           MIN_BENCH_ITRS: '1'
           MIN_BENCH_TIME: '0'
-        continue-on-error: ${{ matrix.ruby == 'truffleruby' }}
 
   benchmark-ractor:
     runs-on: ubuntu-latest
