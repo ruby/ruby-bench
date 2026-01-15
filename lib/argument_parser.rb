@@ -187,7 +187,7 @@ class ArgumentParser
   def default_args
     Args.new(
       executables: {},
-      out_path: File.expand_path("./data"),
+      out_path: File.expand_path("../data", __dir__),
       out_override: nil,
       harness: "harness",
       harness_explicit: false,
