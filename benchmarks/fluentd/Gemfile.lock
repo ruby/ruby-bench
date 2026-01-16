@@ -1,27 +1,34 @@
+GIT
+  remote: https://github.com/brianmario/yajl-ruby.git
+  revision: 875b92d9dece3bd6ab9e4abea476c765763539bd
+  specs:
+    yajl-ruby (1.4.3)
+
 GEM
   remote: https://rubygems.org/
   specs:
-    async (2.24.0)
+    async (2.35.2)
       console (~> 1.29)
       fiber-annotation
-      io-event (~> 1.9)
+      io-event (~> 1.11)
       metrics (~> 0.12)
-      traces (~> 0.15)
-    async-http (0.89.0)
+      traces (~> 0.18)
+    async-http (0.94.0)
       async (>= 2.10.2)
-      async-pool (~> 0.9)
+      async-pool (~> 0.11)
       io-endpoint (~> 0.14)
       io-stream (~> 0.6)
       metrics (~> 0.12)
-      protocol-http (~> 0.49)
-      protocol-http1 (~> 0.30)
+      protocol-http (~> 0.58)
+      protocol-http1 (~> 0.36)
       protocol-http2 (~> 0.22)
+      protocol-url (~> 0.2)
       traces (~> 0.10)
-    async-pool (0.11.0)
+    async-pool (0.11.1)
       async (>= 2.0)
     base64 (0.3.0)
-    concurrent-ruby (1.3.5)
-    console (1.33.0)
+    concurrent-ruby (1.3.6)
+    console (1.34.2)
       fiber-annotation
       fiber-local (~> 1.1)
       json
@@ -32,7 +39,7 @@ GEM
     fiber-local (1.1.0)
       fiber-storage
     fiber-storage (1.0.1)
-    fluentd (1.19.0)
+    fluentd (1.19.1)
       async-http (~> 0.86)
       base64 (~> 0.2)
       bundler
@@ -40,8 +47,6 @@ GEM
       csv (~> 3.2)
       drb (~> 2.2)
       http_parser.rb (>= 0.5.1, < 0.9.0)
-      io-event (< 1.11.0)
-      io-stream (< 0.8.0)
       logger (~> 1.6)
       msgpack (>= 1.3.1, < 2.0.0)
       serverengine (>= 2.3.2, < 3.0.0)
@@ -49,86 +54,88 @@ GEM
       strptime (>= 0.2.4, < 1.0.0)
       tzinfo (>= 1.0, < 3.0)
       tzinfo-data (~> 1.0)
-      uri (~> 1.0)
+      uri (~> 1.0, < 1.1.0)
       webrick (~> 1.4)
       yajl-ruby (~> 1.0)
       zstd-ruby (~> 1.5)
-    http_parser.rb (0.8.0)
-    io-endpoint (0.15.2)
-    io-event (1.10.2)
-    io-stream (0.7.0)
-    json (2.13.2)
+    http_parser.rb (0.8.1)
+    io-endpoint (0.16.0)
+    io-event (1.14.2)
+    io-stream (0.11.1)
+    json (2.18.0)
     logger (1.7.0)
-    metrics (0.12.2)
+    metrics (0.15.0)
     msgpack (1.8.0)
     protocol-hpack (1.5.1)
-    protocol-http (0.51.0)
-    protocol-http1 (0.34.1)
-      protocol-http (~> 0.22)
-    protocol-http2 (0.22.1)
+    protocol-http (0.58.0)
+    protocol-http1 (0.36.0)
+      protocol-http (~> 0.58)
+    protocol-http2 (0.24.0)
       protocol-hpack (~> 1.4)
       protocol-http (~> 0.47)
+    protocol-url (0.4.0)
     serverengine (2.4.0)
       base64 (~> 0.1)
       logger (~> 1.4)
       sigdump (~> 0.2.2)
     sigdump (0.2.5)
     strptime (0.2.5)
-    traces (0.15.2)
+    traces (0.18.2)
     tzinfo (2.0.6)
       concurrent-ruby (~> 1.0)
-    tzinfo-data (1.2025.2)
+    tzinfo-data (1.2025.3)
       tzinfo (>= 1.0.0)
-    uri (1.0.3)
-    webrick (1.9.1)
-    yajl-ruby (1.4.3)
-    zstd-ruby (1.5.7.0)
+    uri (1.0.4)
+    webrick (1.9.2)
+    zstd-ruby (1.5.7.1)
 
 PLATFORMS
+  arm64-darwin-25
   ruby
-  x86_64-linux
 
 DEPENDENCIES
   base64
   csv
   fluentd
+  yajl-ruby!
 
 CHECKSUMS
-  async (2.24.0) sha256=589d11ac6d5808da195ed5ac71f37afcab505855aa958bf5fc463a5469c34377
-  async-http (0.89.0) sha256=1a40728cf38ec4c3eff121474bd4f218237ffff177e471ca677b57d7aa436682
-  async-pool (0.11.0) sha256=2228c4a8d1ca59a259b5f9dab7e0f9f23d57856b195aca1c0aa684a7439ea525
+  async (2.35.2) sha256=2193907844f0ab086d4491c4d05c2a16dc2e2466b12468270e57daba5d21f962
+  async-http (0.94.0) sha256=479dc4a11c078aff7e054a729fc79fef7d0c28ca26bfe81a4d125672b28759ea
+  async-pool (0.11.1) sha256=98e1583e199a75f7dc70f8e65fc8d0d3b28636c3f256595d43e206642ad8fbda
   base64 (0.3.0) sha256=27337aeabad6ffae05c265c450490628ef3ebd4b67be58257393227588f5a97b
-  concurrent-ruby (1.3.5) sha256=813b3e37aca6df2a21a3b9f1d497f8cbab24a2b94cab325bffe65ee0f6cbebc6
-  console (1.33.0) sha256=a1cc1910e3b24169b4925e42d72da414d53e5bd6773aee9a811e57dfe0399384
+  concurrent-ruby (1.3.6) sha256=6b56837e1e7e5292f9864f34b69c5a2cbc75c0cf5338f1ce9903d10fa762d5ab
+  console (1.34.2) sha256=1c036abf606ccec83f9dc28f0c31710fe5936ffe7ba5d235ae2865590a482d58
   cool.io (1.9.1) sha256=2001bfec1b87ad5e87c0eb9f197a6ee6f1a0433ddba04002227da6ee8b74c6c1
   csv (3.3.5) sha256=6e5134ac3383ef728b7f02725d9872934f523cb40b961479f69cf3afa6c8e73f
   drb (2.2.3) sha256=0b00d6fdb50995fe4a45dea13663493c841112e4068656854646f418fda13373
   fiber-annotation (0.2.0) sha256=7abfadf1d119f508867d4103bf231c0354d019cc39a5738945dec2edadaf6c03
   fiber-local (1.1.0) sha256=c885f94f210fb9b05737de65d511136ea602e00c5105953748aa0f8793489f06
   fiber-storage (1.0.1) sha256=f48e5b6d8b0be96dac486332b55cee82240057065dc761c1ea692b2e719240e1
-  fluentd (1.19.0) sha256=96530a9d5706dfd3672efea69270004756ea9ee44d7788113102798c345ed400
-  http_parser.rb (0.8.0) sha256=5a0932f1fa82ce08a8516a2685d5a86031c000560f89946913c555a0697544be
-  io-endpoint (0.15.2) sha256=1e7e90bb683945288075b43ac505aba11460a281600236b5f8fbc210cf878f25
-  io-event (1.10.2) sha256=abe043a317df429db3670c7c246c167eda190cb5e9b5c543b1691970c9c3a13e
-  io-stream (0.7.0) sha256=f80f46103828f43a554a2980f8bbce257e879ca6ff400f3f774bac09d9e325bd
-  json (2.13.2) sha256=02e1f118d434c6b230a64ffa5c8dee07e3ec96244335c392eaed39e1199dbb68
+  fluentd (1.19.1) sha256=6b6e8408894cea64ce93c2b20b7f2f63788bf5a14c3233ca1c97e9ae0462c579
+  http_parser.rb (0.8.1) sha256=9ae8df145b39aa5398b2f90090d651c67bd8e2ebfe4507c966579f641e11097a
+  io-endpoint (0.16.0) sha256=b5517d9d2cde28e32ef0b0e13d4422d172a093760f50aad244d50282e990a114
+  io-event (1.14.2) sha256=b0a069190eafe86005c22f7464f744971b5bd82f153740d34e6ab49548d4f613
+  io-stream (0.11.1) sha256=fa5f551fcff99581c1757b9d1cee2c37b124f07d2ca4f40b756a05ab9bd21b87
+  json (2.18.0) sha256=b10506aee4183f5cf49e0efc48073d7b75843ce3782c68dbeb763351c08fd505
   logger (1.7.0) sha256=196edec7cc44b66cfb40f9755ce11b392f21f7967696af15d274dde7edff0203
-  metrics (0.12.2) sha256=75caab08235dc2b3bb7440e00f64e8426b23b9caa94755d81cf9371fffa1e12a
+  metrics (0.15.0) sha256=61ded5bac95118e995b1bc9ed4a5f19bc9814928a312a85b200abbdac9039072
   msgpack (1.8.0) sha256=e64ce0212000d016809f5048b48eb3a65ffb169db22238fb4b72472fecb2d732
   protocol-hpack (1.5.1) sha256=6feca238b8078da1cd295677d6f306c6001af92d75fe0643d33e6956cbc3ad91
-  protocol-http (0.51.0) sha256=da1c48c67b6f5bb3477f2475a56665f103ae13a89b77e20c62cc52c28e41ca21
-  protocol-http1 (0.34.1) sha256=146532623e506f3cbe814a69411ca45477c29249dc92c945249ca3222a02eb88
-  protocol-http2 (0.22.1) sha256=91966e7083e792e9b54fd5a62891a59078dfe8e1cf0162ce58b387db812ca768
+  protocol-http (0.58.0) sha256=b77c5799e7a7acd31afaa9fed5c3714fe91ab7746925d66e9e4d92a5c74555fa
+  protocol-http1 (0.36.0) sha256=057344d2509a59338d0b4bc8f092a52126bb9ed51b76adbb4365f132bbd4ef09
+  protocol-http2 (0.24.0) sha256=65327a019b7e36d2774e94050bf57a43bb60212775d2fcf02ae1d2ed4f01ef28
+  protocol-url (0.4.0) sha256=64d4c03b6b51ad815ac6fdaf77a1d91e5baf9220d26becb846c5459dacdea9e1
   serverengine (2.4.0) sha256=4a42a431f187fac9906834d1bacf00321e835b11bc7f7b8af5f9b5c8fbd246bc
   sigdump (0.2.5) sha256=bb706c1cce70458b285d2c3a57121e801ccb79f68be7f7377692eb40b5437242
   strptime (0.2.5) sha256=98ed77ff7717a47387ba473614f478e78b162d70a64072fd71d54f547e079af9
-  traces (0.15.2) sha256=d2547834b7248bb8c8f4f6532c6b9ba80ef8e2d6068ce16e7873575d7b802d81
+  traces (0.18.2) sha256=80f1649cb4daace1d7174b81f3b3b7427af0b93047759ba349960cb8f315e214
   tzinfo (2.0.6) sha256=8daf828cc77bcf7d63b0e3bdb6caa47e2272dcfaf4fbfe46f8c3a9df087a829b
-  tzinfo-data (1.2025.2) sha256=a92375a1fbb47d38fe88fd514c40a38cc8f97d168da2a6479f15185e86470939
-  uri (1.0.3) sha256=e9f2244608eea2f7bc357d954c65c910ce0399ca5e18a7a29207ac22d8767011
-  webrick (1.9.1) sha256=b42d3c94f166f3fb73d87e9b359def9b5836c426fc8beacf38f2184a21b2a989
-  yajl-ruby (1.4.3) sha256=8c974d9c11ae07b0a3b6d26efea8407269b02e4138118fbe3ef0d2ec9724d1d2
-  zstd-ruby (1.5.7.0) sha256=893819f6b95244ca8885c62f9b3be7edfbf604f055bdef0574f4ccca175e87db
+  tzinfo-data (1.2025.3) sha256=b546e2f1e5e5c40a0c619aafb24e30d3d6a128c2f689278f721b7286dd499562
+  uri (1.0.4) sha256=34485d137c079f8753a0ca1d883841a7ba2e5fae556e3c30c2aab0dde616344b
+  webrick (1.9.2) sha256=beb4a15fc474defed24a3bda4ffd88a490d517c9e4e6118c3edce59e45864131
+  yajl-ruby (1.4.3)
+  zstd-ruby (1.5.7.1) sha256=ded1fbf83afa32d613f28448a6d546129c578e5a9df3bd92f3f1e2542169fd21
 
 BUNDLED WITH
-  4.0.0
+  4.1.0.dev

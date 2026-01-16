@@ -4,3 +4,4 @@ git_source(:github) { |repo| "https://github.com/#{repo}.git" }
 gem 'csv'
 gem 'fluentd'
 gem 'base64'
+gem 'yajl-ruby', github: 'brianmario/yajl-ruby'

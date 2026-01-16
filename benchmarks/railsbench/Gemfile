@@ -18,7 +18,7 @@ end
 
 gem 'sprockets-rails', '3.2.2'
 
-gem 'stackprof', platforms: :mri
+gem 'stackprof', platforms: :mri, github: 'tmm1/stackprof'
 # Use sqlite3 as the database for Active Record
 gem 'sqlite3', platform: :ruby
 gem 'activerecord-jdbcsqlite3-adapter', '~> 70', platform: :jruby
