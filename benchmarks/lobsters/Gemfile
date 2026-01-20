@@ -45,7 +45,7 @@ gem "rqrcode_core", github: "whomwah/rqrcode_core"
 gem "pdf-reader"
 gem "nokogiri", ">= 1.13.9"
 gem "htmlentities"
-gem "commonmarker", github: "ianks/commonmarker", branch: "hotfix/ruby-4-1"
+gem "commonmarker", github: "jhawthorn/commonmarker", branch: "c-api-stable" # The v1.0 Rust gem is perpetually broken on Ruby master
 
 # perf - skip for benchmarking
 group :development do
