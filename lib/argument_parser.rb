@@ -130,7 +130,7 @@ class ArgumentParser
         args.yjit_opts = str
       end
 
-      opts.on("--zjit_opts=OPT_STRING", "string of command-line options to run ZJIT with (ignored if you use -e)") do |str|
+      opts.on("--zjit-opts=OPT_STRING", "string of command-line options to run ZJIT with (ignored if you use -e)") do |str|
         args.zjit_opts = str
       end
 
