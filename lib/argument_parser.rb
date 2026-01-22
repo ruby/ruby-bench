@@ -10,6 +10,7 @@ class ArgumentParser
     :harness,
     :harness_explicit,
     :yjit_opts,
+    :zjit_opts,
     :categories,
     :name_filters,
     :excludes,
@@ -19,6 +20,7 @@ class ArgumentParser
     :force_pinning,
     :turbo,
     :skip_yjit,
+    :skip_zjit,
     :with_pre_init,
     keyword_init: true
   )
@@ -35,7 +37,7 @@ class ArgumentParser
     args = default_args
 
     OptionParser.new do |opts|
-      opts.on("-e=NAME::RUBY_PATH OPTIONS", "ruby executable and options to be benchmarked (default: interp, yjit)") do |v|
+      opts.on("-e=NAME::RUBY_PATH OPTIONS", "ruby executable and options to be benchmarked (default: interp, yjit, zjit)") do |v|
         v.split(";").each do |name_executable|
           name, executable = name_executable.split("::", 2)
           if executable.nil?
@@ -91,6 +93,10 @@ class ArgumentParser
         args.skip_yjit = true
       end
 
+      opts.on("--skip-zjit", "Don't run with zjit after interpreter") do
+        args.skip_zjit = true
+      end
+
       opts.on("--harness=HARNESS_DIR", "which harness to use") do |v|
         v = "harness-#{v}" unless v.start_with?('harness')
         args.harness = v
@@ -122,6 +128,10 @@ class ArgumentParser
 
       opts.on("--yjit_opts=OPT_STRING", "string of command-line options to run YJIT with (ignored if you use -e)") do |str|
         args.yjit_opts = str
+      end
+
+      opts.on("--zjit_opts=OPT_STRING", "string of command-line options to run ZJIT with (ignored if you use -e)") do |str|
+        args.zjit_opts = str
       end
 
       opts.on("--with_pre-init=PRE_INIT_FILE",
@@ -157,9 +167,16 @@ class ArgumentParser
 
     # If -e is not specified, benchmark the current Ruby. Compare it with YJIT if available.
     if args.executables.empty?
-      if have_yjit?(@ruby_executable) && !args.skip_yjit
+      use_yjit = have_yjit?(@ruby_executable) && !args.skip_yjit
+      use_zjit = have_zjit?(@ruby_executable) && !args.skip_zjit
+      if use_yjit || use_zjit
         args.executables["interp"] = [@ruby_executable]
-        args.executables["yjit"] = [@ruby_executable, "--yjit", *args.yjit_opts.shellsplit]
+        if use_yjit
+          args.executables["yjit"] = [@ruby_executable, "--yjit", *args.yjit_opts.shellsplit]
+        end
+        if use_zjit
+          args.executables["zjit"] = [@ruby_executable, "--zjit", *args.zjit_opts.shellsplit]
+        end
       else
         args.executables["ruby"] = [@ruby_executable]
       end
@@ -184,6 +201,11 @@ class ArgumentParser
     ruby_version.downcase.include?("yjit")
   end
 
+  def have_zjit?(ruby)
+    ruby_version = `#{ruby} -v --zjit 2> #{File::NULL}`.strip
+    ruby_version.downcase.include?("zjit")
+  end
+
   def default_args
     Args.new(
       executables: {},
@@ -192,6 +214,7 @@ class ArgumentParser
       harness: "harness",
       harness_explicit: false,
       yjit_opts: "",
+      zjit_opts: "",
       categories: [],
       name_filters: [],
       excludes: [],
@@ -201,6 +224,7 @@ class ArgumentParser
       force_pinning: false,
       turbo: false,
       skip_yjit: false,
+      skip_zjit: false,
       with_pre_init: nil,
     )
   end
