@@ -224,7 +224,7 @@ class ArgumentParser
       force_pinning: false,
       turbo: false,
       skip_yjit: false,
-      skip_zjit: false,
+      skip_zjit: true,
       with_pre_init: nil,
     )
   end
