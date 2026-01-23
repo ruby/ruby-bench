@@ -68,7 +68,7 @@ class ArgumentParser
         args.out_override = v
       end
 
-      opts.on("--category=headline,other,micro,ractor", "when given, only benchmarks with specified categories will run") do |v|
+      opts.on("--category=headline,other,micro,thread,ractor", "when given, only benchmarks with specified categories will run") do |v|
         args.categories += v.split(",")
         if args.categories == ["ractor"]
           args.harness = "harness-ractor"
