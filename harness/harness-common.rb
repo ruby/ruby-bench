@@ -154,29 +154,33 @@ def return_results(warmup_iterations, bench_iterations)
   end
 
   # If YJIT or ZJIT is enabled, show some of its stats unless it does by itself.
-  if yjit_stats && !RubyVM::YJIT.stats_enabled?
+  if yjit_stats
     yjit_bench_results["yjit_stats"] = yjit_stats
-    stats_keys = [
-      *ENV.fetch("YJIT_BENCH_STATS", "").split(",").map(&:to_sym),
-      :inline_code_size,
-      :outlined_code_size,
-      :code_region_size,
-      :yjit_alloc_size,
-      :compile_time_ns,
-    ].uniq
-    puts "YJIT stats:"
-  elsif zjit_stats && defined?(RubyVM::ZJIT.stats_enabled?) && !RubyVM::ZJIT.stats_enabled?
+    if !RubyVM::YJIT.stats_enabled?
+      stats_keys = [
+        *ENV.fetch("YJIT_BENCH_STATS", "").split(",").map(&:to_sym),
+        :inline_code_size,
+        :outlined_code_size,
+        :code_region_size,
+        :yjit_alloc_size,
+        :compile_time_ns,
+      ].uniq
+      puts "YJIT stats:"
+    end
+  elsif zjit_stats
     yjit_bench_results["zjit_stats"] = zjit_stats
-    stats_keys = [
-      *ENV.fetch("ZJIT_BENCH_STATS", "").split(",").map(&:to_sym),
-      :code_region_bytes,
-      :zjit_alloc_bytes,
-      :compile_time_ns,
-      :profile_time_ns,
-      :gc_time_ns,
-      :invalidation_time_ns,
-    ].uniq
-    puts "ZJIT stats:"
+    if defined?(RubyVM::ZJIT.stats_enabled?) && !RubyVM::ZJIT.stats_enabled?
+      stats_keys = [
+        *ENV.fetch("ZJIT_BENCH_STATS", "").split(",").map(&:to_sym),
+        :code_region_bytes,
+        :zjit_alloc_bytes,
+        :compile_time_ns,
+        :profile_time_ns,
+        :gc_time_ns,
+        :invalidation_time_ns,
+      ].uniq
+      puts "ZJIT stats:"
+    end
   end
   if stats_keys
     jit_stats = yjit_stats || zjit_stats
