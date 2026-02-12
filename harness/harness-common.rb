@@ -136,7 +136,7 @@ yb_env_var = ENV.fetch("RESULT_JSON_PATH", default_path)
 YB_OUTPUT_FILE = File.expand_path yb_env_var
 
 def return_results(warmup_iterations, bench_iterations)
-  yjit_bench_results = {
+  ruby_bench_results = {
     "RUBY_DESCRIPTION" => RUBY_DESCRIPTION,
     "warmup" => warmup_iterations,
     "bench" => bench_iterations,
@@ -148,14 +148,14 @@ def return_results(warmup_iterations, bench_iterations)
 
   # Collect our own peak mem usage as soon as reasonable after finishing the last iteration.
   rss = get_rss
-  yjit_bench_results["rss"] = rss
+  ruby_bench_results["rss"] = rss
   if maxrss = get_maxrss
-    yjit_bench_results["maxrss"] = maxrss
+    ruby_bench_results["maxrss"] = maxrss
   end
 
   # If YJIT or ZJIT is enabled, show some of its stats unless it does by itself.
   if yjit_stats
-    yjit_bench_results["yjit_stats"] = yjit_stats
+    ruby_bench_results["yjit_stats"] = yjit_stats
     if !RubyVM::YJIT.stats_enabled?
       stats_keys = [
         *ENV.fetch("YJIT_BENCH_STATS", "").split(",").map(&:to_sym),
@@ -168,7 +168,7 @@ def return_results(warmup_iterations, bench_iterations)
       puts "YJIT stats:"
     end
   elsif zjit_stats
-    yjit_bench_results["zjit_stats"] = zjit_stats
+    ruby_bench_results["zjit_stats"] = zjit_stats
     if defined?(RubyVM::ZJIT.stats_enabled?) && !RubyVM::ZJIT.stats_enabled?
       stats_keys = [
         *ENV.fetch("ZJIT_BENCH_STATS", "").split(",").map(&:to_sym),
@@ -180,6 +180,8 @@ def return_results(warmup_iterations, bench_iterations)
         :invalidation_time_ns,
       ].uniq
       puts "ZJIT stats:"
+    elsif defined?(RubyVM::ZJIT.stats_string)
+      ruby_bench_results["zjit_stats_string"] = RubyVM::ZJIT.stats_string
     end
   end
   if stats_keys
@@ -204,10 +206,10 @@ def return_results(warmup_iterations, bench_iterations)
     puts "MAXRSS: %.1fMiB" % (maxrss / 1024.0 / 1024.0)
   end
 
-  write_json_file(yjit_bench_results)
+  write_json_file(ruby_bench_results)
 end
 
-def write_json_file(yjit_bench_results)
+def write_json_file(ruby_bench_results)
   require "json"
 
   out_path = YB_OUTPUT_FILE
@@ -216,7 +218,7 @@ def write_json_file(yjit_bench_results)
   # Using default path? Print where we put it.
   puts "Writing file #{out_path}" unless ENV["RESULT_JSON_PATH"]
 
-  File.write(out_path, JSON.pretty_generate(yjit_bench_results))
+  File.write(out_path, JSON.pretty_generate(ruby_bench_results))
 rescue LoadError
   warn "Failed to write JSON file: #{$!.message}"
 end
