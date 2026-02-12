@@ -21,7 +21,7 @@ module BenchmarkRunner
     end
 
     def run
-      CPUConfig.configure_for_benchmarking(turbo: args.turbo)
+      CPUConfig.configure_for_benchmarking(turbo: args.turbo) unless args.no_sudo
 
       # Create the output directory
       FileUtils.mkdir_p(args.out_path)
