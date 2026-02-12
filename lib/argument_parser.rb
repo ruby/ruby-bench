@@ -19,6 +19,7 @@ class ArgumentParser
     :no_pinning,
     :force_pinning,
     :turbo,
+    :no_sudo,
     :skip_yjit,
     :skip_zjit,
     :with_pre_init,
@@ -158,6 +159,10 @@ class ArgumentParser
       opts.on("--turbo", "don't disable CPU turbo boost") do
         args.turbo = true
       end
+
+      opts.on("--no-sudo", "skip all operations that require sudo") do
+        args.no_sudo = true
+      end
     end.parse!(argv)
 
     # Remaining arguments are treated as benchmark name filters
@@ -223,6 +228,7 @@ class ArgumentParser
       no_pinning: false,
       force_pinning: false,
       turbo: false,
+      no_sudo: false,
       skip_yjit: false,
       skip_zjit: true,
       with_pre_init: nil,

@@ -52,6 +52,7 @@ describe ArgumentParser do
         assert_equal false, args.graph
         assert_equal false, args.no_pinning
         assert_equal false, args.turbo
+        assert_equal false, args.no_sudo
         assert_equal false, args.skip_yjit
       end
     end
@@ -451,6 +452,15 @@ describe ArgumentParser do
         args = parser.parse(['--turbo'])
 
         assert_equal true, args.turbo
+      end
+    end
+
+    describe '--no-sudo option' do
+      it 'sets no_sudo flag' do
+        parser = ArgumentParser.new
+        args = parser.parse(['--no-sudo'])
+
+        assert_equal true, args.no_sudo
       end
     end
 
