@@ -122,8 +122,9 @@ class ZjitDiff
       stats_by_ruby = @ruby_names.map { |r| [@raw_data.dig(r, bench_name, 'zjit_stats'), r] }
       next if stats_by_ruby.any? { |s, _| s.nil? }
 
-      unknown_keys = stats_by_ruby.first[0].keys.select do |k|
-        stats_by_ruby.first[0][k].is_a?(Numeric) && !known_stat?(k)
+      all_keys = stats_by_ruby.flat_map { |s, _| s.keys }.uniq
+      unknown_keys = all_keys.select do |k|
+        stats_by_ruby.any? { |s, _| s[k].is_a?(Numeric) } && !known_stat?(k)
       end
 
       significant = filter_significant_keys(stats_by_ruby, unknown_keys)
@@ -230,7 +231,7 @@ class ZjitDiff
       stats_by_ruby = @ruby_names.map { |r| [@raw_data.dig(r, bench_name, 'zjit_stats'), r] }
       next if stats_by_ruby.any? { |s, _| s.nil? }
 
-      keys = SEND_COUNTERS.map(&:to_s).select { |k| stats_by_ruby.first[0].key?(k) }
+      keys = SEND_COUNTERS.map(&:to_s).select { |k| stats_by_ruby.any? { |s, _| s.key?(k) } }
       significant = filter_significant_keys(stats_by_ruby, keys)
       next if significant.empty?
 
@@ -253,7 +254,7 @@ class ZjitDiff
       stats_by_ruby = @ruby_names.map { |r| [@raw_data.dig(r, bench_name, 'zjit_stats'), r] }
       next if stats_by_ruby.any? { |s, _| s.nil? }
 
-      keys = SUMMARY_COUNTERS.map(&:to_s).select { |k| stats_by_ruby.first[0].key?(k) }
+      keys = SUMMARY_COUNTERS.map(&:to_s).select { |k| stats_by_ruby.any? { |s, _| s.key?(k) } }
       significant = filter_significant_keys(stats_by_ruby, keys)
       next if significant.empty?
 
@@ -283,7 +284,7 @@ class ZjitDiff
       stats_by_ruby = @ruby_names.map { |r| [@raw_data.dig(r, bench_name, 'zjit_stats'), r] }
       next if stats_by_ruby.any? { |s, _| s.nil? }
 
-      keys = stats_by_ruby.first[0].keys.select { |k| k.start_with?(prefix) }
+      keys = stats_by_ruby.flat_map { |s, _| s.keys }.uniq.select { |k| k.start_with?(prefix) }
       significant = filter_significant_keys(stats_by_ruby, keys)
 
       next if significant.empty?
