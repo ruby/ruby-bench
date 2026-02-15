@@ -236,6 +236,14 @@ throw:
   ractor: true
 
 #
+# Thread benchmarks
+#
+threads_io_with_cpu:
+  desc: Benchmark to test how long I/O takes to complete when there's a mix of IO-bound and CPU-bound threads.
+  category: thread
+  single_file: true
+
+#
 # Ractor scaling benchmarks
 #
 gvl_release_acquire:

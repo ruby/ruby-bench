@@ -56,7 +56,7 @@ describe 'run_benchmarks.rb integration' do
     it 'benchmarks.yml has valid category values' do
       require 'yaml'
       data = YAML.load_file(@benchmarks_yml)
-      valid_categories = ['headline', 'micro', 'other']
+      valid_categories = ['headline', 'micro', 'thread', 'other']
 
       data.each do |name, metadata|
         if metadata['category']
