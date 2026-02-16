@@ -8,7 +8,8 @@ GIT
 GEM
   remote: https://rubygems.org/
   specs:
-    ffi (1.17.2)
+    ffi (1.17.3)
+    ffi (1.17.3-x86_64-linux-gnu)
 
 PLATFORMS
   ruby
@@ -18,8 +19,9 @@ DEPENDENCIES
   rubyboy!
 
 CHECKSUMS
-  ffi (1.17.2) sha256=297235842e5947cc3036ebe64077584bff583cd7a4e94e9a02fdec399ef46da6
+  ffi (1.17.3) sha256=0e9f39f7bb3934f77ad6feab49662be77e87eedcdeb2a3f5c0234c2938563d4c
+  ffi (1.17.3-x86_64-linux-gnu) sha256=3746b01f677aae7b16dc1acb7cb3cc17b3e35bdae7676a3f568153fb0e2c887f
   rubyboy (1.5.1)
 
 BUNDLED WITH
-  4.0.0
+  4.0.3

@@ -11,4 +11,4 @@ DEPENDENCIES
   json (= 2.13.2)
 
 BUNDLED WITH
-   2.7.0
+  4.0.3
