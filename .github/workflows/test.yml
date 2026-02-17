@@ -51,7 +51,7 @@ jobs:
             # lobsters: commonmarker fails to install
             # ruby-lsp: rbs_extension.so: undefined symbol: ruby_vm_at_exit
             # shipit: cannot load such file -- pty
-            extra_args: "--excludes=knucleotide,lobsters,ruby-lsp,shipit"
+            extra_args: ""
     if: ${{ github.event_name != 'schedule' || github.repository == 'ruby/ruby-bench' }}
     steps:
       - uses: actions/checkout@v3
