@@ -202,6 +202,11 @@ object-new:
   category: micro
   single_file: true
   ractor: true
+object-new-ivars:
+  desc: instantiate a new object with ivars in a loop to test allocation and escape analysis performance
+  category: micro
+  single_file: true
+  ractor: true
 respond_to:
   desc: respond_to tests the performance of the respond_to? method.
   category: micro
