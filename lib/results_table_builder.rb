@@ -5,10 +5,11 @@ class ResultsTableBuilder
   SECONDS_TO_MS = 1000.0
   BYTES_TO_MIB = 1024.0 * 1024.0
 
-  def initialize(executable_names:, bench_data:, include_rss: false)
+  def initialize(executable_names:, bench_data:, include_rss: false, include_pvalue: false)
     @executable_names = executable_names
     @bench_data = bench_data
     @include_rss = include_rss
+    @include_pvalue = include_pvalue
     @base_name = executable_names.first
     @other_names = executable_names[1..]
     @bench_names = compute_bench_names
@@ -47,7 +48,10 @@ class ResultsTableBuilder
     end
 
     @other_names.each do |name|
-      header << "#{@base_name}/#{name}" << "p-value" << "sig"
+      header << "#{@base_name}/#{name}"
+      if @include_pvalue
+        header << "p-value" << "sig"
+      end
     end
 
     header
@@ -66,7 +70,10 @@ class ResultsTableBuilder
     end
 
     @other_names.each do |_name|
-      format << "%.3f" << "%s" << "%s"
+      format << "%.3f"
+      if @include_pvalue
+        format << "%s" << "%s"
+      end
     end
 
     format
@@ -108,10 +115,12 @@ class ResultsTableBuilder
     row.concat(ratio_1sts)
 
     other_ts.each do |other_t|
-      pval = Stats.welch_p_value(base_t, other_t)
       row << mean(base_t) / mean(other_t)
-      row << format_p_value(pval)
-      row << significance_level(pval)
+      if @include_pvalue
+        pval = Stats.welch_p_value(base_t, other_t)
+        row << format_p_value(pval)
+        row << significance_level(pval)
+      end
     end
   end
 

@@ -49,6 +49,7 @@ describe ArgumentParser do
         assert_equal [], args.categories
         assert_equal [], args.name_filters
         assert_equal false, args.rss
+        assert_equal false, args.pvalue
         assert_equal false, args.graph
         assert_equal false, args.no_pinning
         assert_equal false, args.turbo
@@ -425,6 +426,15 @@ describe ArgumentParser do
         args = parser.parse(['--rss'])
 
         assert_equal true, args.rss
+      end
+    end
+
+    describe '--pvalue option' do
+      it 'sets pvalue flag' do
+        parser = ArgumentParser.new
+        args = parser.parse(['--pvalue'])
+
+        assert_equal true, args.pvalue
       end
     end
 

@@ -69,7 +69,8 @@ module BenchmarkRunner
       builder = ResultsTableBuilder.new(
         executable_names: ruby_descriptions.keys,
         bench_data: bench_data,
-        include_rss: args.rss
+        include_rss: args.rss,
+        include_pvalue: args.pvalue
       )
       table, format = builder.build
 

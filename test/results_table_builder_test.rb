@@ -56,17 +56,15 @@ describe ResultsTableBuilder do
 
       table, format = builder.build
 
-      assert_equal ['bench', 'ruby (ms)', 'stddev (%)', 'ruby-yjit (ms)', 'stddev (%)', 'ruby-yjit 1st itr', 'ruby/ruby-yjit', 'p-value', 'sig'], table[0]
+      assert_equal ['bench', 'ruby (ms)', 'stddev (%)', 'ruby-yjit (ms)', 'stddev (%)', 'ruby-yjit 1st itr', 'ruby/ruby-yjit'], table[0]
 
-      assert_equal ['%s', '%.1f', '%.1f', '%.1f', '%.1f', '%.3f', '%.3f', '%s', '%s'], format
+      assert_equal ['%s', '%.1f', '%.1f', '%.1f', '%.1f', '%.3f', '%.3f'], format
 
       assert_equal 'fib', table[1][0]
       assert_in_delta 100.0, table[1][1], 1.0
       assert_in_delta 50.0, table[1][3], 1.0
       assert_in_delta 2.0, table[1][5], 0.1
       assert_in_delta 2.0, table[1][6], 0.1
-      assert_instance_of String, table[1][7]
-      assert_instance_of String, table[1][8]
     end
 
     it 'includes RSS columns when include_rss is true' do
@@ -173,12 +171,12 @@ describe ResultsTableBuilder do
         'ruby-rjit (ms)', 'stddev (%)',
         'ruby-yjit 1st itr',
         'ruby-rjit 1st itr',
-        'ruby/ruby-yjit', 'p-value', 'sig',
-        'ruby/ruby-rjit', 'p-value', 'sig'
+        'ruby/ruby-yjit',
+        'ruby/ruby-rjit'
       ]
       assert_equal expected_header, table[0]
 
-      expected_format = ['%s', '%.1f', '%.1f', '%.1f', '%.1f', '%.1f', '%.1f', '%.3f', '%.3f', '%.3f', '%s', '%s', '%.3f', '%s', '%s']
+      expected_format = ['%s', '%.1f', '%.1f', '%.1f', '%.1f', '%.1f', '%.1f', '%.3f', '%.3f', '%.3f', '%.3f']
       assert_equal expected_format, format
     end
 
@@ -332,7 +330,7 @@ describe ResultsTableBuilder do
       builder = ResultsTableBuilder.new(
         executable_names: executable_names,
         bench_data: bench_data,
-        include_rss: false
+        include_pvalue: true
       )
 
       table, _format = builder.build
@@ -364,12 +362,41 @@ describe ResultsTableBuilder do
       builder = ResultsTableBuilder.new(
         executable_names: executable_names,
         bench_data: bench_data,
-        include_rss: false
+        include_pvalue: true
       )
 
       table, _format = builder.build
       assert_equal 'N/A', table[1][-2]
       assert_equal '', table[1].last
+    end
+
+    it 'omits p-value columns when include_pvalue is false' do
+      executable_names = ['ruby', 'ruby-yjit']
+      bench_data = {
+        'ruby' => {
+          'fib' => {
+            'warmup' => [0.1],
+            'bench' => [0.100, 0.101, 0.099],
+            'rss' => 1024 * 1024 * 10
+          }
+        },
+        'ruby-yjit' => {
+          'fib' => {
+            'warmup' => [0.05],
+            'bench' => [0.050, 0.051, 0.049],
+            'rss' => 1024 * 1024 * 12
+          }
+        }
+      }
+
+      builder = ResultsTableBuilder.new(
+        executable_names: executable_names,
+        bench_data: bench_data
+      )
+
+      table, _format = builder.build
+      refute_includes table[0], 'p-value'
+      refute_includes table[0], 'sig'
     end
 
     it 'handles only headline benchmarks' do
