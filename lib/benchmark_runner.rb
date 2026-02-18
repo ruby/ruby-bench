@@ -48,7 +48,7 @@ module BenchmarkRunner
     end
 
     # Build output text string with metadata, table, and legend
-    def build_output_text(ruby_descriptions, table, format, bench_failures)
+    def build_output_text(ruby_descriptions, table, format, bench_failures, include_rss: false)
       base_name, *other_names = ruby_descriptions.keys
 
       output_str = +""
@@ -65,6 +65,9 @@ module BenchmarkRunner
         other_names.each do |name|
           output_str << "- #{name} 1st itr: ratio of #{base_name}/#{name} time for the first benchmarking iteration.\n"
           output_str << "- #{base_name}/#{name}: ratio of #{base_name}/#{name} time. Higher is better for #{name}. Above 1 represents a speedup.\n"
+          if include_rss
+            output_str << "- RSS #{base_name}/#{name}: ratio of #{base_name}/#{name} RSS. Higher is better for #{name}. Above 1 means lower memory usage.\n"
+          end
         end
         output_str << "- ***: p < 0.001, **: p < 0.01, *: p < 0.05 (Welch's t-test)\n"
       end

@@ -54,6 +54,12 @@ class ResultsTableBuilder
       end
     end
 
+    if @include_rss
+      @other_names.each do |name|
+        header << "RSS #{@base_name}/#{name}"
+      end
+    end
+
     header
   end
 
@@ -76,6 +82,12 @@ class ResultsTableBuilder
       end
     end
 
+    if @include_rss
+      @other_names.each do |_name|
+        format << "%.3f"
+      end
+    end
+
     format
   end
 
@@ -92,6 +104,7 @@ class ResultsTableBuilder
     build_base_columns(row, base_t, base_rss)
     build_comparison_columns(row, other_ts, other_rsss)
     build_ratio_columns(row, base_t0, other_t0s, base_t, other_ts)
+    build_rss_ratio_columns(row, base_rss, other_rsss)
 
     row
   end
@@ -121,6 +134,14 @@ class ResultsTableBuilder
         row << format_p_value(pval)
         row << significance_level(pval)
       end
+    end
+  end
+
+  def build_rss_ratio_columns(row, base_rss, other_rsss)
+    return unless @include_rss
+
+    other_rsss.each do |other_rss|
+      row << base_rss / other_rss
     end
   end
 

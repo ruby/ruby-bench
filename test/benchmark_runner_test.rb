@@ -390,6 +390,44 @@ describe BenchmarkRunner do
       assert_includes result, "- ***: p < 0.001, **: p < 0.01, *: p < 0.05 (Welch's t-test)"
     end
 
+    it 'includes RSS ratio legend when include_rss is true' do
+      ruby_descriptions = {
+        'ruby-base' => 'ruby 3.3.0',
+        'ruby-yjit' => 'ruby 3.3.0 +YJIT'
+      }
+      table = [
+        ['bench', 'ruby-base (ms)', 'stddev (%)', 'RSS (MiB)', 'ruby-yjit (ms)', 'stddev (%)', 'RSS (MiB)', 'ruby-yjit 1st itr', 'ruby-base/ruby-yjit', 'RSS ruby-base/ruby-yjit'],
+        ['fib', '100.0', '5.0', '10.0', '50.0', '3.0', '12.0', '2.000', '2.000', '0.833']
+      ]
+      format = ['%s', '%.1f', '%.1f', '%.1f', '%.1f', '%.1f', '%.1f', '%.3f', '%s', '%.3f']
+      bench_failures = {}
+
+      result = BenchmarkRunner.build_output_text(
+        ruby_descriptions, table, format, bench_failures, include_rss: true
+      )
+
+      assert_includes result, '- RSS ruby-base/ruby-yjit: ratio of ruby-base/ruby-yjit RSS. Higher is better for ruby-yjit. Above 1 means lower memory usage.'
+    end
+
+    it 'omits RSS ratio legend when include_rss is false' do
+      ruby_descriptions = {
+        'ruby-base' => 'ruby 3.3.0',
+        'ruby-yjit' => 'ruby 3.3.0 +YJIT'
+      }
+      table = [
+        ['bench', 'ruby-base (ms)', 'stddev (%)', 'ruby-yjit (ms)', 'stddev (%)'],
+        ['fib', '100.0', '5.0', '50.0', '3.0']
+      ]
+      format = ['%s', '%.1f', '%.1f', '%.1f', '%.1f']
+      bench_failures = {}
+
+      result = BenchmarkRunner.build_output_text(
+        ruby_descriptions, table, format, bench_failures
+      )
+
+      refute_includes result, 'RSS ruby-base/ruby-yjit'
+    end
+
     it 'includes formatted table in output' do
       ruby_descriptions = { 'ruby' => 'ruby 3.3.0' }
       table = [
