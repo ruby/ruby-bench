@@ -222,6 +222,7 @@ You can find several test harnesses in this repository:
 * harness-stats - count method calls and loop iterations
 * harness-vernier - a harness to profile the benchmark with vernier
 * harness-warmup - a harness which runs as long as needed to find warmed up (peak) performance
+* harness-callgrind - a harness for profiling with Valgrind's callgrind tool
 
 To use it, run a benchmark script directly, specifying a harness directory with `-I`:
 
@@ -272,6 +273,43 @@ PERF=record ruby --yjit-perf=map -Iharness-perf benchmarks/railsbench/benchmark.
 ```
 
 This is the only harness that uses `run_benchmark`'s argument, `num_itrs_hint`.
+
+### Using callgrind
+
+The `harness-callgrind` harness profiles benchmarks with [Valgrind's callgrind](https://valgrind.org/docs/manual/cl-manual.html)
+tool. Warmup runs with instrumentation off (near-native speed), then instrumentation is
+enabled for the benchmark phase only, so the output contains only steady-state data.
+
+The `CALLGRIND_OUT_FILE` environment variable sets the output filename. Valgrind reads it
+via `%q{}` expansion, so there is a single source of truth for the filename.
+
+```sh
+CALLGRIND_OUT_FILE=callgrind.out \
+  WARMUP_ITRS=15 MIN_BENCH_ITRS=5 valgrind --tool=callgrind \
+  --instr-atstart=no \
+  --callgrind-out-file=%q{CALLGRIND_OUT_FILE} \
+  ruby --zjit -Iharness-callgrind benchmarks/lobsters/benchmark.rb
+```
+
+To also capture warmup/compilation activity in a separate file, add `CALLGRIND_PROFILE_WARMUP=1`:
+
+```sh
+CALLGRIND_OUT_FILE=callgrind.out CALLGRIND_PROFILE_WARMUP=1 \
+  WARMUP_ITRS=15 MIN_BENCH_ITRS=5 valgrind --tool=callgrind \
+  --instr-atstart=no \
+  --callgrind-out-file=%q{CALLGRIND_OUT_FILE} \
+  ruby --zjit -Iharness-callgrind benchmarks/lobsters/benchmark.rb
+```
+
+This produces two files:
+* `callgrind-warmup.out` — warmup/compilation profile
+* `callgrind.out` — steady-state benchmark profile
+
+Note: warmup runs ~20-50x slower with `CALLGRIND_PROFILE_WARMUP` set because callgrind
+instrumentation is active during warmup. Use low iteration counts for instrumented phases.
+
+Analyze results with `callgrind_annotate callgrind.out` or load them into
+[KCachegrind](https://kcachegrind.github.io/).
 
 ### Printing YJIT stats
 
