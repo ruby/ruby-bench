@@ -277,36 +277,32 @@ This is the only harness that uses `run_benchmark`'s argument, `num_itrs_hint`.
 ### Using callgrind
 
 The `harness-callgrind` harness profiles benchmarks with [Valgrind's callgrind](https://valgrind.org/docs/manual/cl-manual.html)
-tool. Warmup runs with instrumentation off (near-native speed), then instrumentation is
-enabled for the benchmark phase only, so the output contains only steady-state data.
-
-The `CALLGRIND_OUT_FILE` environment variable sets the output filename. Valgrind reads it
-via `%q{}` expansion, so there is a single source of truth for the filename.
+tool. The harness automatically launches the process under valgrind — just use
+`-Iharness-callgrind` and it handles the rest. Warmup runs with instrumentation off
+(near-native speed), then instrumentation is enabled for the benchmark phase only,
+so the output contains only steady-state data.
 
 ```sh
-CALLGRIND_OUT_FILE=callgrind.out \
-  WARMUP_ITRS=15 MIN_BENCH_ITRS=5 valgrind --tool=callgrind \
-  --instr-atstart=no \
-  --callgrind-out-file=%q{CALLGRIND_OUT_FILE} \
-  ruby --zjit -Iharness-callgrind benchmarks/lobsters/benchmark.rb
+ruby -Iharness-callgrind benchmarks/lobsters/benchmark.rb
 ```
 
-To also capture warmup/compilation activity in a separate file, add `CALLGRIND_PROFILE_WARMUP=1`:
+To also capture warmup/compilation activity in a separate file:
 
 ```sh
-CALLGRIND_OUT_FILE=callgrind.out CALLGRIND_PROFILE_WARMUP=1 \
-  WARMUP_ITRS=15 MIN_BENCH_ITRS=5 valgrind --tool=callgrind \
-  --instr-atstart=no \
-  --callgrind-out-file=%q{CALLGRIND_OUT_FILE} \
-  ruby --zjit -Iharness-callgrind benchmarks/lobsters/benchmark.rb
+CALLGRIND_PROFILE_WARMUP=1 ruby -Iharness-callgrind benchmarks/lobsters/benchmark.rb
 ```
 
 This produces two files:
 * `callgrind-warmup.out` — warmup/compilation profile
 * `callgrind.out` — steady-state benchmark profile
 
-Note: warmup runs ~20-50x slower with `CALLGRIND_PROFILE_WARMUP` set because callgrind
-instrumentation is active during warmup. Use low iteration counts for instrumented phases.
+The output filename can be changed with `CALLGRIND_OUT_FILE`. Benchmarks can also set
+defaults for `out_file` and `profile_warmup` via `run_benchmark` keyword arguments;
+environment variables override these when set.
+
+Note: warmup runs ~20-50x slower with `profile_warmup` because callgrind instrumentation
+is active during warmup. Use low iteration counts for instrumented phases — control them
+with `WARMUP_ITRS` and `MIN_BENCH_ITRS`.
 
 Analyze results with `callgrind_annotate callgrind.out` or load them into
 [KCachegrind](https://kcachegrind.github.io/).
