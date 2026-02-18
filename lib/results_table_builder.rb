@@ -47,7 +47,7 @@ class ResultsTableBuilder
     end
 
     @other_names.each do |name|
-      header << "#{@base_name}/#{name}"
+      header << "#{@base_name}/#{name}" << "p-value" << "sig"
     end
 
     header
@@ -66,7 +66,7 @@ class ResultsTableBuilder
     end
 
     @other_names.each do |_name|
-      format << "%.3f"
+      format << "%.3f" << "%s" << "%s"
     end
 
     format
@@ -105,9 +105,38 @@ class ResultsTableBuilder
 
   def build_ratio_columns(row, base_t0, other_t0s, base_t, other_ts)
     ratio_1sts = other_t0s.map { |other_t0| base_t0 / other_t0 }
-    ratios = other_ts.map { |other_t| mean(base_t) / mean(other_t) }
     row.concat(ratio_1sts)
-    row.concat(ratios)
+
+    other_ts.each do |other_t|
+      pval = Stats.welch_p_value(base_t, other_t)
+      row << mean(base_t) / mean(other_t)
+      row << format_p_value(pval)
+      row << significance_level(pval)
+    end
+  end
+
+  def format_p_value(pval)
+    return "N/A" if pval.nil?
+
+    if pval >= 0.001
+      "%.3f" % pval
+    else
+      "%.1e" % pval
+    end
+  end
+
+  def significance_level(pval)
+    return "" if pval.nil?
+
+    if pval < 0.001
+      "p < 0.001"
+    elsif pval < 0.01
+      "p < 0.01"
+    elsif pval < 0.05
+      "p < 0.05"
+    else
+      ""
+    end
   end
 
   def extract_first_iteration_times(bench_name)

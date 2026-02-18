@@ -56,15 +56,17 @@ describe ResultsTableBuilder do
 
       table, format = builder.build
 
-      assert_equal ['bench', 'ruby (ms)', 'stddev (%)', 'ruby-yjit (ms)', 'stddev (%)', 'ruby-yjit 1st itr', 'ruby/ruby-yjit'], table[0]
+      assert_equal ['bench', 'ruby (ms)', 'stddev (%)', 'ruby-yjit (ms)', 'stddev (%)', 'ruby-yjit 1st itr', 'ruby/ruby-yjit', 'p-value', 'sig'], table[0]
 
-      assert_equal ['%s', '%.1f', '%.1f', '%.1f', '%.1f', '%.3f', '%.3f'], format
+      assert_equal ['%s', '%.1f', '%.1f', '%.1f', '%.1f', '%.3f', '%.3f', '%s', '%s'], format
 
       assert_equal 'fib', table[1][0]
       assert_in_delta 100.0, table[1][1], 1.0
       assert_in_delta 50.0, table[1][3], 1.0
       assert_in_delta 2.0, table[1][5], 0.1
       assert_in_delta 2.0, table[1][6], 0.1
+      assert_instance_of String, table[1][7]
+      assert_instance_of String, table[1][8]
     end
 
     it 'includes RSS columns when include_rss is true' do
@@ -171,12 +173,12 @@ describe ResultsTableBuilder do
         'ruby-rjit (ms)', 'stddev (%)',
         'ruby-yjit 1st itr',
         'ruby-rjit 1st itr',
-        'ruby/ruby-yjit',
-        'ruby/ruby-rjit'
+        'ruby/ruby-yjit', 'p-value', 'sig',
+        'ruby/ruby-rjit', 'p-value', 'sig'
       ]
       assert_equal expected_header, table[0]
 
-      expected_format = ['%s', '%.1f', '%.1f', '%.1f', '%.1f', '%.1f', '%.1f', '%.3f', '%.3f', '%.3f', '%.3f']
+      expected_format = ['%s', '%.1f', '%.1f', '%.1f', '%.1f', '%.1f', '%.1f', '%.3f', '%.3f', '%.3f', '%s', '%s', '%.3f', '%s', '%s']
       assert_equal expected_format, format
     end
 
@@ -306,6 +308,68 @@ describe ResultsTableBuilder do
 
       assert_equal 2, table.length
       assert_equal 'fib', table[1][0]
+    end
+
+    it 'shows small p-value in scientific notation for clearly different distributions' do
+      executable_names = ['ruby', 'ruby-yjit']
+      bench_data = {
+        'ruby' => {
+          'fib' => {
+            'warmup' => [0.1],
+            'bench' => [0.100, 0.101, 0.099, 0.1005, 0.0995, 0.1002, 0.0998, 0.1001, 0.0999, 0.1003],
+            'rss' => 1024 * 1024 * 10
+          }
+        },
+        'ruby-yjit' => {
+          'fib' => {
+            'warmup' => [0.05],
+            'bench' => [0.050, 0.051, 0.049, 0.0505, 0.0495, 0.0502, 0.0498, 0.0501, 0.0499, 0.0503],
+            'rss' => 1024 * 1024 * 12
+          }
+        }
+      }
+
+      builder = ResultsTableBuilder.new(
+        executable_names: executable_names,
+        bench_data: bench_data,
+        include_rss: false
+      )
+
+      table, _format = builder.build
+      p_value_str = table[1][-2]
+      sig_str = table[1].last
+      assert_match(/e-/, p_value_str, "Expected scientific notation for very small p-value, got #{p_value_str}")
+      assert_equal "p < 0.001", sig_str
+    end
+
+    it 'shows N/A p-value when samples have fewer than 2 elements' do
+      executable_names = ['ruby', 'ruby-yjit']
+      bench_data = {
+        'ruby' => {
+          'fib' => {
+            'warmup' => [0.1],
+            'bench' => [0.1],
+            'rss' => 1024 * 1024 * 10
+          }
+        },
+        'ruby-yjit' => {
+          'fib' => {
+            'warmup' => [0.05],
+            'bench' => [0.05],
+            'rss' => 1024 * 1024 * 12
+          }
+        }
+      }
+
+      builder = ResultsTableBuilder.new(
+        executable_names: executable_names,
+        bench_data: bench_data,
+        include_rss: false
+      )
+
+      table, _format = builder.build
+      assert_equal 'N/A', table[1][-2]
+      assert_equal '', table[1].last
     end
 
     it 'handles only headline benchmarks' do
