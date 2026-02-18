@@ -23,6 +23,7 @@ class ArgumentParser
     :skip_yjit,
     :skip_zjit,
     :with_pre_init,
+    :pvalue,
     keyword_init: true
   )
 
@@ -144,6 +145,10 @@ class ArgumentParser
         args.rss = true
       end
 
+      opts.on("--pvalue", "show p-value and significance columns for each comparison") do
+        args.pvalue = true
+      end
+
       opts.on("--graph", "generate a graph image of benchmark results") do
         args.graph = true
       end
@@ -224,6 +229,7 @@ class ArgumentParser
       name_filters: [],
       excludes: [],
       rss: false,
+      pvalue: false,
       graph: false,
       no_pinning: false,
       force_pinning: false,

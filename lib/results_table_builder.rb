@@ -5,10 +5,11 @@ class ResultsTableBuilder
   SECONDS_TO_MS = 1000.0
   BYTES_TO_MIB = 1024.0 * 1024.0
 
-  def initialize(executable_names:, bench_data:, include_rss: false)
+  def initialize(executable_names:, bench_data:, include_rss: false, include_pvalue: false)
     @executable_names = executable_names
     @bench_data = bench_data
     @include_rss = include_rss
+    @include_pvalue = include_pvalue
     @base_name = executable_names.first
     @other_names = executable_names[1..]
     @bench_names = compute_bench_names
@@ -48,6 +49,9 @@ class ResultsTableBuilder
 
     @other_names.each do |name|
       header << "#{@base_name}/#{name}"
+      if @include_pvalue
+        header << "p-value" << "sig"
+      end
     end
 
     header
@@ -66,7 +70,10 @@ class ResultsTableBuilder
     end
 
     @other_names.each do |_name|
-      format << "%.3f"
+      format << "%s"
+      if @include_pvalue
+        format << "%s" << "%s"
+      end
     end
 
     format
@@ -105,9 +112,60 @@ class ResultsTableBuilder
 
   def build_ratio_columns(row, base_t0, other_t0s, base_t, other_ts)
     ratio_1sts = other_t0s.map { |other_t0| base_t0 / other_t0 }
-    ratios = other_ts.map { |other_t| mean(base_t) / mean(other_t) }
     row.concat(ratio_1sts)
-    row.concat(ratios)
+
+    other_ts.each do |other_t|
+      pval = Stats.welch_p_value(base_t, other_t)
+      row << format_ratio(mean(base_t) / mean(other_t), pval)
+      if @include_pvalue
+        row << format_p_value(pval)
+        row << significance_level(pval)
+      end
+    end
+  end
+
+  def format_ratio(ratio, pval)
+    sym = significance_symbol(pval)
+    formatted = "%.3f" % ratio
+    sym.empty? ? formatted : "#{formatted} (#{sym})"
+  end
+
+  def format_p_value(pval)
+    return "N/A" if pval.nil?
+
+    if pval >= 0.001
+      "%.3f" % pval
+    else
+      "%.1e" % pval
+    end
+  end
+
+  def significance_symbol(pval)
+    return "" if pval.nil?
+
+    if pval < 0.001
+      "***"
+    elsif pval < 0.01
+      "**"
+    elsif pval < 0.05
+      "*"
+    else
+      ""
+    end
+  end
+
+  def significance_level(pval)
+    return "" if pval.nil?
+
+    if pval < 0.001
+      "p < 0.001"
+    elsif pval < 0.01
+      "p < 0.01"
+    elsif pval < 0.05
+      "p < 0.05"
+    else
+      ""
+    end
   end
 
   def extract_first_iteration_times(bench_name)
