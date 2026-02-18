@@ -40,19 +40,43 @@ module BenchmarkRunner
         force_pinning: args.force_pinning
       )
 
-      # Benchmark with and without YJIT
+      # Collect ruby version descriptions for all executables upfront
+      args.executables.each do |name, executable|
+        ruby_descriptions[name] = `#{executable.shelljoin} -v`.chomp
+      end
+
       bench_start_time = Time.now.to_f
       bench_data = {}
       bench_failures = {}
-      args.executables.each do |name, executable|
-        ruby_descriptions[name] = `#{executable.shelljoin} -v`.chomp
 
-        bench_data[name], failures = suite.run(
-          ruby: executable,
-          ruby_description: ruby_descriptions[name]
-        )
-        # Make it easier to query later.
-        bench_failures[name] = failures unless failures.empty?
+      if args.interleave
+        args.executables.each_key { |name| bench_data[name] = {} }
+        entries = suite.benchmarks
+
+        entries.each_with_index do |entry, idx|
+          # Alternate executable order to cancel cache-warming bias
+          exes = ruby_descriptions.keys
+          exes = exes.reverse if idx.odd?
+
+          exes.each do |name|
+            puts("Running benchmark \"#{entry.name}\" [#{name}] (#{idx+1}/#{entries.length})")
+            result = suite.run_benchmark(entry, ruby: args.executables[name], ruby_description: ruby_descriptions[name])
+            if result[:data]
+              bench_data[name][entry.name] = result[:data]
+            else
+              bench_failures[name] ||= {}
+              bench_failures[name][entry.name] = result[:failure]
+            end
+          end
+        end
+      else
+        args.executables.each do |name, executable|
+          bench_data[name], failures = suite.run(
+            ruby: executable,
+            ruby_description: ruby_descriptions[name]
+          )
+          bench_failures[name] = failures unless failures.empty?
+        end
       end
 
       bench_end_time = Time.now.to_f

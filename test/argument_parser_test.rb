@@ -50,6 +50,7 @@ describe ArgumentParser do
         assert_equal [], args.name_filters
         assert_equal false, args.rss
         assert_equal false, args.pvalue
+        assert_equal false, args.interleave
         assert_equal false, args.graph
         assert_equal false, args.no_pinning
         assert_equal false, args.turbo
@@ -435,6 +436,15 @@ describe ArgumentParser do
         args = parser.parse(['--pvalue'])
 
         assert_equal true, args.pvalue
+      end
+    end
+
+    describe '--interleave option' do
+      it 'sets interleave flag' do
+        parser = ArgumentParser.new
+        args = parser.parse(['--interleave'])
+
+        assert_equal true, args.interleave
       end
     end
 

@@ -24,6 +24,7 @@ class ArgumentParser
     :skip_zjit,
     :with_pre_init,
     :pvalue,
+    :interleave,
     keyword_init: true
   )
 
@@ -149,6 +150,10 @@ class ArgumentParser
         args.pvalue = true
       end
 
+      opts.on("--interleave", "run benchmarks interleaved across executables to reduce thermal drift") do
+        args.interleave = true
+      end
+
       opts.on("--graph", "generate a graph image of benchmark results") do
         args.graph = true
       end
@@ -230,6 +235,7 @@ class ArgumentParser
       excludes: [],
       rss: false,
       pvalue: false,
+      interleave: false,
       graph: false,
       no_pinning: false,
       force_pinning: false,

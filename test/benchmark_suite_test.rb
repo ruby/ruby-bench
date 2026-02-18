@@ -519,6 +519,105 @@ describe BenchmarkSuite do
     end
   end
 
+  describe '#benchmarks' do
+    it 'returns discovered benchmark entries' do
+      suite = BenchmarkSuite.new(
+        categories: [],
+        name_filters: ['simple'],
+        out_path: @out_path,
+        harness: 'harness',
+        no_pinning: true
+      )
+
+      entries = suite.benchmarks
+      assert_instance_of Array, entries
+      assert_equal 1, entries.length
+      assert_equal 'simple', entries.first.name
+    end
+
+    it 'memoizes the result' do
+      suite = BenchmarkSuite.new(
+        categories: [],
+        name_filters: ['simple'],
+        out_path: @out_path,
+        harness: 'harness',
+        no_pinning: true
+      )
+
+      assert_same suite.benchmarks, suite.benchmarks
+    end
+  end
+
+  describe '#run_benchmark' do
+    it 'returns data hash on success' do
+      suite = BenchmarkSuite.new(
+        categories: [],
+        name_filters: ['simple'],
+        out_path: @out_path,
+        harness: 'harness',
+        no_pinning: true
+      )
+
+      entry = suite.benchmarks.first
+      result = nil
+      capture_io do
+        result = suite.run_benchmark(entry, ruby: [RbConfig.ruby], ruby_description: 'ruby 3.2.0')
+      end
+
+      assert_equal 'simple', result[:name]
+      assert_instance_of Hash, result[:data]
+      assert_includes result[:data], 'warmup'
+      assert_includes result[:data], 'bench'
+      assert_includes result[:data], 'rss'
+      assert_nil result[:failure]
+    end
+
+    it 'returns failure hash on error' do
+      File.write('benchmarks/failing.rb', "exit(1)\n")
+
+      suite = BenchmarkSuite.new(
+        categories: [],
+        name_filters: ['failing'],
+        out_path: @out_path,
+        harness: 'harness',
+        no_pinning: true
+      )
+
+      entry = suite.benchmarks.first
+      result = nil
+      capture_io do
+        result = suite.run_benchmark(entry, ruby: [RbConfig.ruby], ruby_description: 'ruby 3.2.0')
+      end
+
+      assert_equal 'failing', result[:name]
+      assert_nil result[:data]
+      assert_equal 1, result[:failure]
+    end
+
+    it 'produces same data as run for the same benchmark' do
+      suite = BenchmarkSuite.new(
+        categories: [],
+        name_filters: ['simple'],
+        out_path: @out_path,
+        harness: 'harness',
+        no_pinning: true
+      )
+
+      entry = suite.benchmarks.first
+      single_result = nil
+      capture_io do
+        single_result = suite.run_benchmark(entry, ruby: [RbConfig.ruby], ruby_description: 'ruby 3.2.0')
+      end
+
+      run_data = nil
+      capture_io do
+        run_data, _ = suite.run(ruby: [RbConfig.ruby], ruby_description: 'ruby 3.2.0')
+      end
+
+      assert_equal run_data['simple'].keys.sort, single_result[:data].keys.sort
+    end
+  end
+
   describe 'integration with BenchmarkFilter' do
     it 'uses BenchmarkFilter to match benchmarks' do
       # Create benchmarks with different categories
