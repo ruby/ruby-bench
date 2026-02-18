@@ -48,6 +48,7 @@ describe BenchmarkRunner::CLI do
       name_filters: [],
       excludes: [],
       rss: false,
+      interleave: false,
       graph: false,
       no_pinning: true,
       turbo: true,
@@ -315,6 +316,37 @@ describe BenchmarkRunner::CLI do
 
         # Should show timing
         assert_match(/Total time spent benchmarking: \d+s/, output)
+      end
+    end
+
+    it 'runs benchmarks interleaved when --interleave is set' do
+      Dir.mktmpdir do |tmpdir|
+        args = create_args(
+          name_filters: ['fib', 'respond_to'],
+          out_path: tmpdir,
+          interleave: true
+        )
+
+        cli = BenchmarkRunner::CLI.new(args)
+        output = capture_io { cli.run }.join
+
+        # Progress output should include executable names in brackets
+        assert_match(/\[.+\]/, output, "Interleaved output should include executable name in brackets")
+        assert_match(/Total time spent benchmarking:/, output)
+
+        # Verify output files were created with data from all executables
+        json_files = Dir.glob(File.join(tmpdir, "*.json"))
+        assert_equal 1, json_files.size
+
+        json_data = JSON.parse(File.read(json_files.first))
+        raw_data = json_data['raw_data']
+
+        # All executables should have results
+        args.executables.each_key do |name|
+          assert raw_data.key?(name), "Expected raw_data to contain '#{name}'"
+          assert raw_data[name].key?('fib'), "Expected '#{name}' to have 'fib' results"
+          assert raw_data[name].key?('respond_to'), "Expected '#{name}' to have 'respond_to' results"
+        end
       end
     end
 

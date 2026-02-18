@@ -33,41 +33,53 @@ class BenchmarkSuite
     @bench_dir = BENCHMARKS_DIR
   end
 
-  # Run all the benchmarks and record execution times
+  # Discovered and filtered benchmark entries, memoized.
+  def benchmarks
+    @benchmarks ||= discover_benchmarks
+  end
+
+  # Run a single benchmark entry on a single executable.
+  # Returns { name:, data: } on success, { name:, failure: } on error.
+  def run_benchmark(entry, ruby:, ruby_description:)
+    env = benchmark_env(ruby)
+    caller_json_path = ENV["RESULT_JSON_PATH"]
+    quiet = ENV['BENCHMARK_QUIET'] == '1'
+
+    result_json_path = caller_json_path || File.join(out_path, "temp#{Process.pid}.json")
+    cmd_prefix = base_cmd(ruby_description, entry.name)
+
+    # Clear project-level Bundler environment so benchmarks run in a clean context.
+    # Benchmarks that need Bundler (e.g., railsbench) set up their own via use_gemfile.
+    result = if defined?(Bundler)
+      Bundler.with_unbundled_env do
+        run_single_benchmark(entry.script_path, result_json_path, ruby, cmd_prefix, env, entry.name, quiet: quiet)
+      end
+    else
+      run_single_benchmark(entry.script_path, result_json_path, ruby, cmd_prefix, env, entry.name, quiet: quiet)
+    end
+
+    if result[:success]
+      { name: entry.name, data: process_benchmark_result(result_json_path, result[:command], delete_file: !caller_json_path) }
+    else
+      FileUtils.rm_f(result_json_path) unless caller_json_path
+      { name: entry.name, failure: result[:status].exitstatus }
+    end
+  end
+
+  # Run all the benchmarks and record execution times.
   # Returns [bench_data, bench_failures]
   def run(ruby:, ruby_description:)
     bench_data = {}
     bench_failures = {}
 
-    benchmark_entries = discover_benchmarks
-    env = benchmark_env(ruby)
-    caller_json_path = ENV["RESULT_JSON_PATH"]
+    benchmarks.each_with_index do |entry, idx|
+      puts("Running benchmark \"#{entry.name}\" (#{idx+1}/#{benchmarks.length})")
 
-    # Capture quiet setting before entering unbundled env (which clears ENV)
-    quiet = ENV['BENCHMARK_QUIET'] == '1'
-
-    benchmark_entries.each_with_index do |entry, idx|
-      puts("Running benchmark \"#{entry.name}\" (#{idx+1}/#{benchmark_entries.length})")
-
-      result_json_path = caller_json_path || File.join(out_path, "temp#{Process.pid}.json")
-      cmd_prefix = base_cmd(ruby_description, entry.name)
-
-      # Clear project-level Bundler environment so benchmarks run in a clean context.
-      # Benchmarks that need Bundler (e.g., railsbench) set up their own via use_gemfile.
-      # This is important when running tests under `bundle exec rake test`.
-      result = if defined?(Bundler)
-        Bundler.with_unbundled_env do
-          run_single_benchmark(entry.script_path, result_json_path, ruby, cmd_prefix, env, entry.name, quiet: quiet)
-        end
+      result = run_benchmark(entry, ruby: ruby, ruby_description: ruby_description)
+      if result[:data]
+        bench_data[entry.name] = result[:data]
       else
-        run_single_benchmark(entry.script_path, result_json_path, ruby, cmd_prefix, env, entry.name, quiet: quiet)
-      end
-
-      if result[:success]
-        bench_data[entry.name] = process_benchmark_result(result_json_path, result[:command], delete_file: !caller_json_path)
-      else
-        bench_failures[entry.name] = result[:status].exitstatus
-        FileUtils.rm_f(result_json_path) unless caller_json_path
+        bench_failures[entry.name] = result[:failure]
       end
     end
 
@@ -174,6 +186,11 @@ class BenchmarkSuite
   end
 
   def benchmark_env(ruby)
+    @benchmark_env_cache ||= {}
+    @benchmark_env_cache[ruby] ||= compute_benchmark_env(ruby)
+  end
+
+  def compute_benchmark_env(ruby)
     # When the Ruby running this script is not the first Ruby in PATH, shell commands
     # like `bundle install` in a child process will not use the Ruby being benchmarked.
     # It overrides PATH to guarantee the commands of the benchmarked Ruby will be used.
