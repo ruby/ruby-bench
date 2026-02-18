@@ -70,8 +70,9 @@ class TableFormatter
   end
 
   def format_row(row, col_widths)
-    row.map.with_index { |cell, i| cell.ljust(col_widths[i]) }
-       .join(COLUMN_SEPARATOR)
-       .rstrip
+    row.map.with_index { |cell, i|
+      i == 0 ? cell.ljust(col_widths[i]) : cell.rjust(col_widths[i])
+    }.join(COLUMN_SEPARATOR)
+      .rstrip
   end
 end

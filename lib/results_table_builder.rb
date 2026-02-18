@@ -150,7 +150,8 @@ class ResultsTableBuilder
   def format_ratio(ratio, pval)
     sym = significance_symbol(pval)
     formatted = "%.3f" % ratio
-    sym.empty? ? formatted : "#{formatted} (#{sym})"
+    suffix = sym.empty? ? "" : " (#{sym})"
+    (formatted + suffix).ljust(formatted.length + 6)
   end
 
   def format_p_value(pval)
