@@ -87,11 +87,54 @@ describe ResultsTableBuilder do
 
       table, format = builder.build
 
+      # No RSS ratio column with a single executable
       assert_equal ['bench', 'ruby (ms)', 'stddev (%)', 'RSS (MiB)'], table[0]
-
       assert_equal ['%s', '%.1f', '%.1f', '%.1f'], format
-
       assert_in_delta 10.0, table[1][3], 0.1
+    end
+
+    it 'includes RSS ratio columns when include_rss is true with multiple executables' do
+      executable_names = ['ruby', 'ruby-yjit']
+      bench_data = {
+        'ruby' => {
+          'fib' => {
+            'warmup' => [0.1],
+            'bench' => [0.1, 0.11, 0.09],
+            'rss' => 1024 * 1024 * 10
+          }
+        },
+        'ruby-yjit' => {
+          'fib' => {
+            'warmup' => [0.05],
+            'bench' => [0.05, 0.06, 0.04],
+            'rss' => 1024 * 1024 * 20
+          }
+        }
+      }
+
+      builder = ResultsTableBuilder.new(
+        executable_names: executable_names,
+        bench_data: bench_data,
+        include_rss: true
+      )
+
+      table, format = builder.build
+
+      expected_header = [
+        'bench',
+        'ruby (ms)', 'stddev (%)', 'RSS (MiB)',
+        'ruby-yjit (ms)', 'stddev (%)', 'RSS (MiB)',
+        'ruby-yjit 1st itr',
+        'ruby/ruby-yjit',
+        'RSS ruby/ruby-yjit'
+      ]
+      assert_equal expected_header, table[0]
+
+      expected_format = ['%s', '%.1f', '%.1f', '%.1f', '%.1f', '%.1f', '%.1f', '%.3f', '%s', '%.3f']
+      assert_equal expected_format, format
+
+      # RSS ratio: 10 MiB / 20 MiB = 0.5
+      assert_in_delta 0.5, table[1].last, 0.01
     end
 
     it 'skips benchmarks with missing data' do

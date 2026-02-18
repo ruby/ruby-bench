@@ -85,7 +85,7 @@ module BenchmarkRunner
       BenchmarkRunner.write_csv(output_path, ruby_descriptions, table)
 
       # Save the output in a text file that we can easily refer to
-      output_str = BenchmarkRunner.build_output_text(ruby_descriptions, table, format, bench_failures)
+      output_str = BenchmarkRunner.build_output_text(ruby_descriptions, table, format, bench_failures, include_rss: args.rss)
       out_txt_path = output_path + ".txt"
       File.open(out_txt_path, "w") { |f| f.write output_str }
 
