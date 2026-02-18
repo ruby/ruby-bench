@@ -17,8 +17,8 @@ describe TableFormatter do
       assert_equal <<~TABLE, result
         -----  ---------  ----------
         bench  time (ms)  stddev (%)
-        fib    100.5      2.3
-        loop   50.2       1.1
+        fib        100.5         2.3
+        loop        50.2         1.1
         -----  ---------  ----------
       TABLE
     end
@@ -36,8 +36,8 @@ describe TableFormatter do
       assert_equal <<~TABLE, result
         ------------  ---------
         bench         time (ms)
-        broken_bench  N/A
-        fib           100.5
+        broken_bench        N/A
+        fib               100.5
         ------------  ---------
       TABLE
     end

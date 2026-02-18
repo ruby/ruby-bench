@@ -56,15 +56,25 @@ describe ResultsTableBuilder do
 
       table, format = builder.build
 
-      assert_equal ['bench', 'ruby (ms)', 'stddev (%)', 'ruby-yjit (ms)', 'stddev (%)', 'ruby-yjit 1st itr', 'ruby/ruby-yjit'], table[0]
+      assert_equal ['bench', 'ruby (ms)', 'ruby-yjit (ms)', 'ruby-yjit 1st itr', 'ruby/ruby-yjit'], table[0]
 
-      assert_equal ['%s', '%.1f', '%.1f', '%.1f', '%.1f', '%.3f', '%s'], format
+      assert_equal ['%s', '%s', '%s', '%.3f', '%s'], format
 
       assert_equal 'fib', table[1][0]
-      assert_in_delta 100.0, table[1][1], 1.0
-      assert_in_delta 50.0, table[1][3], 1.0
-      assert_in_delta 2.0, table[1][5], 0.1
-      assert_match(/^2\.0\d+/, table[1][6])
+
+      m = table[1][1].match(/\A(\d+\.\d) ± (\d+\.\d)%\z/)
+      assert m
+      assert_in_delta 100.0, m[1].to_f, 1.0
+
+      m = table[1][2].match(/\A(\d+\.\d) ± (\d+\.\d)%\z/)
+      assert m
+      assert_in_delta 50.0, m[1].to_f, 1.0
+
+      assert_in_delta 2.0, table[1][3], 0.1
+
+      m = table[1][4].match(/\A(\d+\.\d+)/)
+      assert m
+      assert_in_delta 2.0, m[1].to_f, 0.1
     end
 
     it 'includes RSS columns when include_rss is true' do
@@ -88,9 +98,9 @@ describe ResultsTableBuilder do
       table, format = builder.build
 
       # No RSS ratio column with a single executable
-      assert_equal ['bench', 'ruby (ms)', 'stddev (%)', 'RSS (MiB)'], table[0]
-      assert_equal ['%s', '%.1f', '%.1f', '%.1f'], format
-      assert_in_delta 10.0, table[1][3], 0.1
+      assert_equal ['bench', 'ruby (ms)', 'RSS (MiB)'], table[0]
+      assert_equal ['%s', '%s', '%.1f'], format
+      assert_in_delta 10.0, table[1][2], 0.1
     end
 
     it 'includes RSS ratio columns when include_rss is true with multiple executables' do
@@ -122,15 +132,15 @@ describe ResultsTableBuilder do
 
       expected_header = [
         'bench',
-        'ruby (ms)', 'stddev (%)', 'RSS (MiB)',
-        'ruby-yjit (ms)', 'stddev (%)', 'RSS (MiB)',
+        'ruby (ms)', 'RSS (MiB)',
+        'ruby-yjit (ms)', 'RSS (MiB)',
         'ruby-yjit 1st itr',
         'ruby/ruby-yjit',
         'RSS ruby/ruby-yjit'
       ]
       assert_equal expected_header, table[0]
 
-      expected_format = ['%s', '%.1f', '%.1f', '%.1f', '%.1f', '%.1f', '%.1f', '%.3f', '%s', '%.3f']
+      expected_format = ['%s', '%s', '%.1f', '%s', '%.1f', '%.3f', '%s', '%.3f']
       assert_equal expected_format, format
 
       # RSS ratio: 10 MiB / 20 MiB = 0.5
@@ -209,9 +219,9 @@ describe ResultsTableBuilder do
 
       expected_header = [
         'bench',
-        'ruby (ms)', 'stddev (%)',
-        'ruby-yjit (ms)', 'stddev (%)',
-        'ruby-rjit (ms)', 'stddev (%)',
+        'ruby (ms)',
+        'ruby-yjit (ms)',
+        'ruby-rjit (ms)',
         'ruby-yjit 1st itr',
         'ruby-rjit 1st itr',
         'ruby/ruby-yjit',
@@ -219,7 +229,7 @@ describe ResultsTableBuilder do
       ]
       assert_equal expected_header, table[0]
 
-      expected_format = ['%s', '%.1f', '%.1f', '%.1f', '%.1f', '%.1f', '%.1f', '%.3f', '%.3f', '%s', '%s']
+      expected_format = ['%s', '%s', '%s', '%s', '%.3f', '%.3f', '%s', '%s']
       assert_equal expected_format, format
     end
 
@@ -245,7 +255,9 @@ describe ResultsTableBuilder do
 
       assert_equal 2, table.length
       assert_equal 'fib', table[1][0]
-      assert_in_delta 100.0, table[1][1], 5.0
+      m = table[1][1].match(/\A(\d+\.\d) ± (\d+\.\d)%\z/)
+      assert m
+      assert_in_delta 100.0, m[1].to_f, 5.0
     end
 
     it 'sorts benchmarks with headlines first, then others, then micro' do

@@ -39,7 +39,7 @@ class ResultsTableBuilder
     header = ["bench"]
 
     @executable_names.each do |name|
-      header << "#{name} (ms)" << "stddev (%)"
+      header << "#{name} (ms)"
       header << "RSS (MiB)" if @include_rss
     end
 
@@ -67,7 +67,7 @@ class ResultsTableBuilder
     format = ["%s"]
 
     @executable_names.each do |_name|
-      format << "%.1f" << "%.1f"
+      format << "%s"
       format << "%.1f" if @include_rss
     end
 
@@ -110,17 +110,19 @@ class ResultsTableBuilder
   end
 
   def build_base_columns(row, base_t, base_rss)
-    row << mean(base_t)
-    row << stddev_percent(base_t)
+    row << format_time_with_stddev(base_t)
     row << base_rss if @include_rss
   end
 
   def build_comparison_columns(row, other_ts, other_rsss)
     other_ts.zip(other_rsss).each do |other_t, other_rss|
-      row << mean(other_t)
-      row << stddev_percent(other_t)
+      row << format_time_with_stddev(other_t)
       row << other_rss if @include_rss
     end
+  end
+
+  def format_time_with_stddev(values)
+    "%.1f ± %.1f%%" % [mean(values), stddev_percent(values)]
   end
 
   def build_ratio_columns(row, base_t0, other_t0s, base_t, other_ts)
@@ -148,7 +150,8 @@ class ResultsTableBuilder
   def format_ratio(ratio, pval)
     sym = significance_symbol(pval)
     formatted = "%.3f" % ratio
-    sym.empty? ? formatted : "#{formatted} (#{sym})"
+    suffix = sym.empty? ? "" : " (#{sym})"
+    (formatted + suffix).ljust(formatted.length + 6)
   end
 
   def format_p_value(pval)
