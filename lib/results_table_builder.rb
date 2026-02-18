@@ -70,7 +70,7 @@ class ResultsTableBuilder
     end
 
     @other_names.each do |_name|
-      format << "%.3f"
+      format << "%s"
       if @include_pvalue
         format << "%s" << "%s"
       end
@@ -115,13 +115,19 @@ class ResultsTableBuilder
     row.concat(ratio_1sts)
 
     other_ts.each do |other_t|
-      row << mean(base_t) / mean(other_t)
+      pval = Stats.welch_p_value(base_t, other_t)
+      row << format_ratio(mean(base_t) / mean(other_t), pval)
       if @include_pvalue
-        pval = Stats.welch_p_value(base_t, other_t)
         row << format_p_value(pval)
         row << significance_level(pval)
       end
     end
+  end
+
+  def format_ratio(ratio, pval)
+    sym = significance_symbol(pval)
+    formatted = "%.3f" % ratio
+    sym.empty? ? formatted : "#{formatted} (#{sym})"
   end
 
   def format_p_value(pval)
@@ -131,6 +137,20 @@ class ResultsTableBuilder
       "%.3f" % pval
     else
       "%.1e" % pval
+    end
+  end
+
+  def significance_symbol(pval)
+    return "" if pval.nil?
+
+    if pval < 0.001
+      "***"
+    elsif pval < 0.01
+      "**"
+    elsif pval < 0.05
+      "*"
+    else
+      ""
     end
   end
 

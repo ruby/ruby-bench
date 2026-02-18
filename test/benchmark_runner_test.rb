@@ -387,6 +387,7 @@ describe BenchmarkRunner do
       assert_includes result, 'Legend:'
       assert_includes result, '- ruby-yjit 1st itr: ratio of ruby-base/ruby-yjit time for the first benchmarking iteration.'
       assert_includes result, '- ruby-base/ruby-yjit: ratio of ruby-base/ruby-yjit time. Higher is better for ruby-yjit. Above 1 represents a speedup.'
+      assert_includes result, "- ***: p < 0.001, **: p < 0.01, *: p < 0.05 (Welch's t-test)"
     end
 
     it 'includes formatted table in output' do

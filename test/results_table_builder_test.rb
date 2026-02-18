@@ -58,13 +58,13 @@ describe ResultsTableBuilder do
 
       assert_equal ['bench', 'ruby (ms)', 'stddev (%)', 'ruby-yjit (ms)', 'stddev (%)', 'ruby-yjit 1st itr', 'ruby/ruby-yjit'], table[0]
 
-      assert_equal ['%s', '%.1f', '%.1f', '%.1f', '%.1f', '%.3f', '%.3f'], format
+      assert_equal ['%s', '%.1f', '%.1f', '%.1f', '%.1f', '%.3f', '%s'], format
 
       assert_equal 'fib', table[1][0]
       assert_in_delta 100.0, table[1][1], 1.0
       assert_in_delta 50.0, table[1][3], 1.0
       assert_in_delta 2.0, table[1][5], 0.1
-      assert_in_delta 2.0, table[1][6], 0.1
+      assert_match(/^2\.0\d+/, table[1][6])
     end
 
     it 'includes RSS columns when include_rss is true' do
@@ -176,7 +176,7 @@ describe ResultsTableBuilder do
       ]
       assert_equal expected_header, table[0]
 
-      expected_format = ['%s', '%.1f', '%.1f', '%.1f', '%.1f', '%.1f', '%.1f', '%.3f', '%.3f', '%.3f', '%.3f']
+      expected_format = ['%s', '%.1f', '%.1f', '%.1f', '%.1f', '%.1f', '%.1f', '%.3f', '%.3f', '%s', '%s']
       assert_equal expected_format, format
     end
 
@@ -370,7 +370,7 @@ describe ResultsTableBuilder do
       assert_equal '', table[1].last
     end
 
-    it 'omits p-value columns when include_pvalue is false' do
+    it 'always shows significance symbol but omits verbose columns without --pvalue' do
       executable_names = ['ruby', 'ruby-yjit']
       bench_data = {
         'ruby' => {
@@ -397,6 +397,7 @@ describe ResultsTableBuilder do
       table, _format = builder.build
       refute_includes table[0], 'p-value'
       refute_includes table[0], 'sig'
+      assert_match(/\(\*{1,3}\)$/, table[1].last)
     end
 
     it 'handles only headline benchmarks' do
