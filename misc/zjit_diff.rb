@@ -84,6 +84,7 @@ class ZjitDiff
     @minimum_diff = minimum_diff
     @limit = limit
     @benchmark_filter = benchmarks
+    normalize_zjit_stats!
   end
 
   def run
@@ -394,6 +395,28 @@ class ZjitDiff
       format("%.1fKB", bytes.to_f / 1024)
     else
       "#{bytes}B"
+    end
+  end
+
+  # Strip hex addresses from stat keys so that entries like
+  # "#<Module:0x00007f1a>#foo" and "#<Module:0x00007f2b>#foo"
+  # collapse into one. Numeric values are summed when keys merge.
+  def normalize_zjit_stats!
+    @raw_data.each_value do |benchmarks|
+      benchmarks.each_value do |bench_data|
+        next unless bench_data.is_a?(Hash) && bench_data['zjit_stats'].is_a?(Hash)
+        stats = bench_data['zjit_stats']
+        normalized = {}
+        stats.each do |key, value|
+          nkey = key.gsub(/0x\h+/, '0x…')
+          if normalized.key?(nkey) && value.is_a?(Numeric) && normalized[nkey].is_a?(Numeric)
+            normalized[nkey] += value
+          else
+            normalized[nkey] = value
+          end
+        end
+        bench_data['zjit_stats'] = normalized
+      end
     end
   end
 end
