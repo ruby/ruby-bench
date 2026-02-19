@@ -1,9 +1,9 @@
 GEM
   remote: https://rubygems.org/
   specs:
-    addressable (2.8.7)
-      public_suffix (>= 2.0.2, < 7.0)
-    public_suffix (6.0.2)
+    addressable (2.8.8)
+      public_suffix (>= 2.0.2, < 8.0)
+    public_suffix (7.0.2)
 
 PLATFORMS
   aarch64-linux
@@ -13,4 +13,4 @@ DEPENDENCIES
   addressable
 
 BUNDLED WITH
-   2.6.9
+  4.0.3
