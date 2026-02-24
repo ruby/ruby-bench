@@ -140,6 +140,10 @@ def run_benchmark(num_itrs_hint, out_file: 'callgrind.out', profile_warmup: fals
   # `callgrind_control -s` exits 0 even when the process is NOT under
   # callgrind (it prints an error but does not use a non-zero exit code).
   unless ENV['CALLGRIND_HARNESS_LAUNCHED']
+    unless system("which", "valgrind", out: File::NULL, err: File::NULL)
+      abort "harness-callgrind: valgrind not found in PATH. Please install valgrind first."
+    end
+
     ruby_cmd = current_ruby_cmdline
     warn "harness-callgrind: Launching under valgrind..."
     # Restore original cwd so relative paths in ruby_cmd (the script path
