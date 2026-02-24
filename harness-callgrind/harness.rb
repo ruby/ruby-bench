@@ -53,6 +53,9 @@
 #                                for cache simulation (I1/D1/LL misses)
 #   CALLGRIND_BRANCH_SIM      — when set, pass --branch-sim=yes to valgrind
 #                                for branch prediction simulation
+#   CALLGRIND_DUMP_INSTR      — when set, pass --dump-instr=yes to valgrind
+#                                for per-instruction cost data (enables the
+#                                Assembler tab in kcachegrind/qcachegrind)
 #   WARMUP_ITRS               — warmup iterations (default: 15)
 #   MIN_BENCH_ITRS            — benchmark iterations (default: num_itrs_hint)
 #
@@ -210,6 +213,7 @@ def run_benchmark(num_itrs_hint, out_file: 'callgrind.out', profile_warmup: fals
     extra_valgrind_args << "--collect-systime=nsec" if ENV['CALLGRIND_COLLECT_SYSTIME']
     extra_valgrind_args << "--cache-sim=yes" if ENV['CALLGRIND_CACHE_SIM']
     extra_valgrind_args << "--branch-sim=yes" if ENV['CALLGRIND_BRANCH_SIM']
+    extra_valgrind_args << "--dump-instr=yes" if ENV['CALLGRIND_DUMP_INSTR']
 
     system({"CALLGRIND_HARNESS_LAUNCHED" => "1"},
            "valgrind", "--tool=callgrind",
@@ -223,6 +227,18 @@ def run_benchmark(num_itrs_hint, out_file: 'callgrind.out', profile_warmup: fals
     resolve_jit_symbols(out_file)
     warmup_file = out_file.sub(/\.out\z/, "-warmup.out")
     resolve_jit_symbols(warmup_file) if File.exist?(warmup_file)
+
+    # Build ELF from JIT code dump for disassembly in qcachegrind.
+    dump_path = out_file.sub(/\.out\z/, "-jitcode.dump")
+    if File.exist?(dump_path)
+      require_relative "jit-code-dump"
+      elf_path = out_file.sub(/\.out\z/, "-jit.so")
+      perf_map = find_perf_map(out_file)
+      if build_jit_elf(dump_path, elf_path, perf_map)
+        patch_callgrind_object(out_file, elf_path, perf_map)
+        patch_callgrind_object(warmup_file, elf_path, perf_map) if File.exist?(warmup_file)
+      end
+    end
 
     if valgrind_status.signaled?
       Process.kill(valgrind_status.termsig, Process.pid)
@@ -286,4 +302,17 @@ def run_benchmark(num_itrs_hint, out_file: 'callgrind.out', profile_warmup: fals
   # Turn instrumentation off to exclude shutdown/cleanup from the
   # profile. Benchmark data is written to <outfile> at program exit.
   callgrind_control("-i", "off", pid)
+
+  # Dump JIT code regions so the outer process can build an ELF for
+  # disassembly in qcachegrind. Only done when --dump-instr=yes is
+  # enabled (since disassembly without per-instruction costs is less
+  # useful) and a perf map exists.
+  if ENV['CALLGRIND_DUMP_INSTR']
+    perf_map_path = "/tmp/perf-#{pid}.map"
+    if File.exist?(perf_map_path)
+      require_relative "jit-code-dump"
+      dump_path = out_file.sub(/\.out\z/, "-jitcode.dump")
+      dump_jit_code(perf_map_path, dump_path)
+    end
+  end
 end
