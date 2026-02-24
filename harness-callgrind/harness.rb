@@ -188,6 +188,11 @@ def run_benchmark(num_itrs_hint, out_file: 'callgrind.out', profile_warmup: fals
   end
 
   if profile_warmup
+    # Turn instrumentation off before dumping so that the dump operation
+    # itself and any Ruby code between here and the benchmark loop are
+    # not captured in the benchmark profile.
+    callgrind_control("-i", "off", pid)
+
     # Dump warmup data — counters are automatically zeroed so the
     # benchmark phase starts with a clean slate. Don't suppress stderr
     # here so dump failures are visible.
@@ -210,12 +215,12 @@ def run_benchmark(num_itrs_hint, out_file: 'callgrind.out', profile_warmup: fals
       warn "harness-callgrind: Warmup data dumped after #{warmup_itrs} iterations (could not find #{dump_file} to rename)."
       warn "harness-callgrind: Candidates found: #{candidates.inspect}" unless candidates.empty?
     end
-  else
-    # Turn instrumentation on for the benchmark phase only.
-    ok = callgrind_control("-i", "on", pid)
-    unless ok
-      abort "harness-callgrind: callgrind_control failed (not running under callgrind?)."
-    end
+  end
+
+  # Turn instrumentation on for the benchmark phase.
+  ok = callgrind_control("-i", "on", pid)
+  unless ok
+    abort "harness-callgrind: callgrind_control failed (not running under callgrind?)."
   end
 
   warn "harness-callgrind: Instrumentation enabled for #{bench_itrs} benchmark iterations."
