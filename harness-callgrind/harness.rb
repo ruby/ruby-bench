@@ -133,8 +133,6 @@ def run_benchmark(num_itrs_hint, out_file: 'callgrind.out', profile_warmup: fals
   out_file = ENV.fetch('CALLGRIND_OUT_FILE', File.expand_path(out_file))
   profile_warmup = !!ENV['CALLGRIND_PROFILE_WARMUP'] || profile_warmup
 
-  pid = Process.pid.to_s
-
   # Re-launch under valgrind/callgrind if not already running under it.
   # Detection: use a sentinel env var set just before exec, since
   # `callgrind_control -s` exits 0 even when the process is NOT under
@@ -167,6 +165,9 @@ def run_benchmark(num_itrs_hint, out_file: 'callgrind.out', profile_warmup: fals
     end
     exit(valgrind_status.exitstatus || 1)
   end
+
+  # Running inside valgrind — capture the guest PID for callgrind_control.
+  pid = Process.pid.to_s
 
   if profile_warmup
     # Turn instrumentation on to capture compilation/JIT activity
