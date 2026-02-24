@@ -116,6 +116,36 @@ def resolve_jit_symbols(callgrind_file)
   warn "harness-callgrind: Resolved #{resolved} JIT symbols in #{callgrind_file} (#{unresolved} unresolved) using #{perf_map_path}."
 end
 
+# Locate and rename the warmup dump file produced by callgrind_control -d.
+# Callgrind typically writes the dump as <outfile>.1, but the naming depends
+# on an internal counter. This method tries the expected name first, then
+# falls back to any numbered dump file it can find.
+def rename_warmup_dump(out_file, warmup_itrs)
+  dump_file = "#{out_file}.1"
+  warmup_file = out_file.sub(/\.out\z/, "-warmup.out")
+
+  if File.exist?(dump_file)
+    File.rename(dump_file, warmup_file)
+    warn "harness-callgrind: Warmup data dumped to #{warmup_file} after #{warmup_itrs} iterations."
+    return
+  end
+
+  # Search for any dump files callgrind may have created with a
+  # different naming convention and use the most recent one.
+  candidates = Dir.glob("#{out_file}.*").select { |f| f.match?(/\.\d+\z/) }
+  if candidates.length == 1
+    File.rename(candidates[0], warmup_file)
+    warn "harness-callgrind: Warmup data dumped to #{warmup_file} after #{warmup_itrs} iterations (renamed from #{candidates[0]})."
+  elsif candidates.length > 1
+    # Pick the highest-numbered dump (most recently created).
+    best = candidates.max_by { |f| Integer(f[/\.(\d+)\z/, 1]) }
+    File.rename(best, warmup_file)
+    warn "harness-callgrind: Warmup data dumped to #{warmup_file} after #{warmup_itrs} iterations (renamed from #{best}; other candidates: #{(candidates - [best]).inspect})."
+  else
+    warn "harness-callgrind: Warmup data dumped after #{warmup_itrs} iterations (could not find dump file to rename)."
+  end
+end
+
 # Run warmup then benchmark iterations under callgrind.
 #
 # The harness automatically launches valgrind if not already running
@@ -201,20 +231,7 @@ def run_benchmark(num_itrs_hint, out_file: 'callgrind.out', profile_warmup: fals
       warn "harness-callgrind: callgrind_control -d failed (exit status: #{$?.exitstatus})."
     end
 
-    # callgrind writes the dump as <outfile>.1. Rename it so it has
-    # a descriptive name and loads cleanly in tools like KCachegrind.
-    dump_file = "#{out_file}.1"
-    warmup_file = out_file.sub(/\.out\z/, "-warmup.out")
-    if File.exist?(dump_file)
-      File.rename(dump_file, warmup_file)
-      warn "harness-callgrind: Warmup data dumped to #{warmup_file} after #{warmup_itrs} iterations."
-    else
-      # Search for any dump files callgrind may have created with a
-      # different naming convention.
-      candidates = Dir.glob("#{out_file}.*").select { |f| f.match?(/\.\d+\z/) }
-      warn "harness-callgrind: Warmup data dumped after #{warmup_itrs} iterations (could not find #{dump_file} to rename)."
-      warn "harness-callgrind: Candidates found: #{candidates.inspect}" unless candidates.empty?
-    end
+    rename_warmup_dump(out_file, warmup_itrs)
   end
 
   # Turn instrumentation on for the benchmark phase.
