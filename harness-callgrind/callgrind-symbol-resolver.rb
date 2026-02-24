@@ -63,18 +63,37 @@ def parse_perf_map(path)
   entries
 end
 
+# Maximum number of bytes past the end of a perf map entry that an
+# address can be and still be attributed to that entry. Callgrind
+# records call-site return addresses which point to the instruction
+# *after* a call, and JIT compilers may leave small alignment padding
+# or metadata gaps between compiled functions. This tolerance covers
+# both cases.
+PERF_MAP_BOUNDARY_TOLERANCE = 64
+
 # Look up an address in sorted perf map entries using binary search.
 # Returns the symbol name if the address falls within a known range,
 # or nil if no match is found. When with_offset is true and the address
 # is not at the start of the region, the result includes the offset in
 # the style of Valgrind's get_fnname_w_offset (e.g., "name+0x1a").
+#
+# Addresses that fall just past the end of an entry (within
+# PERF_MAP_BOUNDARY_TOLERANCE bytes) are attributed to that entry.
+# This handles callgrind return addresses and inter-function padding.
 def perf_map_lookup(addr, entries, starts, with_offset: false)
   idx = starts.bsearch_index { |s| s > addr }
   idx = idx ? idx - 1 : entries.length - 1
   return nil if idx < 0
 
   start, end_addr, name = entries[idx]
-  if addr >= start && addr < end_addr
+  if addr >= start && addr < end_addr + PERF_MAP_BOUNDARY_TOLERANCE
+    # Only attribute past-the-end addresses when they don't fall inside
+    # the next entry (i.e., they are in a gap, not a different function).
+    if addr >= end_addr && idx + 1 < entries.length
+      next_start = entries[idx + 1][0]
+      return nil if addr >= next_start
+    end
+
     offset = addr - start
     if with_offset && offset > 0
       "#{name}+0x#{offset.to_s(16)}"
