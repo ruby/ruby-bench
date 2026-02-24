@@ -48,6 +48,20 @@
 #   WARMUP_ITRS               — warmup iterations (default: 15)
 #   MIN_BENCH_ITRS            — benchmark iterations (default: num_itrs_hint)
 #
+# JIT symbol resolution:
+#
+# After valgrind exits, the harness automatically looks for a perf
+# map file and resolves JIT hex addresses in the callgrind output.
+# This replaces opaque addresses like fn=(123) 0x00000000216ce765
+# with the symbolic names from the perf map (e.g., the Ruby method
+# name that YJIT compiled).
+#
+# The perf map is located by extracting the guest PID from the
+# callgrind output and checking /tmp/perf-<pid>.map. To generate
+# a perf map, pass --yjit-perf to Ruby (e.g., via RUBYOPT).
+#
+# If no perf map is found, this step is silently skipped.
+#
 # Analyze with:
 #   callgrind_annotate callgrind.out
 #   kcachegrind callgrind.out
@@ -60,7 +74,6 @@ require_relative "../harness/harness-common"
 
 # Resolve to an absolute path at require time, before benchmarks chdir.
 ENV['CALLGRIND_OUT_FILE'] = File.expand_path(ENV['CALLGRIND_OUT_FILE']) if ENV['CALLGRIND_OUT_FILE']
-
 # Capture working directory before any benchmark chdir happens, so that
 # relative paths in the original command line (script path, -I flags) can
 # be resolved correctly when re-exec'ing under valgrind.
@@ -81,6 +94,114 @@ end
 def callgrind_control(*args, pid)
   system("callgrind_control", *args, pid,
          out: File::NULL, err: File::NULL)
+end
+
+# Extract the guest PID from a callgrind output file by reading the "pid:"
+# header line near the top of the file.
+def callgrind_guest_pid(callgrind_file)
+  File.foreach(callgrind_file) do |line|
+    if (m = line.match(/^pid:\s*(\d+)/))
+      return m[1]
+    end
+  end
+  nil
+end
+
+# Locate the perf map file for a callgrind output file. Uses the PID
+# recorded in the callgrind output header to find the conventional
+# /tmp/perf-<pid>.map that YJIT writes when --yjit-perf is enabled.
+def find_perf_map(callgrind_file)
+  pid = callgrind_guest_pid(callgrind_file)
+  return nil unless pid
+
+  path = "/tmp/perf-#{pid}.map"
+  path if File.exist?(path)
+end
+
+# Parse a perf map file into an array of [start, end, name] entries
+# sorted by start address. Each line has the format:
+#   <start_hex> <size_hex> <symbol_name>
+def parse_perf_map(path)
+  entries = []
+
+  File.foreach(path).with_index(1) do |line, lineno|
+    line = line.strip
+    next if line.empty?
+
+    parts = line.split(nil, 3)
+    if parts.length < 3
+      warn "harness-callgrind: skipping malformed perf map line #{lineno}: #{line.inspect}"
+      next
+    end
+
+    begin
+      start = Integer(parts[0], 16)
+      size = Integer(parts[1], 16)
+    rescue ArgumentError
+      warn "harness-callgrind: skipping malformed perf map line #{lineno}: #{line.inspect}"
+      next
+    end
+
+    entries << [start, start + size, parts[2]]
+  end
+
+  entries.sort_by! { |e| e[0] }
+  entries
+end
+
+# Look up an address in sorted perf map entries using binary search.
+# Returns the symbol name if the address falls within a known range,
+# or nil if no match is found.
+def perf_map_lookup(addr, entries, starts)
+  idx = starts.bsearch_index { |s| s > addr }
+  idx = idx ? idx - 1 : entries.length - 1
+  return nil if idx < 0
+
+  start, end_addr, name = entries[idx]
+  name if addr >= start && addr < end_addr
+end
+
+FN_HEX_RE = /^(c?fn=\(\d+\)\s*)0x([0-9a-fA-F]+)\s*$/
+FN_HEX_NOCOMPRESS_RE = /^(c?fn=)0x([0-9a-fA-F]+)\s*$/
+
+# Resolve JIT hex addresses in a callgrind output file using a perf map.
+# Rewrites the file in place, replacing hex addresses in fn=/cfn= lines
+# with symbolic names from the perf map.
+def resolve_jit_symbols(callgrind_file)
+  return unless File.exist?(callgrind_file)
+
+  perf_map_path = find_perf_map(callgrind_file)
+  return unless perf_map_path
+
+  entries = parse_perf_map(perf_map_path)
+  if entries.empty?
+    warn "harness-callgrind: perf map #{perf_map_path} is empty, skipping symbol resolution."
+    return
+  end
+
+  starts = entries.map { |e| e[0] }
+  resolved = 0
+  unresolved = 0
+
+  output_lines = File.readlines(callgrind_file).map do |line|
+    m = FN_HEX_RE.match(line) || FN_HEX_NOCOMPRESS_RE.match(line)
+    if m
+      addr = Integer(m[2], 16)
+      name = perf_map_lookup(addr, entries, starts)
+      if name
+        resolved += 1
+        "#{m[1]}#{name}\n"
+      else
+        unresolved += 1
+        line
+      end
+    else
+      line
+    end
+  end
+
+  File.write(callgrind_file, output_lines.join)
+  warn "harness-callgrind: Resolved #{resolved} JIT symbols in #{callgrind_file} (#{unresolved} unresolved) using #{perf_map_path}."
 end
 
 # Run warmup then benchmark iterations under callgrind.
@@ -113,11 +234,22 @@ def run_benchmark(num_itrs_hint, out_file: 'callgrind.out', profile_warmup: fals
     # and any -I flags) resolve correctly. Benchmarks may have called
     # Dir.chdir before run_benchmark, which would break the re-exec.
     Dir.chdir(CALLGRIND_HARNESS_ORIGINAL_CWD)
-    exec({"CALLGRIND_HARNESS_LAUNCHED" => "1"},
-         "valgrind", "--tool=callgrind",
-         "--instr-atstart=no",
-         "--callgrind-out-file=#{out_file}",
-         *ruby_cmd)
+    system({"CALLGRIND_HARNESS_LAUNCHED" => "1"},
+           "valgrind", "--tool=callgrind",
+           "--instr-atstart=no",
+           "--callgrind-out-file=#{out_file}",
+           *ruby_cmd)
+    valgrind_status = $?
+
+    # Resolve JIT hex addresses using the perf map, if available.
+    resolve_jit_symbols(out_file)
+    warmup_file = out_file.sub(/\.out\z/, "-warmup.out")
+    resolve_jit_symbols(warmup_file) if File.exist?(warmup_file)
+
+    if valgrind_status.signaled?
+      Process.kill(valgrind_status.termsig, Process.pid)
+    end
+    exit(valgrind_status.exitstatus || 1)
   end
 
   if profile_warmup
