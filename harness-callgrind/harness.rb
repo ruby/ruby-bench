@@ -45,6 +45,14 @@
 # Environment variables:
 #   CALLGRIND_OUT_FILE        — output filename (default: 'callgrind.out')
 #   CALLGRIND_PROFILE_WARMUP  — when set, also profile warmup phase
+#   CALLGRIND_COLLECT_JUMPS   — when set, pass --collect-jumps=yes to
+#                                valgrind for branch prediction data
+#   CALLGRIND_COLLECT_SYSTIME — when set, pass --collect-systime=nsec to
+#                                valgrind for system call time data
+#   CALLGRIND_CACHE_SIM       — when set, pass --cache-sim=yes to valgrind
+#                                for cache simulation (I1/D1/LL misses)
+#   CALLGRIND_BRANCH_SIM      — when set, pass --branch-sim=yes to valgrind
+#                                for branch prediction simulation
 #   WARMUP_ITRS               — warmup iterations (default: 15)
 #   MIN_BENCH_ITRS            — benchmark iterations (default: num_itrs_hint)
 #
@@ -65,6 +73,12 @@
 # Analyze with:
 #   callgrind_annotate callgrind.out
 #   kcachegrind callgrind.out
+#
+# For additional analysis, enable cache or branch simulation via
+# the environment variables above. These add overhead but provide
+# detailed cache miss (I1/D1/LL) and branch misprediction data,
+# which can be especially insightful for JIT-compiled code whose
+# cache and branch behavior may differ from interpreted code.
 #
 # Use low iteration counts — callgrind imposes ~20-50x slowdown
 # on instrumented phases. Without profile_warmup, warmup runs at
@@ -178,10 +192,18 @@ def run_benchmark(num_itrs_hint, out_file: 'callgrind.out', profile_warmup: fals
     # and any -I flags) resolve correctly. Benchmarks may have called
     # Dir.chdir before run_benchmark, which would break the re-exec.
     Dir.chdir(CALLGRIND_HARNESS_ORIGINAL_CWD)
+
+    extra_valgrind_args = []
+    extra_valgrind_args << "--collect-jumps=yes" if ENV['CALLGRIND_COLLECT_JUMPS']
+    extra_valgrind_args << "--collect-systime=nsec" if ENV['CALLGRIND_COLLECT_SYSTIME']
+    extra_valgrind_args << "--cache-sim=yes" if ENV['CALLGRIND_CACHE_SIM']
+    extra_valgrind_args << "--branch-sim=yes" if ENV['CALLGRIND_BRANCH_SIM']
+
     system({"CALLGRIND_HARNESS_LAUNCHED" => "1"},
            "valgrind", "--tool=callgrind",
            "--instr-atstart=no",
            "--callgrind-out-file=#{out_file}",
+           *extra_valgrind_args,
            *ruby_cmd)
     valgrind_status = $?
 
