@@ -15,7 +15,7 @@
 # If no output file is specified, the result is written to <callgrind-file>.resolved.
 
 require "optparse"
-require_relative "harness-callgrind/callgrind-symbol-resolver"
+require_relative "../harness-callgrind/callgrind-symbol-resolver"
 
 options = {}
 parser = OptionParser.new do |opts|

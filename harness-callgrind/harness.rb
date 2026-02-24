@@ -134,6 +134,12 @@ def resolve_jit_symbols(callgrind_file)
   starts = entries.map { |e| e[0] }
   resolved, unresolved = resolve_callgrind_file(callgrind_file, entries, starts)
   warn "harness-callgrind: Resolved #{resolved} JIT symbols in #{callgrind_file} (#{unresolved} unresolved) using #{perf_map_path}."
+  if resolved == 0 && unresolved > 0
+    perf_min = entries.first[0]
+    perf_max = entries.last[1]
+    warn "harness-callgrind: WARNING: No symbols resolved. Perf map covers 0x#{perf_min.to_s(16)}..0x#{perf_max.to_s(16)}."
+    warn "harness-callgrind: This may indicate an address space mismatch between valgrind and the JIT perf map."
+  end
 end
 
 # Locate and rename the warmup dump file produced by callgrind_control -d.
