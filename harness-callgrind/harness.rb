@@ -83,6 +83,12 @@
 # Use low iteration counts — callgrind imposes ~20-50x slowdown
 # on instrumented phases. Without profile_warmup, warmup runs at
 # near-native speed since instrumentation is off.
+#
+# Note on timing: callgrind_control communicates with valgrind
+# asynchronously. With very low iteration counts (e.g., 1), the
+# very beginning of the first benchmark iteration may execute
+# before instrumentation is fully enabled. In practice this is
+# negligible for multi-iteration runs.
 
 require_relative "../harness/harness-common"
 require_relative "callgrind-symbol-resolver"
