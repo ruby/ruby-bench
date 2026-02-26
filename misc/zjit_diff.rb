@@ -29,6 +29,7 @@ class ZjitDiff
     { prefix: 'invokeblock_handler_', prompt: 'invokeblock handler' },
     { prefix: 'getblockparamproxy_handler_', prompt: 'getblockparamproxy handler' },
     { prefix: 'complex_arg_pass_', prompt: 'complex argument-parameter features' },
+    { prefix: 'compile_hir_', prompt: 'compile HIR pass timings' },
     { prefix: 'compile_error_', prompt: 'compile error reasons' },
     { prefix: 'unhandled_yarv_insn_', prompt: 'unhandled YARV insns' },
     { prefix: 'unhandled_hir_insn_', prompt: 'unhandled HIR insns' },
@@ -68,7 +69,10 @@ class ZjitDiff
     code_region_bytes
     zjit_alloc_bytes
     total_mem_bytes
+    compile_lir_time_ns
+    compile_side_exit_time_ns
     side_exit_count
+    side_exit_size
     total_insn_count
     vm_insn_count
     zjit_insn_count
