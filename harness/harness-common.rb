@@ -146,9 +146,8 @@ def return_results(warmup_iterations, bench_iterations)
   yjit_stats = RubyVM::YJIT.runtime_stats if defined?(RubyVM::YJIT.enabled?) && RubyVM::YJIT.enabled?
   zjit_stats = RubyVM::ZJIT.stats if defined?(RubyVM::ZJIT.enabled?) && RubyVM::ZJIT.enabled?
 
-  # Full GC then compact before measuring RSS so fragmentation doesn't inflate the number.
+  # Full GC before measuring RSS to lower GC variance.
   GC.start(full_mark: true, immediate_sweep: true)
-  GC.compact if GC.respond_to?(:compact)
 
   rss = get_rss
   ruby_bench_results["rss"] = rss
