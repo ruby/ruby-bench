@@ -74,6 +74,11 @@ binarytrees:
 blurhash:
   desc: blurhash (blurred preview image) calculation
   ractor: true
+gcbench:
+  desc: Ellis-Kovac-Boehm GCBench builds binary trees of various depths to exercise GC marking, sweeping, and write barriers.
+  category: gc
+  single_file: true
+  default_harness: harness-gc
 erubi:
   desc: erubi compiles a simple Erb template into a method with erubi, then times evaluating that method.
   ractor: true
