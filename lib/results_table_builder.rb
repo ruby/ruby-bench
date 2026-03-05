@@ -10,9 +10,14 @@ class ResultsTableBuilder
     @bench_data = bench_data
     @include_rss = include_rss
     @include_pvalue = include_pvalue
+    @include_gc = detect_gc_data(bench_data)
     @base_name = executable_names.first
     @other_names = executable_names[1..]
     @bench_names = compute_bench_names
+  end
+
+  def include_gc?
+    @include_gc
   end
 
   def build
@@ -41,6 +46,10 @@ class ResultsTableBuilder
     @executable_names.each do |name|
       header << "#{name} (ms)"
       header << "RSS (MiB)" if @include_rss
+      if @include_gc
+        header << "#{name} mark (ms)"
+        header << "#{name} sweep (ms)"
+      end
     end
 
     @other_names.each do |name|
@@ -60,6 +69,13 @@ class ResultsTableBuilder
       end
     end
 
+    if @include_gc
+      @other_names.each do |name|
+        header << "mark #{@base_name}/#{name}"
+        header << "sweep #{@base_name}/#{name}"
+      end
+    end
+
     header
   end
 
@@ -69,6 +85,10 @@ class ResultsTableBuilder
     @executable_names.each do |_name|
       format << "%s"
       format << "%.1f" if @include_rss
+      if @include_gc
+        format << "%s"
+        format << "%s"
+      end
     end
 
     @other_names.each do |_name|
@@ -88,6 +108,13 @@ class ResultsTableBuilder
       end
     end
 
+    if @include_gc
+      @other_names.each do |_name|
+        format << "%s"
+        format << "%s"
+      end
+    end
+
     format
   end
 
@@ -100,28 +127,45 @@ class ResultsTableBuilder
     base_t, *other_ts = times_no_warmup
     base_rss, *other_rsss = rsss
 
+    if @include_gc
+      marking_times = extract_gc_times(bench_name, 'gc_marking_time_bench')
+      sweeping_times = extract_gc_times(bench_name, 'gc_sweeping_time_bench')
+      base_mark, *other_marks = marking_times
+      base_sweep, *other_sweeps = sweeping_times
+    end
+
     row = [bench_name]
-    build_base_columns(row, base_t, base_rss)
-    build_comparison_columns(row, other_ts, other_rsss)
+    build_base_columns(row, base_t, base_rss, base_mark, base_sweep)
+    build_comparison_columns(row, other_ts, other_rsss, other_marks, other_sweeps)
     build_ratio_columns(row, base_t0, other_t0s, base_t, other_ts)
     build_rss_ratio_columns(row, base_rss, other_rsss)
+    build_gc_ratio_columns(row, base_mark, other_marks, base_sweep, other_sweeps)
 
     row
   end
 
-  def build_base_columns(row, base_t, base_rss)
+  def build_base_columns(row, base_t, base_rss, base_mark, base_sweep)
     row << format_time_with_stddev(base_t)
     row << base_rss if @include_rss
+    if @include_gc
+      row << format_time_with_stddev(base_mark)
+      row << format_time_with_stddev(base_sweep)
+    end
   end
 
-  def build_comparison_columns(row, other_ts, other_rsss)
-    other_ts.zip(other_rsss).each do |other_t, other_rss|
+  def build_comparison_columns(row, other_ts, other_rsss, other_marks, other_sweeps)
+    other_ts.each_with_index do |other_t, i|
       row << format_time_with_stddev(other_t)
-      row << other_rss if @include_rss
+      row << other_rsss[i] if @include_rss
+      if @include_gc
+        row << format_time_with_stddev(other_marks[i])
+        row << format_time_with_stddev(other_sweeps[i])
+      end
     end
   end
 
   def format_time_with_stddev(values)
+    return "N/A" if values.nil? || values.empty?
     "%.1f ± %.1f%%" % [mean(values), stddev_percent(values)]
   end
 
@@ -145,6 +189,26 @@ class ResultsTableBuilder
     other_rsss.each do |other_rss|
       row << base_rss / other_rss
     end
+  end
+
+  def build_gc_ratio_columns(row, base_mark, other_marks, base_sweep, other_sweeps)
+    return unless @include_gc
+
+    (other_marks || []).each do |other_mark|
+      row << gc_ratio(base_mark, other_mark)
+    end
+    (other_sweeps || []).each do |other_sweep|
+      row << gc_ratio(base_sweep, other_sweep)
+    end
+  end
+
+  def gc_ratio(base, other)
+    if base.nil? || base.empty? || other.nil? || other.empty? ||
+        mean(other) == 0.0
+      return "N/A"
+    end
+    pval = Stats.welch_p_value(base, other)
+    format_ratio(mean(base) / mean(other), pval)
   end
 
   def format_ratio(ratio, pval)
@@ -209,6 +273,16 @@ class ResultsTableBuilder
     @executable_names.map do |name|
       bench_data_for(name, bench_name)['rss'] / BYTES_TO_MIB
     end
+  end
+
+  def extract_gc_times(bench_name, key)
+    @executable_names.map do |name|
+      bench_data_for(name, bench_name)[key] || []
+    end
+  end
+
+  def detect_gc_data(bench_data)
+    bench_data.values.any? { |benchmarks| benchmarks.values.any? { |d| d.is_a?(Hash) && d.key?('gc_marking_time_bench') } }
   end
 
   def bench_data_for(name, bench_name)

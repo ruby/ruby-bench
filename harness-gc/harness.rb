@@ -1,0 +1,112 @@
+require_relative "../harness/harness-common"
+
+WARMUP_ITRS = Integer(ENV.fetch('WARMUP_ITRS', 15))
+MIN_BENCH_ITRS = Integer(ENV.fetch('MIN_BENCH_ITRS', 10))
+MIN_BENCH_TIME = Integer(ENV.fetch('MIN_BENCH_TIME', 10))
+
+puts RUBY_DESCRIPTION
+
+def realtime
+  r0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+  yield
+  Process.clock_gettime(Process::CLOCK_MONOTONIC) - r0
+end
+
+def gc_stat_heap_snapshot
+  return {} unless GC.respond_to?(:stat_heap)
+  GC.stat_heap
+end
+
+def gc_stat_heap_delta(before, after)
+  delta = {}
+  after.each do |heap_idx, after_stats|
+    before_stats = before[heap_idx] || {}
+    heap_delta = {}
+    after_stats.each do |key, val|
+      next unless val.is_a?(Numeric) && before_stats.key?(key)
+      heap_delta[key] = val - before_stats[key]
+    end
+    delta[heap_idx] = heap_delta unless heap_delta.empty?
+  end
+  delta
+end
+
+def run_benchmark(_num_itrs_hint, **, &block)
+  times = []
+  marking_times = []
+  sweeping_times = []
+  gc_counts = []
+  gc_heap_deltas = []
+  total_time = 0
+  num_itrs = 0
+
+  has_marking = GC.stat.key?(:marking_time)
+  has_sweeping = GC.stat.key?(:sweeping_time)
+
+  header = "itr:   time"
+  header << "   marking" if has_marking
+  header << "  sweeping" if has_sweeping
+  header << "  gc_count"
+  puts header
+
+  begin
+    gc_before = GC.stat
+    heap_before = gc_stat_heap_snapshot
+
+    time = realtime(&block)
+    num_itrs += 1
+
+    gc_after = GC.stat
+    heap_after = gc_stat_heap_snapshot
+
+    time_ms = (1000 * time).to_i
+    mark_delta = has_marking ? gc_after[:marking_time] - gc_before[:marking_time] : 0
+    sweep_delta = has_sweeping ? gc_after[:sweeping_time] - gc_before[:sweeping_time] : 0
+    count_delta = gc_after[:count] - gc_before[:count]
+
+    itr_str = "%4s %6s" % ["##{num_itrs}:", "#{time_ms}ms"]
+    itr_str << " %9.1fms" % mark_delta if has_marking
+    itr_str << " %9.1fms" % sweep_delta if has_sweeping
+    itr_str << " %9d" % count_delta
+    puts itr_str
+
+    times << time
+    marking_times << mark_delta
+    sweeping_times << sweep_delta
+    gc_counts << count_delta
+    gc_heap_deltas << gc_stat_heap_delta(heap_before, heap_after)
+    total_time += time
+  end until num_itrs >= WARMUP_ITRS + MIN_BENCH_ITRS and total_time >= MIN_BENCH_TIME
+
+  warmup_range = 0...WARMUP_ITRS
+  bench_range = WARMUP_ITRS..-1
+
+  extra = {}
+  extra["gc_marking_time_warmup"] = marking_times[warmup_range]
+  extra["gc_marking_time_bench"] = marking_times[bench_range]
+  extra["gc_sweeping_time_warmup"] = sweeping_times[warmup_range]
+  extra["gc_sweeping_time_bench"] = sweeping_times[bench_range]
+  extra["gc_count_warmup"] = gc_counts[warmup_range]
+  extra["gc_count_bench"] = gc_counts[bench_range]
+  extra["gc_stat_heap_deltas"] = gc_heap_deltas[bench_range]
+
+  return_results(times[warmup_range], times[bench_range], **extra)
+
+  non_warmups = times[bench_range]
+  if non_warmups.size > 1
+    non_warmups_ms = ((non_warmups.sum / non_warmups.size) * 1000.0).to_i
+    puts "Average of last #{non_warmups.size}, non-warmup iters: #{non_warmups_ms}ms"
+
+    if has_marking
+      mark_bench = marking_times[bench_range]
+      avg_mark = mark_bench.sum / mark_bench.size
+      puts "Average marking time: %.1fms" % avg_mark
+    end
+
+    if has_sweeping
+      sweep_bench = sweeping_times[bench_range]
+      avg_sweep = sweep_bench.sum / sweep_bench.size
+      puts "Average sweeping time: %.1fms" % avg_sweep
+    end
+  end
+end
