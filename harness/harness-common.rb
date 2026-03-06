@@ -75,8 +75,13 @@ def get_rss
     # Collect our own peak mem usage as soon as reasonable after finishing the last iteration.
     # This method is only accurate to kilobytes, but is nicely portable and doesn't require
     # any extra gems/dependencies.
-    mem = `ps -o rss= -p #{Process.pid}`
-    1024 * Integer(mem)
+    begin
+      mem = `ps -o rss= -p #{Process.pid}`
+      1024 * Integer(mem)
+    rescue ArgumentError, Errno::ENOENT
+      # ps failed (e.g. Nix procps on macOS). Fall back to peak RSS via getrusage.
+      get_maxrss || 0
+    end
   end
 end
 
@@ -135,11 +140,12 @@ default_path = "data/results-#{RUBY_ENGINE}-#{RUBY_ENGINE_VERSION}-#{Time.now.st
 yb_env_var = ENV.fetch("RESULT_JSON_PATH", default_path)
 YB_OUTPUT_FILE = File.expand_path yb_env_var
 
-def return_results(warmup_iterations, bench_iterations)
+def return_results(warmup_iterations, bench_iterations, **extra)
   ruby_bench_results = {
     "RUBY_DESCRIPTION" => RUBY_DESCRIPTION,
     "warmup" => warmup_iterations,
     "bench" => bench_iterations,
+    **extra,
   }
 
   # Collect JIT stats before loading any additional code.

@@ -48,7 +48,7 @@ module BenchmarkRunner
     end
 
     # Build output text string with metadata, table, and legend
-    def build_output_text(ruby_descriptions, table, format, bench_failures, include_rss: false)
+    def build_output_text(ruby_descriptions, table, format, bench_failures, include_rss: false, include_gc: false)
       base_name, *other_names = ruby_descriptions.keys
 
       output_str = +""
@@ -67,6 +67,10 @@ module BenchmarkRunner
           output_str << "- #{base_name}/#{name}: ratio of #{base_name}/#{name} time. Higher is better for #{name}. Above 1 represents a speedup.\n"
           if include_rss
             output_str << "- RSS #{base_name}/#{name}: ratio of #{base_name}/#{name} RSS. Higher is better for #{name}. Above 1 means lower memory usage.\n"
+          end
+          if include_gc
+            output_str << "- mark #{base_name}/#{name}: ratio of GC marking time. Higher is better for #{name}. Above 1 represents faster marking.\n"
+            output_str << "- sweep #{base_name}/#{name}: ratio of GC sweeping time. Higher is better for #{name}. Above 1 represents faster sweeping.\n"
           end
         end
         output_str << "- ***: p < 0.001, **: p < 0.01, *: p < 0.05 (Welch's t-test)\n"
