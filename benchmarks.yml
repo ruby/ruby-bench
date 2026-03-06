@@ -128,6 +128,9 @@ rubykon:
 sudoku:
   desc: sudoku solver
   ractor: true
+splay:
+  desc: Splay tree operations (insert, find, remove) to stress GC.
+  single_file: true
 tinygql:
   desc: TinyGQL gem parsing a large file in pure Ruby
 
