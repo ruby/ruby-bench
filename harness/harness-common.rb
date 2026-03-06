@@ -75,8 +75,13 @@ def get_rss
     # Collect our own peak mem usage as soon as reasonable after finishing the last iteration.
     # This method is only accurate to kilobytes, but is nicely portable and doesn't require
     # any extra gems/dependencies.
-    mem = `ps -o rss= -p #{Process.pid}`
-    1024 * Integer(mem)
+    begin
+      mem = `ps -o rss= -p #{Process.pid}`
+      1024 * Integer(mem)
+    rescue ArgumentError, Errno::ENOENT
+      # ps failed (e.g. Nix procps on macOS). Fall back to peak RSS via getrusage.
+      get_maxrss || 0
+    end
   end
 end
 
