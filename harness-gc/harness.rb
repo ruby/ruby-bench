@@ -39,11 +39,13 @@ def run_benchmark(_num_itrs_hint, **, &block)
   major_counts = []
   minor_counts = []
   gc_heap_deltas = []
+  major_reasons_per_itr = []
   total_time = 0
   num_itrs = 0
 
   has_marking = GC.stat.key?(:marking_time)
   has_sweeping = GC.stat.key?(:sweeping_time)
+  has_major_by = GC.respond_to?(:latest_gc_info) && GC.latest_gc_info.key?(:major_by)
 
   header = "itr:   time"
   header << "   marking" if has_marking
@@ -88,6 +90,15 @@ def run_benchmark(_num_itrs_hint, **, &block)
     major_counts << major_delta
     minor_counts << minor_delta
     gc_heap_deltas << gc_stat_heap_delta(heap_before, heap_after)
+    if has_major_by && major_delta > 0
+      # latest_gc_info only reflects the most recent GC event — if a minor
+      # GC ran after the last major, the reason is lost (shows :none).
+      reason = GC.latest_gc_info[:major_by]
+      reason = :unknown if reason.nil? || reason == :none
+      major_reasons_per_itr << { reason => major_delta }
+    else
+      major_reasons_per_itr << {}
+    end
     total_time += time
   end until num_itrs >= WARMUP_ITRS + MIN_BENCH_ITRS and total_time >= MIN_BENCH_TIME
 
@@ -107,6 +118,16 @@ def run_benchmark(_num_itrs_hint, **, &block)
   extra["gc_minor_count_bench"] = minor_counts[bench_range]
   extra["gc_stat_heap_deltas"] = gc_heap_deltas[bench_range]
 
+  if has_major_by
+    aggregate_reasons = ->(range) {
+      tally = Hash.new(0)
+      major_reasons_per_itr[range].each { |h| h.each { |r, c| tally[r] += c } }
+      tally.transform_keys(&:to_s)
+    }
+    extra["gc_major_reasons_warmup"] = aggregate_reasons[warmup_range]
+    extra["gc_major_reasons_bench"] = aggregate_reasons[bench_range]
+  end
+
   return_results(times[warmup_range], times[bench_range], **extra)
 
   non_warmups = times[bench_range]
@@ -124,6 +145,17 @@ def run_benchmark(_num_itrs_hint, **, &block)
       sweep_bench = sweeping_times[bench_range]
       avg_sweep = sweep_bench.sum / sweep_bench.size
       puts "Average sweeping time: %.1fms" % avg_sweep
+    end
+
+    if has_major_by
+      bench_reasons = extra["gc_major_reasons_bench"]
+      if bench_reasons.any?
+        total = bench_reasons.values.sum
+        puts "\nMajor GC triggers (#{total} across bench iterations):"
+        bench_reasons.sort_by { |_, count| -count }.each do |reason, count|
+          puts "  %-20s %d" % [reason, count]
+        end
+      end
     end
   end
 end
