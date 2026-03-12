@@ -136,7 +136,7 @@ rescue LoadError
 end
 
 # Do expand_path at require-time, not when returning results, before the benchmark is likely to chdir
-default_path = "data/results-#{RUBY_ENGINE}-#{RUBY_ENGINE_VERSION}-#{Time.now.strftime('%F-%H%M%S')}.json"
+default_path = File.expand_path("../data/results-#{RUBY_ENGINE}-#{RUBY_ENGINE_VERSION}-#{Time.now.strftime('%F-%H%M%S')}.json", __dir__)
 yb_env_var = ENV.fetch("RESULT_JSON_PATH", default_path)
 YB_OUTPUT_FILE = File.expand_path yb_env_var
 
