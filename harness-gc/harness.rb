@@ -36,17 +36,24 @@ def run_benchmark(_num_itrs_hint, **, &block)
   marking_times = []
   sweeping_times = []
   gc_counts = []
+  major_counts = []
+  minor_counts = []
   gc_heap_deltas = []
+  major_reasons_per_itr = []
   total_time = 0
   num_itrs = 0
 
   has_marking = GC.stat.key?(:marking_time)
   has_sweeping = GC.stat.key?(:sweeping_time)
+  has_major_by = GC.respond_to?(:latest_gc_info) && GC.latest_gc_info.key?(:major_by)
 
   header = "itr:   time"
   header << "   marking" if has_marking
   header << "  sweeping" if has_sweeping
   header << "  gc_count"
+  header << "     major"
+  header << "     minor"
+  header << "  maj/min"
   puts header
 
   begin
@@ -63,18 +70,35 @@ def run_benchmark(_num_itrs_hint, **, &block)
     mark_delta = has_marking ? gc_after[:marking_time] - gc_before[:marking_time] : 0
     sweep_delta = has_sweeping ? gc_after[:sweeping_time] - gc_before[:sweeping_time] : 0
     count_delta = gc_after[:count] - gc_before[:count]
+    major_delta = gc_after[:major_gc_count] - gc_before[:major_gc_count]
+    minor_delta = gc_after[:minor_gc_count] - gc_before[:minor_gc_count]
+    ratio_str = minor_delta > 0 ? "%.2f" % (major_delta.to_f / minor_delta) : "-"
 
     itr_str = "%4s %6s" % ["##{num_itrs}:", "#{time_ms}ms"]
     itr_str << " %9.1fms" % mark_delta if has_marking
     itr_str << " %9.1fms" % sweep_delta if has_sweeping
     itr_str << " %9d" % count_delta
+    itr_str << " %9d" % major_delta
+    itr_str << " %9d" % minor_delta
+    itr_str << " %9s" % ratio_str
     puts itr_str
 
     times << time
     marking_times << mark_delta
     sweeping_times << sweep_delta
     gc_counts << count_delta
+    major_counts << major_delta
+    minor_counts << minor_delta
     gc_heap_deltas << gc_stat_heap_delta(heap_before, heap_after)
+    if has_major_by && major_delta > 0
+      # latest_gc_info only reflects the most recent GC event — if a minor
+      # GC ran after the last major, the reason is lost (shows :none).
+      reason = GC.latest_gc_info[:major_by]
+      reason = :unknown if reason.nil? || reason == :none
+      major_reasons_per_itr << { reason => major_delta }
+    else
+      major_reasons_per_itr << {}
+    end
     total_time += time
   end until num_itrs >= WARMUP_ITRS + MIN_BENCH_ITRS and total_time >= MIN_BENCH_TIME
 
@@ -88,7 +112,21 @@ def run_benchmark(_num_itrs_hint, **, &block)
   extra["gc_sweeping_time_bench"] = sweeping_times[bench_range]
   extra["gc_count_warmup"] = gc_counts[warmup_range]
   extra["gc_count_bench"] = gc_counts[bench_range]
+  extra["gc_major_count_warmup"] = major_counts[warmup_range]
+  extra["gc_major_count_bench"] = major_counts[bench_range]
+  extra["gc_minor_count_warmup"] = minor_counts[warmup_range]
+  extra["gc_minor_count_bench"] = minor_counts[bench_range]
   extra["gc_stat_heap_deltas"] = gc_heap_deltas[bench_range]
+
+  if has_major_by
+    aggregate_reasons = ->(range) {
+      tally = Hash.new(0)
+      major_reasons_per_itr[range].each { |h| h.each { |r, c| tally[r] += c } }
+      tally.transform_keys(&:to_s)
+    }
+    extra["gc_major_reasons_warmup"] = aggregate_reasons[warmup_range]
+    extra["gc_major_reasons_bench"] = aggregate_reasons[bench_range]
+  end
 
   return_results(times[warmup_range], times[bench_range], **extra)
 
@@ -107,6 +145,17 @@ def run_benchmark(_num_itrs_hint, **, &block)
       sweep_bench = sweeping_times[bench_range]
       avg_sweep = sweep_bench.sum / sweep_bench.size
       puts "Average sweeping time: %.1fms" % avg_sweep
+    end
+
+    if has_major_by
+      bench_reasons = extra["gc_major_reasons_bench"]
+      if bench_reasons.any?
+        total = bench_reasons.values.sum
+        puts "\nMajor GC triggers (#{total} across bench iterations):"
+        bench_reasons.sort_by { |_, count| -count }.each do |reason, count|
+          puts "  %-20s %d" % [reason, count]
+        end
+      end
     end
   end
 end
