@@ -8,7 +8,7 @@ GEM
       timeout
     net-smtp (0.2.1)
       net-protocol
-    timeout (0.4.3)
+    timeout (0.6.0)
 
 PLATFORMS
   ruby
@@ -23,7 +23,7 @@ CHECKSUMS
   mini_mime (1.1.5) sha256=8681b7e2e4215f2a159f9400b5816d85e9d8c6c6b491e96a12797e798f8bccef
   net-protocol (0.2.2) sha256=aa73e0cba6a125369de9837b8d8ef82a61849360eba0521900e2c3713aa162a8
   net-smtp (0.2.1) sha256=d1ae74d4b75970915d7c7a548275583974cb54d09ca9c56312dc8cb7f40ff40f
-  timeout (0.4.3) sha256=9509f079b2b55fe4236d79633bd75e34c1c1e7e3fb4b56cb5fda61f80a0fe30e
+  timeout (0.6.0) sha256=6d722ad619f96ee383a0c557ec6eb8c4ecb08af3af62098a0be5057bf00de1af
 
 BUNDLED WITH
-  4.0.0
+  4.0.3

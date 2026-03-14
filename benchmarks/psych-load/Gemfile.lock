@@ -3,7 +3,7 @@ GEM
   specs:
     psych (4.0.6)
       stringio
-    stringio (3.1.7)
+    stringio (3.2.0)
 
 PLATFORMS
   ruby
@@ -14,7 +14,7 @@ DEPENDENCIES
 
 CHECKSUMS
   psych (4.0.6) sha256=f70425c3dca8d8fbe4c1de7270d921e35eb6eb44cf2b2e4f961dc8031330b876
-  stringio (3.1.7) sha256=5b78b7cb242a315fb4fca61a8255d62ec438f58da2b90be66048546ade4507fa
+  stringio (3.2.0) sha256=c37cb2e58b4ffbd33fe5cd948c05934af997b36e0b6ca6fdf43afa234cf222e1
 
 BUNDLED WITH
-  4.0.0
+  4.0.3

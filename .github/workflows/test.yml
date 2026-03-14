@@ -46,6 +46,8 @@ jobs:
         include:
           - ruby: ruby
           - ruby: head
+            # shipit: cannot load such file -- pty
+            extra_args: "--excludes=shipit"
           - ruby: truffleruby
             # knucleotide: needs fork
             # lobsters: commonmarker fails to install
