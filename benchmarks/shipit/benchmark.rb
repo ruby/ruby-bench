@@ -8,22 +8,6 @@ Dir.chdir __dir__
 
 use_gemfile
 
-# sassc uses FFI with hardcoded paths to find its compiled libsass shared object.
-# RubyGems 4.x (Ruby 4.1+) no longer copies extensions into the gem's lib/ tree,
-# so sassc can't find it. Copy it into place.
-if RUBY_VERSION >= "4.1"
-  spec = Gem::Specification.find_by_name("sassc") rescue nil
-  if spec
-    dl_ext = RbConfig::MAKEFILE_CONFIG['DLEXT']
-    target = File.join(spec.gem_dir, "ext", "libsass.#{dl_ext}")
-    source = File.join(spec.extension_dir, "sassc", "libsass.#{dl_ext}")
-    if !File.exist?(target) && File.exist?(source)
-      require 'fileutils'
-      FileUtils.cp(source, target)
-    end
-  end
-end
-
 require 'securerandom'
 ENV['SECRET_KEY_BASE'] = SecureRandom.hex(128)
 
