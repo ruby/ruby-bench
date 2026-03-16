@@ -136,8 +136,10 @@ def run_benchmark(_num_itrs_hint, **, &block)
 
   # Print heap utilisation table
   if heap_snapshot
+    page_size = defined?(GC::INTERNAL_CONSTANTS) ? GC::INTERNAL_CONSTANTS[:HEAP_PAGE_SIZE] : nil
+
     puts "\nHeap utilisation (after full GC):"
-    header = "heap  slot_size  eden_slots  live_slots  free_slots  eden_pages  live_pct"
+    header = "heap  slot_size  eden_slots  live_slots  free_slots  eden_pages  live_pct  mem_KiB"
     puts header
 
     heap_snapshot.each do |idx, stats|
@@ -147,9 +149,10 @@ def run_benchmark(_num_itrs_hint, **, &block)
       free_slots = stats[:heap_free_slots] || 0
       eden_pages = stats[:heap_eden_pages] || 0
       live_pct = eden_slots > 0 ? (live_slots * 100.0 / eden_slots) : 0.0
+      mem_kib = page_size ? (eden_pages * page_size / 1024.0) : 0.0
 
-      puts "%4d  %9d  %10d  %10d  %10d  %11d  %7.1f%%" % [
-        idx, slot_size, eden_slots, live_slots, free_slots, eden_pages, live_pct
+      puts "%4d  %9d  %10d  %10d  %10d  %11d  %7.1f%%  %7.1f" % [
+        idx, slot_size, eden_slots, live_slots, free_slots, eden_pages, live_pct, mem_kib
       ]
     end
   end
