@@ -107,6 +107,13 @@ def run_benchmark(_num_itrs_hint, **, &block)
   extra["gc_minor_count_bench"] = minor_counts[bench_range]
   extra["gc_stat_heap_deltas"] = gc_heap_deltas[bench_range]
 
+  # Snapshot heap utilisation after benchmark
+  if GC.respond_to?(:stat_heap)
+    GC.start(full_mark: true)
+    heap_snapshot = GC.stat_heap
+    extra["gc_heap_final"] = heap_snapshot.transform_values { |v| v.is_a?(Hash) ? v.dup : v }
+  end
+
   return_results(times[warmup_range], times[bench_range], **extra)
 
   non_warmups = times[bench_range]
@@ -124,6 +131,26 @@ def run_benchmark(_num_itrs_hint, **, &block)
       sweep_bench = sweeping_times[bench_range]
       avg_sweep = sweep_bench.sum / sweep_bench.size
       puts "Average sweeping time: %.1fms" % avg_sweep
+    end
+  end
+
+  # Print heap utilisation table
+  if heap_snapshot
+    puts "\nHeap utilisation (after full GC):"
+    header = "heap  slot_size  eden_slots  live_slots  free_slots  eden_pages  live_pct"
+    puts header
+
+    heap_snapshot.each do |idx, stats|
+      slot_size = stats[:slot_size] || 0
+      eden_slots = stats[:heap_eden_slots] || 0
+      live_slots = stats[:heap_live_slots] || 0
+      free_slots = stats[:heap_free_slots] || 0
+      eden_pages = stats[:heap_eden_pages] || 0
+      live_pct = eden_slots > 0 ? (live_slots * 100.0 / eden_slots) : 0.0
+
+      puts "%4d  %9d  %10d  %10d  %10d  %11d  %7.1f%%" % [
+        idx, slot_size, eden_slots, live_slots, free_slots, eden_pages, live_pct
+      ]
     end
   end
 end
