@@ -425,7 +425,7 @@ describe ResultsTableBuilder do
       assert_equal '', table[1].last
     end
 
-    it 'always shows significance symbol but omits verbose columns without --pvalue' do
+    it 'omits significance symbols and p-value columns without --pvalue' do
       executable_names = ['ruby', 'ruby-yjit']
       bench_data = {
         'ruby' => {
@@ -452,7 +452,41 @@ describe ResultsTableBuilder do
       table, _format = builder.build
       refute_includes table[0], 'p-value'
       refute_includes table[0], 'sig'
-      assert_match(/\(\*{1,3}\)$/, table[1].last)
+      ratio_cell = table[1].last
+      refute_match(/\*/, ratio_cell)
+      assert_match(/\A\d+\.\d+\s*\z/, ratio_cell)
+    end
+
+    it 'shows significance symbols and p-value columns with --pvalue' do
+      executable_names = ['ruby', 'ruby-yjit']
+      bench_data = {
+        'ruby' => {
+          'fib' => {
+            'warmup' => [0.1],
+            'bench' => [0.100, 0.101, 0.099],
+            'rss' => 1024 * 1024 * 10
+          }
+        },
+        'ruby-yjit' => {
+          'fib' => {
+            'warmup' => [0.05],
+            'bench' => [0.050, 0.051, 0.049],
+            'rss' => 1024 * 1024 * 12
+          }
+        }
+      }
+
+      builder = ResultsTableBuilder.new(
+        executable_names: executable_names,
+        bench_data: bench_data,
+        include_pvalue: true
+      )
+
+      table, _format = builder.build
+      assert_includes table[0], 'p-value'
+      assert_includes table[0], 'sig'
+      ratio_col_idx = table[0].index('ruby/ruby-yjit')
+      assert_match(/\(\*{1,3}\)/, table[1][ratio_col_idx])
     end
 
     it 'handles only headline benchmarks' do

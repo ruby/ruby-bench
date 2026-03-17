@@ -174,7 +174,7 @@ class ResultsTableBuilder
     row.concat(ratio_1sts)
 
     other_ts.each do |other_t|
-      pval = Stats.welch_p_value(base_t, other_t)
+      pval = @include_pvalue ? Stats.welch_p_value(base_t, other_t) : nil
       row << format_ratio(mean(base_t) / mean(other_t), pval)
       if @include_pvalue
         row << format_p_value(pval)
@@ -207,7 +207,7 @@ class ResultsTableBuilder
         mean(other) == 0.0
       return "N/A"
     end
-    pval = Stats.welch_p_value(base, other)
+    pval = @include_pvalue ? Stats.welch_p_value(base, other) : nil
     format_ratio(mean(base) / mean(other), pval)
   end
 

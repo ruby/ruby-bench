@@ -387,6 +387,25 @@ describe BenchmarkRunner do
       assert_includes result, 'Legend:'
       assert_includes result, '- ruby-yjit 1st itr: ratio of ruby-base/ruby-yjit time for the first benchmarking iteration.'
       assert_includes result, '- ruby-base/ruby-yjit: ratio of ruby-base/ruby-yjit time. Higher is better for ruby-yjit. Above 1 represents a speedup.'
+      refute_includes result, "p < 0.001"
+    end
+
+    it 'includes p-value legend when include_pvalue is true' do
+      ruby_descriptions = {
+        'ruby-base' => 'ruby 3.3.0',
+        'ruby-yjit' => 'ruby 3.3.0 +YJIT'
+      }
+      table = [
+        ['bench', 'ruby-base (ms)', 'stddev (%)', 'ruby-yjit (ms)', 'stddev (%)'],
+        ['fib', '100.0', '5.0', '50.0', '3.0']
+      ]
+      format = ['%s', '%.1f', '%.1f', '%.1f', '%.1f']
+      bench_failures = {}
+
+      result = BenchmarkRunner.build_output_text(
+        ruby_descriptions, table, format, bench_failures, include_pvalue: true
+      )
+
       assert_includes result, "- ***: p < 0.001, **: p < 0.01, *: p < 0.05 (Welch's t-test)"
     end
 
