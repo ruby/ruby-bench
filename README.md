@@ -222,6 +222,7 @@ You can find several test harnesses in this repository:
 * harness-stats - count method calls and loop iterations
 * harness-vernier - a harness to profile the benchmark with vernier
 * harness-warmup - a harness which runs as long as needed to find warmed up (peak) performance
+* harness-callgrind - a harness for profiling with Valgrind's callgrind tool
 
 To use it, run a benchmark script directly, specifying a harness directory with `-I`:
 
@@ -272,6 +273,39 @@ PERF=record ruby --yjit-perf=map -Iharness-perf benchmarks/railsbench/benchmark.
 ```
 
 This is the only harness that uses `run_benchmark`'s argument, `num_itrs_hint`.
+
+### Using callgrind
+
+The `harness-callgrind` harness profiles benchmarks with [Valgrind's callgrind](https://valgrind.org/docs/manual/cl-manual.html)
+tool. The harness automatically launches the process under valgrind — just use
+`-Iharness-callgrind` and it handles the rest. Warmup runs with instrumentation off
+(near-native speed), then instrumentation is enabled for the benchmark phase only,
+so the output contains only steady-state data.
+
+```sh
+ruby -Iharness-callgrind benchmarks/lobsters/benchmark.rb
+```
+
+To also capture warmup/compilation activity in a separate file:
+
+```sh
+CALLGRIND_PROFILE_WARMUP=1 ruby -Iharness-callgrind benchmarks/lobsters/benchmark.rb
+```
+
+This produces two files:
+* `callgrind-warmup.out` — warmup/compilation profile
+* `callgrind.out` — steady-state benchmark profile
+
+The output filename can be changed with `CALLGRIND_OUT_FILE`. Benchmarks can also set
+defaults for `out_file` and `profile_warmup` via `run_benchmark` keyword arguments;
+environment variables override these when set.
+
+Note: warmup runs ~20-50x slower with `profile_warmup` because callgrind instrumentation
+is active during warmup. Use low iteration counts for instrumented phases — control them
+with `WARMUP_ITRS` and `MIN_BENCH_ITRS`.
+
+Analyze results with `callgrind_annotate callgrind.out` or load them into
+[KCachegrind](https://kcachegrind.github.io/).
 
 ### Printing YJIT stats
 
