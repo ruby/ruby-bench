@@ -14,6 +14,15 @@ ENV['SECRET_KEY_BASE'] = SecureRandom.hex(128)
 require_relative 'config/environment'
 require_relative "route_generator"
 
+# Precompile assets once so that Sprockets never shells out to Node.js during
+# warmup/benchmark iterations (shipit-engine ships CoffeeScript assets).
+unless Dir.glob(File.join(__dir__, 'public/assets/.sprockets-manifest*.json')).any?
+  puts "Precompiling assets..."
+  Rails.application.load_tasks
+  Rake::Task['assets:precompile'].invoke
+  puts "Assets precompiled."
+end
+
 # For an in-mem DB, we need to load all data on every boot
 mem_db = ActiveRecord::Base.connection.raw_connection
 file_db = SQLite3::Database.new('db/production.committed.sqlite3')
