@@ -48,7 +48,7 @@ module BenchmarkRunner
     end
 
     # Build output text string with metadata, table, and legend
-    def build_output_text(ruby_descriptions, table, format, bench_failures, include_rss: false, include_gc: false, include_pvalue: false)
+    def build_output_text(ruby_descriptions, table, format, bench_failures, include_rss: false, include_gc: false, include_pvalue: false, **)
       base_name, *other_names = ruby_descriptions.keys
 
       output_str = +""

@@ -5,11 +5,12 @@ class ResultsTableBuilder
   SECONDS_TO_MS = 1000.0
   BYTES_TO_MIB = 1024.0 * 1024.0
 
-  def initialize(executable_names:, bench_data:, include_rss: false, include_pvalue: false)
+  def initialize(executable_names:, bench_data:, include_rss: false, include_pvalue: false, include_zjit_mem: false)
     @executable_names = executable_names
     @bench_data = bench_data
     @include_rss = include_rss
     @include_pvalue = include_pvalue
+    @include_zjit_mem = include_zjit_mem
     @include_gc = detect_gc_data(bench_data)
     @base_name = executable_names.first
     @other_names = executable_names[1..]
@@ -46,6 +47,10 @@ class ResultsTableBuilder
     @executable_names.each do |name|
       header << "#{name} (ms)"
       header << "RSS (MiB)" if @include_rss
+      if @include_zjit_mem
+        header << "code (B)"
+        header << "alloc (B)"
+      end
       if @include_gc
         header << "#{name} mark (ms)"
         header << "#{name} sweep (ms)"
@@ -85,6 +90,10 @@ class ResultsTableBuilder
     @executable_names.each do |_name|
       format << "%s"
       format << "%.1f" if @include_rss
+      if @include_zjit_mem
+        format << "%s"
+        format << "%s"
+      end
       if @include_gc
         format << "%s"
         format << "%s"
@@ -127,6 +136,13 @@ class ResultsTableBuilder
     base_t, *other_ts = times_no_warmup
     base_rss, *other_rsss = rsss
 
+    if @include_zjit_mem
+      code_regions = extract_zjit_stat(bench_name, 'code_region_bytes')
+      zjit_allocs = extract_zjit_stat(bench_name, 'zjit_alloc_bytes')
+      base_code, *other_codes = code_regions
+      base_alloc, *other_allocs = zjit_allocs
+    end
+
     if @include_gc
       marking_times = extract_gc_times(bench_name, 'gc_marking_time_bench')
       sweeping_times = extract_gc_times(bench_name, 'gc_sweeping_time_bench')
@@ -135,8 +151,8 @@ class ResultsTableBuilder
     end
 
     row = [bench_name]
-    build_base_columns(row, base_t, base_rss, base_mark, base_sweep)
-    build_comparison_columns(row, other_ts, other_rsss, other_marks, other_sweeps)
+    build_base_columns(row, base_t, base_rss, base_code, base_alloc, base_mark, base_sweep)
+    build_comparison_columns(row, other_ts, other_rsss, other_codes, other_allocs, other_marks, other_sweeps)
     build_ratio_columns(row, base_t0, other_t0s, base_t, other_ts)
     build_rss_ratio_columns(row, base_rss, other_rsss)
     build_gc_ratio_columns(row, base_mark, other_marks, base_sweep, other_sweeps)
@@ -144,24 +160,37 @@ class ResultsTableBuilder
     row
   end
 
-  def build_base_columns(row, base_t, base_rss, base_mark, base_sweep)
+  def build_base_columns(row, base_t, base_rss, base_code, base_alloc, base_mark, base_sweep)
     row << format_time_with_stddev(base_t)
     row << base_rss if @include_rss
+    if @include_zjit_mem
+      row << format_bytes(base_code)
+      row << format_bytes(base_alloc)
+    end
     if @include_gc
       row << format_time_with_stddev(base_mark)
       row << format_time_with_stddev(base_sweep)
     end
   end
 
-  def build_comparison_columns(row, other_ts, other_rsss, other_marks, other_sweeps)
+  def build_comparison_columns(row, other_ts, other_rsss, other_codes, other_allocs, other_marks, other_sweeps)
     other_ts.each_with_index do |other_t, i|
       row << format_time_with_stddev(other_t)
       row << other_rsss[i] if @include_rss
+      if @include_zjit_mem
+        row << format_bytes(other_codes[i])
+        row << format_bytes(other_allocs[i])
+      end
       if @include_gc
         row << format_time_with_stddev(other_marks[i])
         row << format_time_with_stddev(other_sweeps[i])
       end
     end
+  end
+
+  def format_bytes(value)
+    return "N/A" if value.nil?
+    value.to_i.to_s.gsub(/(\d)(?=(\d{3})+(?!\d))/, '\1,')
   end
 
   def format_time_with_stddev(values)
@@ -272,6 +301,12 @@ class ResultsTableBuilder
   def extract_rss_values(bench_name)
     @executable_names.map do |name|
       bench_data_for(name, bench_name)['rss'] / BYTES_TO_MIB
+    end
+  end
+
+  def extract_zjit_stat(bench_name, key)
+    @executable_names.map do |name|
+      bench_data_for(name, bench_name).dig('zjit_stats', key)
     end
   end
 

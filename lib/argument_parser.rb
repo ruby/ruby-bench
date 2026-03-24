@@ -25,6 +25,7 @@ class ArgumentParser
     :with_pre_init,
     :pvalue,
     :interleave,
+    :zjit_mem,
     keyword_init: true
   )
 
@@ -146,6 +147,10 @@ class ArgumentParser
         args.rss = true
       end
 
+      opts.on("--zjit-mem", "show ZJIT memory usage (code_region_bytes, zjit_alloc_bytes) in the output") do
+        args.zjit_mem = true
+      end
+
       opts.on("--pvalue", "show p-value and significance columns for each comparison") do
         args.pvalue = true
       end
@@ -236,6 +241,7 @@ class ArgumentParser
       rss: false,
       pvalue: false,
       interleave: false,
+      zjit_mem: false,
       graph: false,
       no_pinning: false,
       force_pinning: false,
