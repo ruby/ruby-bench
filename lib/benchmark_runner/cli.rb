@@ -94,7 +94,8 @@ module BenchmarkRunner
         executable_names: ruby_descriptions.keys,
         bench_data: bench_data,
         include_rss: args.rss,
-        include_pvalue: args.pvalue
+        include_pvalue: args.pvalue,
+        zjit_stats: args.zjit_stats
       )
       table, format = builder.build
 
