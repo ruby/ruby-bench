@@ -73,12 +73,12 @@ def run_benchmark(_num_itrs_hint, **, &block)
     ratio_str = minor_delta > 0 ? "%.2f" % (major_delta.to_f / minor_delta) : "-"
 
     itr_str = "%4s %6s" % ["##{num_itrs}:", "#{time_ms}ms"]
-    itr_str << " %9.1fms" % mark_delta if has_marking
-    itr_str << " %9.1fms" % sweep_delta if has_sweeping
+    itr_str << "%8.1fms" % mark_delta if has_marking
+    itr_str << "%8.1fms" % sweep_delta if has_sweeping
     itr_str << " %9d" % count_delta
     itr_str << " %9d" % major_delta
     itr_str << " %9d" % minor_delta
-    itr_str << " %9s" % ratio_str
+    itr_str << "%9s" % ratio_str
     puts itr_str
 
     times << time
