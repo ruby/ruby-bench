@@ -126,7 +126,7 @@ class ArgumentParser
         ENV["YJIT_BENCH_STATS"] = str
       end
 
-      opts.on("--zjit-stats=STATS", "print ZJIT stats at each iteration and show them in the summary table") do |str|
+      opts.on("--zjit-stats=STAT1,STAT2,...", "print ZJIT stats at each iteration and show them in the summary table") do |str|
         ENV["ZJIT_BENCH_STATS"] = str
         args.zjit_stats = str.split(",")
       end
