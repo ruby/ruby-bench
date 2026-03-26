@@ -25,6 +25,7 @@ class ArgumentParser
     :with_pre_init,
     :pvalue,
     :interleave,
+    :zjit_stats,
     keyword_init: true
   )
 
@@ -125,8 +126,9 @@ class ArgumentParser
         ENV["YJIT_BENCH_STATS"] = str
       end
 
-      opts.on("--zjit-stats=STATS", "print ZJIT stats at each iteration for the default harness") do |str|
+      opts.on("--zjit-stats=STATS", "print ZJIT stats at each iteration and show them in the summary table") do |str|
         ENV["ZJIT_BENCH_STATS"] = str
+        args.zjit_stats = str.split(",")
       end
 
       opts.on("--yjit_opts=OPT_STRING", "string of command-line options to run YJIT with (ignored if you use -e)") do |str|
@@ -236,6 +238,7 @@ class ArgumentParser
       rss: false,
       pvalue: false,
       interleave: false,
+      zjit_stats: [],
       graph: false,
       no_pinning: false,
       force_pinning: false,
