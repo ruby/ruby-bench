@@ -51,7 +51,7 @@ end
 def use_gemfile(extra_setup_cmd: nil)
   # Benchmarks should normally set their current directory and then call this method.
 
-  setup_cmds(["bundle check 2> /dev/null || bundle install", extra_setup_cmd].compact)
+  setup_cmds(["bundle check 2> /dev/null || BUNDLE_FROZEN=1 bundle install", extra_setup_cmd].compact)
 
   # Need to be in the appropriate directory for this...
   require "bundler"
