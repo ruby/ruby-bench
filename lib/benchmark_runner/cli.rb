@@ -9,6 +9,9 @@ require_relative '../results_table_builder'
 
 module BenchmarkRunner
   class CLI
+    BOLD = "\e[1m"
+    RESET = "\e[0m"
+
     attr_reader :args
 
     def self.run(argv = ARGV)
@@ -43,6 +46,18 @@ module BenchmarkRunner
       # Collect ruby version descriptions for all executables upfront
       args.executables.each do |name, executable|
         ruby_descriptions[name] = `#{executable.shelljoin} -v`.chomp
+      end
+
+      # Warn if two executables look identical (same ruby -v output and same flags)
+      names = ruby_descriptions.keys
+      names.each_with_index do |name_a, i|
+        names[(i + 1)..].each do |name_b|
+          flags_a = args.executables[name_a][1..] || []
+          flags_b = args.executables[name_b][1..] || []
+          if ruby_descriptions[name_a] == ruby_descriptions[name_b] && flags_a == flags_b
+            warn "#{BOLD}WARNING: '#{name_a}' and '#{name_b}' appear identical (same revision, same flags). This is likely a mistake.#{RESET}"
+          end
+        end
       end
 
       bench_start_time = Time.now.to_f
