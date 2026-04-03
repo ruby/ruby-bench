@@ -1,8 +1,11 @@
 require_relative '../harness/loader'
 
 class C
+  CALL_BLOCK = false
+
   def ruby_func
-    # Don't even yield
+    # Don't even yield. But we leave yield to suppress a warning.
+    yield if CALL_BLOCK
   end
 end
 
