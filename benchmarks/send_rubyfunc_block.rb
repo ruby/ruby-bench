@@ -1,9 +1,11 @@
 require_relative '../harness/loader'
 
 class C
-  def ruby_func(call_block)
-    # Don't even yield
-    yield if call_block
+  CALL_BLOCK = false
+
+  def ruby_func
+    # Don't even yield. But we leave yield to suppress a warning.
+    yield if CALL_BLOCK
   end
 end
 
@@ -12,14 +14,14 @@ INSTANCE = C.new
 run_benchmark(500) do
   500_000.times do |i|
     # Manually unrolling to avoid loop overhead
-    INSTANCE.ruby_func(false) {}
-    INSTANCE.ruby_func(false) {}
-    INSTANCE.ruby_func(false) {}
-    INSTANCE.ruby_func(false) {}
-    INSTANCE.ruby_func(false) {}
-    INSTANCE.ruby_func(false) {}
-    INSTANCE.ruby_func(false) {}
-    INSTANCE.ruby_func(false) {}
-    INSTANCE.ruby_func(false) {}
+    INSTANCE.ruby_func {}
+    INSTANCE.ruby_func {}
+    INSTANCE.ruby_func {}
+    INSTANCE.ruby_func {}
+    INSTANCE.ruby_func {}
+    INSTANCE.ruby_func {}
+    INSTANCE.ruby_func {}
+    INSTANCE.ruby_func {}
+    INSTANCE.ruby_func {}
   end
 end
