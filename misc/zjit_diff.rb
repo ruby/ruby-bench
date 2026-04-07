@@ -404,24 +404,86 @@ class ZjitDiff
 
   # Strip hex addresses from stat keys so that entries like
   # "#<Module:0x00007f1a>#foo" and "#<Module:0x00007f2b>#foo"
-  # collapse into one. Numeric values are summed when keys merge.
+  # collapse into one. Also shorten absolute file paths in keys to the
+  # longest shared suffix (prefixed with ".../") so keys from different
+  # machine-specific prefixes still compare against each other.
+  # Numeric values are summed when keys merge.
   def normalize_zjit_stats!
+    path_suffix_map = build_path_suffix_map
+
     @raw_data.each_value do |benchmarks|
       benchmarks.each_value do |bench_data|
         next unless bench_data.is_a?(Hash) && bench_data['zjit_stats'].is_a?(Hash)
         stats = bench_data['zjit_stats']
         normalized = {}
+
         stats.each do |key, value|
           nkey = key.gsub(/0x\h+/, '0x…')
+          nkey = nkey.gsub(/@(\/[^:\s)]+:\d+)/) do
+            "@#{path_suffix_map[$1] || $1}"
+          end
+          nkey = nkey.gsub(/\(eval at (\/[^:\s)]+:\d+)\)/) do
+            "(eval at #{path_suffix_map[$1] || $1})"
+          end
+
           if normalized.key?(nkey) && value.is_a?(Numeric) && normalized[nkey].is_a?(Numeric)
             normalized[nkey] += value
           else
             normalized[nkey] = value
           end
         end
+
         bench_data['zjit_stats'] = normalized
       end
     end
+  end
+
+  def build_path_suffix_map
+    all_paths = []
+
+    @raw_data.each_value do |benchmarks|
+      benchmarks.each_value do |bench_data|
+        next unless bench_data.is_a?(Hash) && bench_data['zjit_stats'].is_a?(Hash)
+        bench_data['zjit_stats'].each_key do |key|
+          key.scan(%r{/[^:\s)]+:\d+}) { |m| all_paths << m }
+        end
+      end
+    end
+
+    groups = all_paths.uniq.group_by { |p| p.split('/').last }
+    suffix_map = {}
+
+    groups.each_value do |paths|
+      next if paths.size < 2
+      split_paths = paths.map { |p| p.split('/') }
+
+      paths.each_with_index do |path, i|
+        best_suffix = nil
+
+        paths.each_with_index do |_other, j|
+          next if i == j
+          suffix = common_suffix(split_paths[i], split_paths[j])
+          best_suffix = suffix if best_suffix.nil? || suffix.length > best_suffix.length
+        end
+
+        next unless best_suffix && best_suffix.length > 1
+        suffix_map[path] = ".../#{best_suffix.join('/')}"
+      end
+    end
+
+    suffix_map
+  end
+
+  def common_suffix(parts_a, parts_b)
+    suffix = []
+    i = 1
+
+    while i <= parts_a.length && i <= parts_b.length && parts_a[-i] == parts_b[-i]
+      suffix.unshift(parts_a[-i])
+      i += 1
+    end
+
+    suffix
   end
 end
 
