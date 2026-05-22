@@ -11,7 +11,8 @@ DEPENDENCIES
   chunky_png
 
 CHECKSUMS
+  bundler (4.0.12) sha256=7f8b757d28dfb636e7b24fba2344ac6dd13b5b24f4b46d62573d483f211825ac
   chunky_png (1.4.0) sha256=89d5b31b55c0cf4da3cf89a2b4ebc3178d8abe8cbaf116a1dba95668502fdcfe
 
 BUNDLED WITH
-  4.0.0
+  4.0.12
