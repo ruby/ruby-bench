@@ -8,7 +8,7 @@ unless ruby_in_path == RbConfig.ruby
 end
 
 # Support enabling GC auto-compaction via environment variable
-GC.auto_compact = !!ENV["RUBY_GC_AUTO_COMPACT"]
+GC.auto_compact = !!ENV["RUBY_GC_AUTO_COMPACT"] if GC.respond_to?(:auto_compact)
 
 # Seed the global random number generator for repeatability between runs
 Random.srand(1337)
