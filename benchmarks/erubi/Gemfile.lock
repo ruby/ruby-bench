@@ -11,7 +11,8 @@ DEPENDENCIES
   erubi
 
 CHECKSUMS
+  bundler (4.0.12) sha256=7f8b757d28dfb636e7b24fba2344ac6dd13b5b24f4b46d62573d483f211825ac
   erubi (1.13.1) sha256=a082103b0885dbc5ecf1172fede897f9ebdb745a4b97a5e8dc63953db1ee4ad9
 
 BUNDLED WITH
-  4.0.0
+  4.0.12
