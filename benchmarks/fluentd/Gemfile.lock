@@ -1,3 +1,10 @@
+GIT
+  remote: https://github.com/brianmario/yajl-ruby.git
+  revision: 6501652d113557d976676134056aa983e7863020
+  branch: master
+  specs:
+    yajl-ruby (1.4.3)
+
 GEM
   remote: https://rubygems.org/
   specs:
@@ -81,7 +88,6 @@ GEM
       tzinfo (>= 1.0.0)
     uri (1.0.3)
     webrick (1.9.1)
-    yajl-ruby (1.4.3)
     zstd-ruby (1.5.7.0)
 
 PLATFORMS
@@ -128,7 +134,7 @@ CHECKSUMS
   tzinfo-data (1.2025.2) sha256=a92375a1fbb47d38fe88fd514c40a38cc8f97d168da2a6479f15185e86470939
   uri (1.0.3) sha256=e9f2244608eea2f7bc357d954c65c910ce0399ca5e18a7a29207ac22d8767011
   webrick (1.9.1) sha256=b42d3c94f166f3fb73d87e9b359def9b5836c426fc8beacf38f2184a21b2a989
-  yajl-ruby (1.4.3) sha256=8c974d9c11ae07b0a3b6d26efea8407269b02e4138118fbe3ef0d2ec9724d1d2
+  yajl-ruby (1.4.3)
   zstd-ruby (1.5.7.0) sha256=893819f6b95244ca8885c62f9b3be7edfbf604f055bdef0574f4ccca175e87db
 
 BUNDLED WITH
