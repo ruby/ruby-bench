@@ -154,13 +154,17 @@ describe IntelCPUConfig do
 
       # Verify at_exit block restores Intel turbo settings
       cleanup_commands = []
-      BenchmarkRunner.stub :check_call, ->(cmd, **opts) { cleanup_commands << { cmd: cmd, opts: opts } } do
+      check_call_stub = ->(cmd, **opts) do
+        cleanup_commands << { cmd: cmd, opts: opts }
+        { success: true }
+      end
+      BenchmarkRunner.stub :check_call, check_call_stub do
         at_exit_block.call
       end
 
       assert_equal 1, cleanup_commands.length, "at_exit block should call check_call once"
-      assert_equal "sudo -S sh -c 'echo 0 > /sys/devices/system/cpu/intel_pstate/no_turbo'", cleanup_commands[0][:cmd]
-      assert_equal({ quiet: true }, cleanup_commands[0][:opts])
+      assert_equal "sudo -n sh -c 'echo 0 > /sys/devices/system/cpu/intel_pstate/no_turbo'", cleanup_commands[0][:cmd]
+      assert_equal({ quiet: true, raise_error: false }, cleanup_commands[0][:opts])
     end
 
     it 'exits when Intel turbo is not disabled and turbo flag is false' do
@@ -293,13 +297,17 @@ describe AMDCPUConfig do
 
       # Verify at_exit block restores AMD boost settings
       cleanup_commands = []
-      BenchmarkRunner.stub :check_call, ->(cmd, **opts) { cleanup_commands << { cmd: cmd, opts: opts } } do
+      check_call_stub = ->(cmd, **opts) do
+        cleanup_commands << { cmd: cmd, opts: opts }
+        { success: true }
+      end
+      BenchmarkRunner.stub :check_call, check_call_stub do
         at_exit_block.call
       end
 
       assert_equal 1, cleanup_commands.length, "at_exit block should call check_call once"
-      assert_equal "sudo -S sh -c 'echo 1 > /sys/devices/system/cpu/cpufreq/boost'", cleanup_commands[0][:cmd]
-      assert_equal({ quiet: true }, cleanup_commands[0][:opts])
+      assert_equal "sudo -n sh -c 'echo 1 > /sys/devices/system/cpu/cpufreq/boost'", cleanup_commands[0][:cmd]
+      assert_equal({ quiet: true, raise_error: false }, cleanup_commands[0][:opts])
     end
 
     it 'exits when AMD boost is not disabled and turbo flag is false' do
