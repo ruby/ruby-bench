@@ -157,6 +157,11 @@ class BenchmarkSuite
     # Use per-benchmark default_harness if set, otherwise use global harness
     benchmark_harness = benchmark_harness_for(benchmark_name)
 
+
+    if prefix = ENV["RUBY_BENCH_CMD_PREFIX"]
+      cmd_prefix = prefix.shellsplit + cmd_prefix
+    end
+
     # Set up the benchmarking command
     cmd = cmd_prefix + [
       *ruby,
