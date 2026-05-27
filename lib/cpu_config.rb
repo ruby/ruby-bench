@@ -52,6 +52,17 @@ class CPUConfig
   def check_pstate(turbo:)
     # Override in subclasses
   end
+
+  # A quiet sudo --non-interactive call that on failure, retries asking for input
+  def sudo_prefer_quiet(command)
+    # For compatibility, we use short flags older sudo versions understand.
+    # -n is --non-interactive, -S is --stdin
+    result = BenchmarkRunner.check_call("sudo -n #{command}", quiet: true, raise_error: false)
+    unless result[:success]
+      result = BenchmarkRunner.check_call("sudo -S #{command}")
+    end
+    result
+  end
 end
 
 # Intel CPU configuration
@@ -67,7 +78,7 @@ class IntelCPUConfig < CPUConfig
   def disable_turbo_boost
     # sudo requires the flag '-S' in order to take input from stdin
     BenchmarkRunner.check_call("sudo -S sh -c 'echo #{TURBO_DISABLED_VALUE} > #{NO_TURBO_PATH}'")
-    at_exit { BenchmarkRunner.check_call("sudo -S sh -c 'echo 0 > #{NO_TURBO_PATH}'", quiet: true) }
+    at_exit { sudo_prefer_quiet("sh -c 'echo 0 > #{NO_TURBO_PATH}'") }
   end
 
   def maximize_frequency
@@ -114,7 +125,7 @@ class AMDCPUConfig < CPUConfig
   def disable_turbo_boost
     # sudo requires the flag '-S' in order to take input from stdin
     BenchmarkRunner.check_call("sudo -S sh -c 'echo #{TURBO_DISABLED_VALUE} > #{BOOST_PATH}'")
-    at_exit { BenchmarkRunner.check_call("sudo -S sh -c 'echo #{TURBO_ENABLED_VALUE} > #{BOOST_PATH}'", quiet: true) }
+    at_exit { sudo_prefer_quiet("sh -c 'echo #{TURBO_ENABLED_VALUE} > #{BOOST_PATH}'") }
   end
 
   def maximize_frequency
