@@ -549,4 +549,125 @@ describe ResultsTableBuilder do
       assert_equal 'fib', bench_names[4]
     end
   end
+
+  describe 'RSS sampling (rss_samples)' do
+    MIB = 1024 * 1024
+
+    it 'shows mean ± stddev% and uses %s format when samples are present' do
+      bench_data = {
+        'ruby' => {
+          'fib' => {
+            'warmup' => [0.1],
+            'bench' => [0.1, 0.1, 0.1],
+            'rss' => 10 * MIB,
+            'rss_samples' => [9 * MIB, 10 * MIB, 11 * MIB]
+          }
+        }
+      }
+
+      builder = ResultsTableBuilder.new(
+        executable_names: ['ruby'],
+        bench_data: bench_data,
+        include_rss: true
+      )
+
+      table, format = builder.build
+
+      assert_equal ['bench', 'ruby (ms)', 'RSS (MiB)'], table[0]
+      assert_equal ['%s', '%s', '%s'], format
+
+      m = table[1][2].match(/\A(\d+\.\d) ± (\d+\.\d)%\z/)
+      assert m, "expected mean ± stddev%, got #{table[1][2].inspect}"
+      assert_in_delta 10.0, m[1].to_f, 0.1
+      assert_operator m[2].to_f, :>, 0.0
+    end
+
+    it 'computes the RSS ratio from the mean of samples' do
+      bench_data = {
+        'ruby' => {
+          'fib' => {
+            'warmup' => [0.1],
+            'bench' => [0.1, 0.1, 0.1],
+            'rss' => 99 * MIB, # should be ignored in favour of samples
+            'rss_samples' => [10 * MIB, 10 * MIB, 10 * MIB]
+          }
+        },
+        'ruby-yjit' => {
+          'fib' => {
+            'warmup' => [0.05],
+            'bench' => [0.05, 0.05, 0.05],
+            'rss' => 1 * MIB,
+            'rss_samples' => [18 * MIB, 20 * MIB, 22 * MIB]
+          }
+        }
+      }
+
+      builder = ResultsTableBuilder.new(
+        executable_names: ['ruby', 'ruby-yjit'],
+        bench_data: bench_data,
+        include_rss: true
+      )
+
+      table, _format = builder.build
+
+      # ratio = mean(ruby samples) / mean(yjit samples) = 10 / 20 = 0.5
+      assert_in_delta 0.5, table[1].last, 0.001
+    end
+
+    it 'falls back to a plain MiB value for runs without samples in a mixed suite' do
+      bench_data = {
+        'ruby' => {
+          'fib' => {
+            'warmup' => [0.1],
+            'bench' => [0.1, 0.1],
+            'rss' => 10 * MIB,
+            'rss_samples' => [10 * MIB, 10 * MIB]
+          },
+          'loop' => {
+            'warmup' => [0.2],
+            'bench' => [0.2, 0.2],
+            'rss' => 15 * MIB
+            # no rss_samples for this benchmark
+          }
+        }
+      }
+
+      builder = ResultsTableBuilder.new(
+        executable_names: ['ruby'],
+        bench_data: bench_data,
+        include_rss: true
+      )
+
+      table, format = builder.build
+
+      # Suite has samples somewhere, so the RSS column is string-formatted.
+      assert_equal ['%s', '%s', '%s'], format
+
+      rows = table[1..].each_with_object({}) { |row, h| h[row[0]] = row }
+      assert_match(/\A\d+\.\d ± \d+\.\d%\z/, rows['fib'][2])
+      # The sample-less benchmark still renders as a bare MiB value.
+      assert_equal '15.0', rows['loop'][2]
+    end
+
+    it 'keeps %.1f formatting when no run in the suite has samples' do
+      bench_data = {
+        'ruby' => {
+          'fib' => {
+            'warmup' => [0.1],
+            'bench' => [0.1],
+            'rss' => 10 * MIB
+          }
+        }
+      }
+
+      builder = ResultsTableBuilder.new(
+        executable_names: ['ruby'],
+        bench_data: bench_data,
+        include_rss: true
+      )
+
+      _table, format = builder.build
+      assert_equal ['%s', '%s', '%.1f'], format
+    end
+  end
 end
