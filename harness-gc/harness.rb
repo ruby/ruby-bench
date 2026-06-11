@@ -33,6 +33,7 @@ end
 
 def run_benchmark(_num_itrs_hint, **, &block)
   times = []
+  rss_samples = []
   marking_times = []
   sweeping_times = []
   gc_counts = []
@@ -82,6 +83,7 @@ def run_benchmark(_num_itrs_hint, **, &block)
     puts itr_str
 
     times << time
+    rss_samples << get_rss
     marking_times << mark_delta
     sweeping_times << sweep_delta
     gc_counts << count_delta
@@ -95,6 +97,8 @@ def run_benchmark(_num_itrs_hint, **, &block)
   bench_range = WARMUP_ITRS..-1
 
   extra = {}
+  rss_bench = rss_samples[bench_range] || []
+  extra["rss_samples"] = rss_bench unless rss_bench.empty?
   extra["gc_marking_time_warmup"] = marking_times[warmup_range]
   extra["gc_marking_time_bench"] = marking_times[bench_range]
   extra["gc_sweeping_time_warmup"] = sweeping_times[warmup_range]

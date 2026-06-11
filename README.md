@@ -284,11 +284,21 @@ after each iteration with the default harness.
 
 ## Measuring memory usage
 
-`--rss` option of `run_benchmarks.rb` allows you to measure RSS after benchmark iterations.
+`--rss` option of `run_benchmarks.rb` allows you to measure RSS (resident set size).
 
 ```
 ./run_benchmarks.rb --rss
 ```
+
+The harness samples RSS once per iteration across the benchmarking window (after
+warmup), so the `RSS (MiB)` column reports the mean working set during measurement
+along with its run-to-run variability (`mean ± stddev%`), and the `RSS` ratio is
+computed from those means. The raw per-iteration samples are stored in the JSON
+output under `rss_samples` (bytes).
+
+For reference, the JSON output also keeps `rss`, a single snapshot taken after a
+full GC at the end of the run (the retained set, a lower bound), and `maxrss`, the
+process's lifetime peak from `getrusage`.
 
 ## Rendering a graph
 

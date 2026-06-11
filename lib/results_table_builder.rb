@@ -12,6 +12,7 @@ class ResultsTableBuilder
     @include_pvalue = include_pvalue
     @zjit_stats = zjit_stats || []
     @include_gc = detect_gc_data(bench_data)
+    @rss_has_samples = @include_rss && detect_rss_samples(bench_data)
     @base_name = executable_names.first
     @other_names = executable_names[1..]
     @bench_names = compute_bench_names
@@ -86,7 +87,7 @@ class ResultsTableBuilder
 
     @executable_names.each do |_name|
       format << "%s"
-      format << "%.1f" if @include_rss
+      format << (@rss_has_samples ? "%s" : "%.1f") if @include_rss
       @zjit_stats.each { format << "%s" }
       if @include_gc
         format << "%s"
@@ -125,10 +126,14 @@ class ResultsTableBuilder
     t0s = extract_first_iteration_times(bench_name)
     times_no_warmup = extract_benchmark_times(bench_name)
     rsss = extract_rss_values(bench_name)
+    rss_series = @rss_has_samples ? extract_rss_series(bench_name) : nil
 
     base_t0, *other_t0s = t0s
     base_t, *other_ts = times_no_warmup
     base_rss, *other_rsss = rsss
+
+    base_rss_cell = rss_cell(base_rss, rss_series && rss_series[0])
+    other_rss_cells = other_rsss.each_index.map { |i| rss_cell(other_rsss[i], rss_series && rss_series[i + 1]) }
 
     # Extract zjit stats: { stat_name => [base_val, other1_val, ...] }
     zjit_stat_values = @zjit_stats.map do |stat|
@@ -143,8 +148,8 @@ class ResultsTableBuilder
     end
 
     row = [bench_name]
-    build_base_columns(row, base_t, base_rss, zjit_stat_values, 0, base_mark, base_sweep)
-    build_comparison_columns(row, other_ts, other_rsss, zjit_stat_values, other_marks, other_sweeps)
+    build_base_columns(row, base_t, base_rss_cell, zjit_stat_values, 0, base_mark, base_sweep)
+    build_comparison_columns(row, other_ts, other_rss_cells, zjit_stat_values, other_marks, other_sweeps)
     build_ratio_columns(row, base_t0, other_t0s, base_t, other_ts)
     build_rss_ratio_columns(row, base_rss, other_rsss)
     build_gc_ratio_columns(row, base_mark, other_marks, base_sweep, other_sweeps)
@@ -162,10 +167,10 @@ class ResultsTableBuilder
     end
   end
 
-  def build_comparison_columns(row, other_ts, other_rsss, zjit_stat_values, other_marks, other_sweeps)
+  def build_comparison_columns(row, other_ts, other_rss_cells, zjit_stat_values, other_marks, other_sweeps)
     other_ts.each_with_index do |other_t, i|
       row << format_time_with_stddev(other_t)
-      row << other_rsss[i] if @include_rss
+      row << other_rss_cells[i] if @include_rss
       zjit_stat_values.each { |_stat, values| row << format_stat(values[i + 1]) }
       if @include_gc
         row << format_time_with_stddev(other_marks[i])
@@ -283,9 +288,38 @@ class ResultsTableBuilder
     end
   end
 
+  # Numeric RSS (MiB) per executable, used for the RSS ratio. When per-iteration
+  # samples are present we use their mean so the ratio matches the displayed value.
   def extract_rss_values(bench_name)
     @executable_names.map do |name|
-      bench_data_for(name, bench_name)['rss'] / BYTES_TO_MIB
+      data = bench_data_for(name, bench_name)
+      samples = data['rss_samples']
+      if samples.is_a?(Array) && !samples.empty?
+        mean(samples) / BYTES_TO_MIB
+      else
+        data['rss'] / BYTES_TO_MIB
+      end
+    end
+  end
+
+  # Per-iteration RSS samples (MiB) per executable, or nil when a run lacks them.
+  def extract_rss_series(bench_name)
+    @executable_names.map do |name|
+      samples = bench_data_for(name, bench_name)['rss_samples']
+      next nil unless samples.is_a?(Array) && !samples.empty?
+      samples.map { |bytes| bytes / BYTES_TO_MIB }
+    end
+  end
+
+  # Display value for an RSS column: mean ± stddev% when samples exist (matching
+  # the timing columns), otherwise a plain MiB value. Returns a Float when no run
+  # in the suite has samples, preserving the legacy "%.1f" formatting.
+  def rss_cell(mean_value, series)
+    return mean_value unless @rss_has_samples
+    if series && !series.empty?
+      format_time_with_stddev(series)
+    else
+      "%.1f" % mean_value
     end
   end
 
@@ -303,6 +337,12 @@ class ResultsTableBuilder
 
   def detect_gc_data(bench_data)
     bench_data.values.any? { |benchmarks| benchmarks.values.any? { |d| d.is_a?(Hash) && d.key?('gc_marking_time_bench') } }
+  end
+
+  def detect_rss_samples(bench_data)
+    bench_data.values.any? do |benchmarks|
+      benchmarks.values.any? { |d| d.is_a?(Hash) && d['rss_samples'].is_a?(Array) && !d['rss_samples'].empty? }
+    end
   end
 
   def bench_data_for(name, bench_name)

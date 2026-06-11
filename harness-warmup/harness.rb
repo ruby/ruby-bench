@@ -36,10 +36,12 @@ end
 def run_benchmark(num_itrs_hint, **)
   start = monotonic_time
   times = []
+  rss_samples = []
 
   begin
     time = Benchmark.realtime { yield }
     times << time
+    rss_samples << get_rss
 
     stats = Stats.new(times)
     median = stats.median
@@ -63,7 +65,9 @@ def run_benchmark(num_itrs_hint, **)
   end until times.size >= MIN_ITERS and elapsed >= MIN_TIME and mad <= threshold
 
   warmup, bench = times[0...times.size/2], times[times.size/2..-1]
-  return_results(warmup, bench)
+  rss_bench = rss_samples[times.size/2..-1] || []
+  extra = rss_bench.empty? ? {} : { "rss_samples" => rss_bench }
+  return_results(warmup, bench, **extra)
 
   print_stats(bench, elapsed)
 end

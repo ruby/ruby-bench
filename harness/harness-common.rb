@@ -1,4 +1,5 @@
 require 'rbconfig'
+require_relative '../misc/stats'
 
 # Ensure the ruby in PATH is the ruby running this, so we can safely shell out to other commands
 ruby_in_path = `ruby -e 'print RbConfig.ruby'`
@@ -212,6 +213,17 @@ def return_results(warmup_iterations, bench_iterations, **extra)
   puts "RSS: %.1fMiB" % (rss / 1024.0 / 1024.0)
   if maxrss
     puts "MAXRSS: %.1fMiB" % (maxrss / 1024.0 / 1024.0)
+  end
+
+  rss_samples = ruby_bench_results["rss_samples"]
+  if rss_samples.is_a?(Array) && !rss_samples.empty?
+    mib = rss_samples.map { |bytes| bytes / 1024.0 / 1024.0 }
+    stats = Stats.new(mib)
+    median = stats.median
+    mad = stats.median_absolute_deviation(median)
+    puts "RSS sampled (n=%d): median %.1fMiB \u00b1 %.1fMiB (MAD), range [%.1f, %.1f]MiB" % [
+      mib.size, median, mad, stats.min, stats.max
+    ]
   end
 
   write_json_file(ruby_bench_results)
