@@ -33,7 +33,9 @@ class ResultsTableBuilder
       table << row
     end
 
-    [table, format]
+    gc_table = build_gc_summary_table
+
+    [table, format, gc_table, build_gc_summary_format(gc_table)]
   end
 
   private
@@ -49,10 +51,6 @@ class ResultsTableBuilder
       header << "#{name} (ms)"
       header << "RSS (MiB)" if @include_rss
       @zjit_stats.each { |stat| header << stat }
-      if @include_gc
-        header << "#{name} mark (ms)"
-        header << "#{name} sweep (ms)"
-      end
     end
 
     @other_names.each do |name|
@@ -72,13 +70,6 @@ class ResultsTableBuilder
       end
     end
 
-    if @include_gc
-      @other_names.each do |name|
-        header << "mark #{@base_name}/#{name}"
-        header << "sweep #{@base_name}/#{name}"
-      end
-    end
-
     header
   end
 
@@ -89,10 +80,6 @@ class ResultsTableBuilder
       format << "%s"
       format << (@rss_has_samples ? "%s" : "%.1f") if @include_rss
       @zjit_stats.each { format << "%s" }
-      if @include_gc
-        format << "%s"
-        format << "%s"
-      end
     end
 
     @other_names.each do |_name|
@@ -112,14 +99,40 @@ class ResultsTableBuilder
       end
     end
 
-    if @include_gc
-      @other_names.each do |_name|
-        format << "%s"
-        format << "%s"
+    format
+  end
+
+  def build_gc_summary_table
+    return nil unless @include_gc && !@other_names.empty?
+
+    rows = [["bench", *(["comparison"] if include_gc_comparison_name?), "mark/iter ratio", "sweep/iter ratio", "mark/GC ratio", "sweep/GC ratio", "major/iter", "minor/iter", "minor GC %"]]
+
+    @bench_names.each do |bench_name|
+      next unless has_complete_data?(bench_name)
+
+      marking_times = extract_gc_times(bench_name, 'gc_marking_time_bench')
+      sweeping_times = extract_gc_times(bench_name, 'gc_sweeping_time_bench')
+      major_counts = extract_gc_times(bench_name, 'gc_major_count_bench')
+      minor_counts = extract_gc_times(bench_name, 'gc_minor_count_bench')
+      base_mark, *other_marks = marking_times
+      base_sweep, *other_sweeps = sweeping_times
+      base_major, *other_majors = major_counts
+      base_minor, *other_minors = minor_counts
+
+      @other_names.each_with_index do |name, i|
+        next unless gc_activity?(base_mark, other_marks[i], base_sweep, other_sweeps[i], base_major, other_majors[i], base_minor, other_minors[i])
+
+        rows << gc_summary_row(bench_name, name, base_mark, other_marks[i], base_sweep, other_sweeps[i], base_major, other_majors[i], base_minor, other_minors[i])
       end
     end
 
-    format
+    rows.size == 1 ? nil : rows
+  end
+
+  def build_gc_summary_format(gc_table)
+    return nil unless gc_table
+
+    Array.new(gc_table.first.size, "%s")
   end
 
   def build_row(bench_name)
@@ -140,42 +153,26 @@ class ResultsTableBuilder
       [stat, extract_zjit_stat(bench_name, stat)]
     end
 
-    if @include_gc
-      marking_times = extract_gc_times(bench_name, 'gc_marking_time_bench')
-      sweeping_times = extract_gc_times(bench_name, 'gc_sweeping_time_bench')
-      base_mark, *other_marks = marking_times
-      base_sweep, *other_sweeps = sweeping_times
-    end
-
     row = [bench_name]
-    build_base_columns(row, base_t, base_rss_cell, zjit_stat_values, 0, base_mark, base_sweep)
-    build_comparison_columns(row, other_ts, other_rss_cells, zjit_stat_values, other_marks, other_sweeps)
+    build_base_columns(row, base_t, base_rss_cell, zjit_stat_values, 0)
+    build_comparison_columns(row, other_ts, other_rss_cells, zjit_stat_values)
     build_ratio_columns(row, base_t0, other_t0s, base_t, other_ts)
     build_rss_ratio_columns(row, base_rss, other_rsss)
-    build_gc_ratio_columns(row, base_mark, other_marks, base_sweep, other_sweeps)
 
     row
   end
 
-  def build_base_columns(row, base_t, base_rss, zjit_stat_values, exe_index, base_mark, base_sweep)
+  def build_base_columns(row, base_t, base_rss, zjit_stat_values, exe_index)
     row << format_time_with_stddev(base_t)
     row << base_rss if @include_rss
     zjit_stat_values.each { |_stat, values| row << format_stat(values[exe_index]) }
-    if @include_gc
-      row << format_time_with_stddev(base_mark)
-      row << format_time_with_stddev(base_sweep)
-    end
   end
 
-  def build_comparison_columns(row, other_ts, other_rss_cells, zjit_stat_values, other_marks, other_sweeps)
+  def build_comparison_columns(row, other_ts, other_rss_cells, zjit_stat_values)
     other_ts.each_with_index do |other_t, i|
       row << format_time_with_stddev(other_t)
       row << other_rss_cells[i] if @include_rss
       zjit_stat_values.each { |_stat, values| row << format_stat(values[i + 1]) }
-      if @include_gc
-        row << format_time_with_stddev(other_marks[i])
-        row << format_time_with_stddev(other_sweeps[i])
-      end
     end
   end
 
@@ -211,15 +208,77 @@ class ResultsTableBuilder
     end
   end
 
-  def build_gc_ratio_columns(row, base_mark, other_marks, base_sweep, other_sweeps)
-    return unless @include_gc
+  def include_gc_comparison_name?
+    @other_names.size > 1
+  end
 
-    (other_marks || []).each do |other_mark|
-      row << gc_ratio(base_mark, other_mark)
-    end
-    (other_sweeps || []).each do |other_sweep|
-      row << gc_ratio(base_sweep, other_sweep)
-    end
+  def gc_summary_row(bench_name, name, base_mark, other_mark, base_sweep, other_sweep, base_major, other_major, base_minor, other_minor)
+    row = [bench_name]
+    row << name if include_gc_comparison_name?
+    row.concat([
+      gc_ratio(base_mark, other_mark),
+      gc_ratio(base_sweep, other_sweep),
+      scalar_ratio(gc_time_per_gc(base_mark, base_major, base_minor), gc_time_per_gc(other_mark, other_major, other_minor)),
+      scalar_ratio(gc_time_per_gc(base_sweep, base_major, base_minor), gc_time_per_gc(other_sweep, other_major, other_minor)),
+      gc_count_cell(base_major, other_major),
+      gc_count_cell(base_minor, other_minor),
+      gc_minor_percent_cell(base_major, base_minor, other_major, other_minor),
+    ])
+    row
+  end
+
+  def gc_time_per_gc(time, major, minor)
+    return nil if time.nil? || time.empty? || major.nil? || major.empty? || minor.nil? || minor.empty?
+
+    count = mean(major) + mean(minor)
+    return nil if count == 0.0
+
+    mean(time) / count
+  end
+
+  def gc_activity?(*series)
+    series.any? { |values| values && values.sum > 0.0 }
+  end
+
+  def gc_count_cell(base, other)
+    "%4s  →  %4s" % [format_gc_series_mean(base), format_gc_series_mean(other)]
+  end
+
+  def gc_minor_percent_cell(base_major, base_minor, other_major, other_minor)
+    "%4s  →  %4s" % [format_gc_percent(gc_minor_percent(base_major, base_minor)), format_gc_percent(gc_minor_percent(other_major, other_minor))]
+  end
+
+  def gc_minor_percent(major, minor)
+    return nil if major.nil? || major.empty? || minor.nil? || minor.empty?
+
+    total = major.sum + minor.sum
+    return nil if total == 0.0
+
+    minor.sum.to_f / total
+  end
+
+  def format_gc_series_mean(values)
+    return "N/A" if values.nil? || values.empty?
+
+    "%.1f" % mean(values)
+  end
+
+  def format_gc_scalar(value)
+    return "N/A" if value.nil?
+
+    "%.3f" % value
+  end
+
+  def format_gc_percent(value)
+    return "N/A" if value.nil?
+
+    "%.0f%%" % (100.0 * value)
+  end
+
+  def scalar_ratio(base, other)
+    return "N/A" if base.nil? || other.nil? || other == 0.0
+
+    format_ratio(base / other, nil)
   end
 
   def gc_ratio(base, other)
@@ -358,7 +417,10 @@ class ResultsTableBuilder
   end
 
   def stddev_percent(values)
-    100 * stddev(values) / mean(values)
+    values_mean = mean(values)
+    return 0.0 if values_mean == 0.0
+
+    100 * stddev(values) / values_mean
   end
 
   def compute_bench_names

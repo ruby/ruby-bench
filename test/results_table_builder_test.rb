@@ -550,6 +550,90 @@ describe ResultsTableBuilder do
     end
   end
 
+  describe 'GC summary data' do
+    it 'keeps GC columns out of the main table and builds a compact GC comparison table' do
+      bench_data = {
+        'ruby-base' => {
+          'fib' => {
+            'warmup' => [0.1],
+            'bench' => [0.1, 0.1],
+            'rss' => 10 * 1024 * 1024,
+            'gc_marking_time_bench' => [20.0, 20.0],
+            'gc_sweeping_time_bench' => [10.0, 10.0],
+            'gc_major_count_bench' => [2, 2],
+            'gc_minor_count_bench' => [8, 8]
+          }
+        },
+        'ruby-exp' => {
+          'fib' => {
+            'warmup' => [0.05],
+            'bench' => [0.05, 0.05],
+            'rss' => 12 * 1024 * 1024,
+            'gc_marking_time_bench' => [15.0, 15.0],
+            'gc_sweeping_time_bench' => [10.0, 10.0],
+            'gc_major_count_bench' => [1, 1],
+            'gc_minor_count_bench' => [4, 4]
+          }
+        }
+      }
+
+      builder = ResultsTableBuilder.new(
+        executable_names: ['ruby-base', 'ruby-exp'],
+        bench_data: bench_data
+      )
+
+      table, format, gc_table, gc_format = builder.build
+
+      assert_equal ['bench', 'ruby-base (ms)', 'ruby-exp (ms)', 'ruby-exp 1st itr', 'ruby-base/ruby-exp'], table[0]
+      assert_equal ['%s', '%s', '%s', '%.3f', '%s'], format
+
+      assert_equal [
+        'bench', 'mark/iter ratio', 'sweep/iter ratio', 'mark/GC ratio', 'sweep/GC ratio', 'major/iter', 'minor/iter', 'minor GC %'
+      ], gc_table[0]
+      assert_equal ['%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s'], gc_format
+      assert_equal [
+        'fib', '1.333', '1.000', '0.667', '0.500', ' 2.0  →   1.0', ' 8.0  →   4.0', ' 80%  →   80%'
+      ], gc_table[1]
+    end
+
+    it 'omits benchmarks with no GC activity from the GC summary' do
+      bench_data = {
+        'ruby-base' => {
+          'fib' => {
+            'warmup' => [0.1],
+            'bench' => [0.1],
+            'rss' => 10,
+            'gc_marking_time_bench' => [0.0],
+            'gc_sweeping_time_bench' => [0.0],
+            'gc_major_count_bench' => [0],
+            'gc_minor_count_bench' => [0]
+          }
+        },
+        'ruby-exp' => {
+          'fib' => {
+            'warmup' => [0.1],
+            'bench' => [0.1],
+            'rss' => 10,
+            'gc_marking_time_bench' => [0.0],
+            'gc_sweeping_time_bench' => [0.0],
+            'gc_major_count_bench' => [0],
+            'gc_minor_count_bench' => [0]
+          }
+        }
+      }
+
+      builder = ResultsTableBuilder.new(
+        executable_names: ['ruby-base', 'ruby-exp'],
+        bench_data: bench_data
+      )
+
+      _table, _format, gc_table, gc_format = builder.build
+
+      assert_nil gc_table
+      assert_nil gc_format
+    end
+  end
+
   describe 'RSS sampling (rss_samples)' do
     MIB = 1024 * 1024
 

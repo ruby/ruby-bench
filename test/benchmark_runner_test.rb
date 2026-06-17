@@ -409,6 +409,34 @@ describe BenchmarkRunner do
       assert_includes result, "- ***: p < 0.001, **: p < 0.01, *: p < 0.05 (Welch's t-test)"
     end
 
+    it 'prints compact GC comparison table and legend when include_gc is true' do
+      ruby_descriptions = {
+        'ruby-base' => 'ruby 3.3.0',
+        'ruby-exp' => 'ruby 3.3.0 experiment'
+      }
+      table = [
+        ['bench', 'ruby-base (ms)', 'ruby-exp (ms)', 'ruby-base/ruby-exp'],
+        ['fib', '100.0', '50.0', '2.000']
+      ]
+      format = ['%s', '%s', '%s', '%s']
+      gc_table = [
+        ['bench', 'mark/iter ratio', 'sweep/iter ratio', 'mark/GC ratio', 'sweep/GC ratio', 'major/iter', 'minor/iter', 'minor GC %'],
+        ['fib', '2.000', '1.250', '1.000', '0.625', ' 2.0  →   1.0', ' 8.0  →   4.0', ' 80%  →   80%']
+      ]
+      gc_format = ['%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s']
+      bench_failures = {}
+
+      result = BenchmarkRunner.build_output_text(
+        ruby_descriptions, table, format, bench_failures, include_gc: true, gc_table: gc_table, gc_format: gc_format
+      )
+
+      assert_includes result, "GC summary:\n"
+      assert_includes result, 'mark/GC ratio'
+      assert_includes result, ' 2.0  →   1.0'
+      assert_includes result, '- GC summary compares ruby-base → comparison. Ratio columns are ruby-base/comparison; above 1 means the comparison spent less GC time.'
+      refute_includes result, 'mark ruby-base/ruby-exp:'
+    end
+
     it 'includes RSS ratio legend when include_rss is true' do
       ruby_descriptions = {
         'ruby-base' => 'ruby 3.3.0',
