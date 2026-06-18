@@ -112,7 +112,7 @@ module BenchmarkRunner
         include_pvalue: args.pvalue,
         zjit_stats: args.zjit_stats
       )
-      table, format = builder.build
+      table, format, gc_table, gc_format = builder.build
 
       output_path = BenchmarkRunner.output_path(args.out_path, out_override: args.out_override)
 
@@ -125,7 +125,7 @@ module BenchmarkRunner
       BenchmarkRunner.write_csv(output_path, ruby_descriptions, table)
 
       # Save the output in a text file that we can easily refer to
-      output_str = BenchmarkRunner.build_output_text(ruby_descriptions, table, format, bench_failures, include_rss: args.rss, include_gc: builder.include_gc?, include_pvalue: args.pvalue)
+      output_str = BenchmarkRunner.build_output_text(ruby_descriptions, table, format, bench_failures, include_rss: args.rss, include_gc: builder.include_gc?, include_pvalue: args.pvalue, gc_table: gc_table, gc_format: gc_format)
       out_txt_path = output_path + ".txt"
       File.open(out_txt_path, "w") { |f| f.write output_str }
 

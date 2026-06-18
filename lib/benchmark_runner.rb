@@ -48,7 +48,7 @@ module BenchmarkRunner
     end
 
     # Build output text string with metadata, table, and legend
-    def build_output_text(ruby_descriptions, table, format, bench_failures, include_rss: false, include_gc: false, include_pvalue: false)
+    def build_output_text(ruby_descriptions, table, format, bench_failures, include_rss: false, include_gc: false, include_pvalue: false, gc_table: nil, gc_format: nil)
       base_name, *other_names = ruby_descriptions.keys
 
       output_str = +""
@@ -60,6 +60,11 @@ module BenchmarkRunner
       output_str << "\n"
       output_str << TableFormatter.new(table, format, bench_failures).to_s + "\n"
 
+      if include_gc && gc_table && gc_format
+        output_str << "GC summary:\n"
+        output_str << TableFormatter.new(gc_table, gc_format, {}).to_s + "\n"
+      end
+
       unless other_names.empty?
         output_str << "Legend:\n"
         other_names.each do |name|
@@ -68,10 +73,12 @@ module BenchmarkRunner
           if include_rss
             output_str << "- RSS #{base_name}/#{name}: ratio of #{base_name}/#{name} RSS. Higher is better for #{name}. Above 1 means lower memory usage.\n"
           end
-          if include_gc
-            output_str << "- mark #{base_name}/#{name}: ratio of GC marking time. Higher is better for #{name}. Above 1 represents faster marking.\n"
-            output_str << "- sweep #{base_name}/#{name}: ratio of GC sweeping time. Higher is better for #{name}. Above 1 represents faster sweeping.\n"
-          end
+        end
+        if include_gc && gc_table
+          output_str << "- GC summary compares #{base_name} → comparison. Ratio columns are #{base_name}/comparison; above 1 means the comparison spent less GC time.\n"
+          output_str << "- mark/iter ratio and sweep/iter ratio compare total GC phase time per benchmark iteration, so they include both per-GC cost and GC frequency changes.\n"
+          output_str << "- mark/GC ratio and sweep/GC ratio compare average phase time per GC, isolating whether each GC became cheaper or more expensive.\n"
+          output_str << "- major/iter, minor/iter, and minor GC % show #{base_name} → comparison values, not ratios. Rows with no GC activity are omitted.\n"
         end
         if include_pvalue
           output_str << "- ***: p < 0.001, **: p < 0.01, *: p < 0.05 (Welch's t-test)\n"
