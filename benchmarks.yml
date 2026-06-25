@@ -136,6 +136,11 @@ sudoku:
 splay:
   desc: Splay tree operations (insert, find, remove) to stress GC.
   single_file: true
+string_malloc_pressure:
+  desc: Allocates and retains many empty Strings with large reserved capacity to exercise GC under malloc-backed String buffer pressure.
+  category: gc
+  single_file: true
+  default_harness: harness-gc
 tinygql:
   desc: TinyGQL gem parsing a large file in pure Ruby
 
