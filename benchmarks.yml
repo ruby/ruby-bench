@@ -255,6 +255,11 @@ throw:
 #
 # Ractor scaling benchmarks
 #
+symbol-name-ractor:
+  desc: repeatedly calls Symbol#name on a static symbol under the ractor harness to stress ID-to-string lookup.
+  ractor: true
+  ractor_only: true
+  default_harness: harness-ractor
 gvl_release_acquire:
   desc: microbenchmark designed to test how fast the gvl can be acquired and released between ractors.
   ractor: true
