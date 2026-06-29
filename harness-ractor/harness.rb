@@ -73,11 +73,11 @@ def run_benchmark(num_itrs_hint, ractor_args: [], &block)
       time = Process.clock_gettime(Process::CLOCK_MONOTONIC) - before
       time_ms = (1000 * time).to_i
       itr_str = "%-3s %4s %6s" % ["#{rs}", "##{num_itrs}:", "#{time_ms}ms"]
-      stats[rs] << time_ms
+      stats[rs] << time
       puts itr_str
     end
   end
-  return_results([], stats.values.flatten)
+  return_results([], stats.values.flatten, bench_by_ractors: stats)
 end
 
 # NOTE: we use `ractor_deep_dup` instead of `Ractor.make_shareable(copy: true)` for the case of

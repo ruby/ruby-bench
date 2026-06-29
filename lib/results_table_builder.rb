@@ -1,11 +1,14 @@
 require_relative '../misc/stats'
+require_relative 'row_layout'
 require 'yaml'
 
 class ResultsTableBuilder
   SECONDS_TO_MS = 1000.0
   BYTES_TO_MIB = 1024.0 * 1024.0
 
-  def initialize(executable_names:, bench_data:, include_rss: false, include_pvalue: false, zjit_stats: [])
+  attr_reader :bench_names
+
+  def initialize(executable_names:, bench_data:, include_rss: false, include_pvalue: false, zjit_stats: [], row_layout: FlatRowLayout.new)
     @executable_names = executable_names
     @bench_data = bench_data
     @include_rss = include_rss
@@ -15,6 +18,7 @@ class ResultsTableBuilder
     @rss_has_samples = @include_rss && detect_rss_samples(bench_data)
     @base_name = executable_names.first
     @other_names = executable_names[1..]
+    @row_layout = row_layout
     @bench_names = compute_bench_names
   end
 
@@ -26,11 +30,10 @@ class ResultsTableBuilder
     table = [build_header]
     format = build_format
 
-    @bench_names.each do |bench_name|
-      next unless has_complete_data?(bench_name)
+    @row_layout.entries(@bench_names).each do |entry|
+      next unless has_complete_data?(entry.data_key)
 
-      row = build_row(bench_name)
-      table << row
+      table << (entry.label_cells + build_stat_cells(entry.data_key))
     end
 
     gc_table = build_gc_summary_table
@@ -45,7 +48,7 @@ class ResultsTableBuilder
   end
 
   def build_header
-    header = ["bench"]
+    header = ["bench", *@row_layout.extra_header_columns]
 
     @executable_names.each do |name|
       header << "#{name} (ms)"
@@ -74,7 +77,7 @@ class ResultsTableBuilder
   end
 
   def build_format
-    format = ["%s"]
+    format = ["%s", *@row_layout.extra_format_columns]
 
     @executable_names.each do |_name|
       format << "%s"
@@ -135,7 +138,7 @@ class ResultsTableBuilder
     Array.new(gc_table.first.size, "%s")
   end
 
-  def build_row(bench_name)
+  def build_stat_cells(bench_name)
     t0s = extract_first_iteration_times(bench_name)
     times_no_warmup = extract_benchmark_times(bench_name)
     rsss = extract_rss_values(bench_name)
@@ -153,7 +156,7 @@ class ResultsTableBuilder
       [stat, extract_zjit_stat(bench_name, stat)]
     end
 
-    row = [bench_name]
+    row = []
     build_base_columns(row, base_t, base_rss_cell, zjit_stat_values, 0)
     build_comparison_columns(row, other_ts, other_rss_cells, zjit_stat_values)
     build_ratio_columns(row, base_t0, other_t0s, base_t, other_ts)
@@ -438,7 +441,7 @@ class ResultsTableBuilder
   end
 
   def category_priority(bench_name, metadata)
-    category = metadata.dig(bench_name, 'category') || 'other'
+    category = metadata.dig(@row_layout.base_name(bench_name), 'category') || 'other'
     case category
     when 'headline' then 0
     when 'micro' then 2

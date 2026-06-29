@@ -1,5 +1,7 @@
 require_relative 'test_helper'
 require_relative '../lib/results_table_builder'
+require_relative '../lib/ractor_breakdown'
+require_relative '../lib/row_layout'
 require 'yaml'
 require 'tmpdir'
 
@@ -75,6 +77,52 @@ describe ResultsTableBuilder do
       m = table[1][4].match(/\A(\d+\.\d+)/)
       assert m
       assert_in_delta 2.0, m[1].to_f, 0.1
+    end
+
+    it 'builds a per-ractor-count table when a RactorRowLayout is injected' do
+      File.write('benchmarks.yml', YAML.dump('symbol-name-ractor' => { 'category' => 'micro' }))
+
+      raw = {
+        'master' => {
+          'symbol-name-ractor' => {
+            'warmup' => [],
+            'bench' => [1.0, 2.0],
+            'bench_by_ractors' => { '0' => [1.0, 1.0], '2' => [2.0, 2.0] },
+            'rss' => 10 * 1024 * 1024
+          }
+        },
+        'exp' => {
+          'symbol-name-ractor' => {
+            'warmup' => [],
+            'bench' => [0.5, 1.0],
+            'bench_by_ractors' => { '0' => [0.5, 0.5], '2' => [1.0, 1.0] },
+            'rss' => 10 * 1024 * 1024
+          }
+        }
+      }
+
+      expanded = RactorBreakdown.expand(raw)
+      builder = ResultsTableBuilder.new(
+        executable_names: ['master', 'exp'],
+        bench_data: expanded.bench_data,
+        row_layout: RactorRowLayout.new(groups: expanded.groups)
+      )
+
+      table, format = builder.build
+
+      assert_equal ['bench', 'ractors', 'master (ms)', 'exp (ms)', 'exp 1st itr', 'master/exp'], table[0]
+      assert_equal ['%s', '%s', '%s', '%s', '%.3f', '%s'], format
+
+      # name shown once, blank on continuation; ractor count in column 1
+      assert_equal 'symbol-name-ractor', table[1][0]
+      assert_equal '0', table[1][1]
+      assert_equal '', table[2][0]
+      assert_equal '2', table[2][1]
+
+      # count=0 row: master 1000ms vs exp 500ms => ratio 2.0
+      assert_in_delta 2.0, table[1][5].to_f, 0.01
+      # count=2 row: master 2000ms vs exp 1000ms => ratio 2.0
+      assert_in_delta 2.0, table[2][5].to_f, 0.01
     end
 
     it 'includes RSS columns when include_rss is true' do
