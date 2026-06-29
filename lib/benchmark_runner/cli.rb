@@ -6,6 +6,8 @@ require_relative '../cpu_config'
 require_relative '../benchmark_runner'
 require_relative '../benchmark_suite'
 require_relative '../results_table_builder'
+require_relative '../ractor_breakdown'
+require_relative '../row_layout'
 
 module BenchmarkRunner
   class CLI
@@ -63,6 +65,9 @@ module BenchmarkRunner
       bench_start_time = Time.now.to_f
       bench_data = {}
       bench_failures = {}
+      bench_harnesses = suite.benchmarks.each_with_object({}) do |entry, h|
+        h[entry.name] = suite.harness_for(entry.name)
+      end
 
       if args.interleave
         args.executables.each_key { |name| bench_data[name] = {} }
@@ -104,7 +109,7 @@ module BenchmarkRunner
 
       puts
 
-      # Build results table
+      # Build the results table
       builder = ResultsTableBuilder.new(
         executable_names: ruby_descriptions.keys,
         bench_data: bench_data,
@@ -125,7 +130,8 @@ module BenchmarkRunner
       BenchmarkRunner.write_csv(output_path, ruby_descriptions, table)
 
       # Save the output in a text file that we can easily refer to
-      output_str = BenchmarkRunner.build_output_text(ruby_descriptions, table, format, bench_failures, include_rss: args.rss, include_gc: builder.include_gc?, include_pvalue: args.pvalue, gc_table: gc_table, gc_format: gc_format)
+      output_sections = build_output_sections(ruby_descriptions.keys, bench_data, bench_harnesses, bench_failures)
+      output_str = BenchmarkRunner.build_output_text(ruby_descriptions, table, format, bench_failures, include_rss: args.rss, include_gc: builder.include_gc?, include_pvalue: args.pvalue, gc_table: gc_table, gc_format: gc_format, sections: output_sections)
       out_txt_path = output_path + ".txt"
       File.open(out_txt_path, "w") { |f| f.write output_str }
 
@@ -147,6 +153,82 @@ module BenchmarkRunner
           puts "  #{name}: #{data.keys.join(", ")}"
         end
         exit(1)
+      end
+    end
+
+    private
+
+    def build_output_sections(executable_names, bench_data, bench_harnesses, bench_failures)
+      ordered_names = sorted_benchmark_names(executable_names, bench_data)
+      failed_names = bench_failures.values.flat_map(&:keys).uniq
+      ordered_names.concat(failed_names.reject { |name| ordered_names.include?(name) })
+
+      names_by_harness = {}
+      ordered_names.each do |bench_name|
+        harness = bench_harnesses.fetch(bench_name, args.harness)
+        names_by_harness[harness] ||= []
+        names_by_harness[harness] << bench_name
+      end
+
+      show_titles = names_by_harness.size > 1
+      names_by_harness.map do |harness, names|
+        section = build_output_section(executable_names, bench_data, bench_failures, harness, names)
+        section[:title] = nil unless show_titles
+        section
+      end
+    end
+
+    def build_output_section(executable_names, bench_data, bench_failures, harness, bench_names)
+      section_data = slice_bench_data(bench_data, bench_names)
+      breakdown = RactorBreakdown.expand(section_data)
+      use_ractor_layout = harness == BenchmarkSuite::RACTOR_HARNESS && !breakdown.groups.empty?
+      layout = use_ractor_layout ? RactorRowLayout.new(groups: breakdown.groups) : FlatRowLayout.new
+      display_data = use_ractor_layout ? breakdown.bench_data : section_data
+
+      builder = ResultsTableBuilder.new(
+        executable_names: executable_names,
+        bench_data: display_data,
+        include_rss: args.rss,
+        include_pvalue: args.pvalue,
+        zjit_stats: args.zjit_stats,
+        row_layout: layout
+      )
+      table, format, gc_table, gc_format = builder.build
+
+      {
+        title: harness,
+        table: table,
+        format: format,
+        failures: slice_failures(bench_failures, bench_names),
+        include_gc: builder.include_gc?,
+        gc_table: gc_table,
+        gc_format: gc_format,
+      }
+    end
+
+    def sorted_benchmark_names(executable_names, bench_data)
+      builder = ResultsTableBuilder.new(
+        executable_names: executable_names,
+        bench_data: bench_data,
+        include_rss: args.rss,
+        include_pvalue: args.pvalue,
+        zjit_stats: args.zjit_stats
+      )
+      builder.bench_names
+    end
+
+    def slice_bench_data(bench_data, bench_names)
+      wanted = bench_names.each_with_object({}) { |name, h| h[name] = true }
+      bench_data.each_with_object({}) do |(executable, benchmarks), sliced|
+        sliced[executable] = benchmarks.select { |name, _data| wanted[name] }
+      end
+    end
+
+    def slice_failures(bench_failures, bench_names)
+      wanted = bench_names.each_with_object({}) { |name, h| h[name] = true }
+      bench_failures.each_with_object({}) do |(executable, failures), sliced|
+        selected = failures.select { |name, _failure| wanted[name] }
+        sliced[executable] = selected unless selected.empty?
       end
     end
   end
