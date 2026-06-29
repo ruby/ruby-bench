@@ -569,6 +569,7 @@ describe BenchmarkSuite do
       assert_includes result[:data], 'warmup'
       assert_includes result[:data], 'bench'
       assert_includes result[:data], 'rss'
+      assert_equal 'harness', result[:harness]
       assert_nil result[:failure]
     end
 
@@ -592,6 +593,7 @@ describe BenchmarkSuite do
       assert_equal 'failing', result[:name]
       assert_nil result[:data]
       assert_equal 1, result[:failure]
+      assert_equal 'harness', result[:harness]
     end
 
     it 'produces same data as run for the same benchmark' do
