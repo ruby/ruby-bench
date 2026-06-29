@@ -77,7 +77,7 @@ def run_benchmark(num_itrs_hint, ractor_args: [], &block)
       puts itr_str
     end
   end
-  return_results([], stats.values.flatten)
+  return_results([], stats.values.flatten, bench_by_ractors: stats)
 end
 
 # NOTE: we use `ractor_deep_dup` instead of `Ractor.make_shareable(copy: true)` for the case of
