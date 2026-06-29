@@ -73,7 +73,7 @@ def run_benchmark(num_itrs_hint, ractor_args: [], &block)
       time = Process.clock_gettime(Process::CLOCK_MONOTONIC) - before
       time_ms = (1000 * time).to_i
       itr_str = "%-3s %4s %6s" % ["#{rs}", "##{num_itrs}:", "#{time_ms}ms"]
-      stats[rs] << time_ms
+      stats[rs] << time
       puts itr_str
     end
   end
