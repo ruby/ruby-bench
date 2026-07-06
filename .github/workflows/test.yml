@@ -6,6 +6,8 @@ on:
   pull_request:
   schedule:
     - cron: "00 15 * * *"
+env:
+  BUNDLE_VERSION: system
 jobs:
   test:
     runs-on: ubuntu-latest
