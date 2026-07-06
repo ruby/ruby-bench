@@ -19,12 +19,14 @@ def send_rubyfunc_inline_driver(limit)
   total
 end
 
+@send_rubyfunc_inline_result = 0
+
 100.times do
-  $send_rubyfunc_inline_result = send_rubyfunc_inline_driver(100)
+  @send_rubyfunc_inline_result = send_rubyfunc_inline_driver(100)
 end
 
 run_benchmark(20) do
-  $send_rubyfunc_inline_result = send_rubyfunc_inline_driver(INNER_ITERATIONS)
+  @send_rubyfunc_inline_result = send_rubyfunc_inline_driver(INNER_ITERATIONS)
 end
 
-raise "unexpected result: #{$send_rubyfunc_inline_result}" unless $send_rubyfunc_inline_result == EXPECTED_RESULT
+raise "unexpected result: #{@send_rubyfunc_inline_result}" unless @send_rubyfunc_inline_result == EXPECTED_RESULT
