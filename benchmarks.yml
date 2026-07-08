@@ -256,6 +256,10 @@ throw:
   category: micro
   single_file: true
   ractor: true
+send_rubyfunc_inline:
+  desc: send_rubyfunc_inline repeatedly calls a small inlinable Ruby method with multiple arguments.
+  category: micro
+  single_file: true
 
 #
 # Ractor scaling benchmarks
