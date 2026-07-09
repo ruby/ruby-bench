@@ -22,4 +22,27 @@ describe 'benchmarks.yml' do
 
     assert_equal yml_keys, discovered_keys
   end
+
+  it 'sorts benchmarks alphabetically within each category' do
+    yjit_bench = File.expand_path('..', __dir__)
+    benchmarks_yml = YAML.load_file("#{yjit_bench}/benchmarks.yml")
+
+    benchmark_names_by_category = Hash.new { |hash, key| hash[key] = [] }
+    benchmarks_yml.each do |name, metadata|
+      category = metadata.fetch('category') do
+        # Ractor scaling benchmarks are intentionally kept in their own section.
+        metadata['default_harness'] == 'harness-ractor' ? 'ractor-scaling' : 'other'
+      end
+      benchmark_names_by_category[category] << name
+    end
+
+    benchmark_names_by_category.each do |category, benchmark_names|
+      assert_equal format_benchmark_names(benchmark_names.sort), format_benchmark_names(benchmark_names),
+        "#{category} benchmarks should be sorted alphabetically"
+    end
+  end
+
+  def format_benchmark_names(benchmark_names)
+    "[\n#{benchmark_names.map { |name| "  #{name.inspect}," }.join("\n")}\n]\n"
+  end
 end
