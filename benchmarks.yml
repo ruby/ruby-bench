@@ -130,12 +130,12 @@ rubyboy:
   ractor: true
 rubykon:
   desc: Ruby solver for Go (the boardgame.) Runs many iterations forward from an initial starting board.
-sudoku:
-  desc: sudoku solver
-  ractor: true
 splay:
   desc: Splay tree operations (insert, find, remove) to stress GC.
   single_file: true
+sudoku:
+  desc: sudoku solver
+  ractor: true
 string_malloc_pressure:
   desc: Allocates and retains many empty Strings with large reserved capacity to exercise GC under malloc-backed String buffer pressure.
   category: gc
@@ -213,6 +213,10 @@ ruby-xor:
   category: micro
   single_file: true
   ractor: true
+send_bmethod:
+  desc: send_bmethod just calls known Ruby bmethods many, many times.
+  category: micro
+  single_file: true
 send_cfunc_block:
   desc: send_cfunc_block just calls a known C function with a block many, many times.
   category: micro
@@ -223,10 +227,6 @@ send_rubyfunc_block:
   single_file: true
 send_rubyfunc_inline:
   desc: send_rubyfunc_inline repeatedly calls a small inlinable Ruby method with multiple arguments.
-  category: micro
-  single_file: true
-send_bmethod:
-  desc: send_bmethod just calls known Ruby bmethods many, many times.
   category: micro
   single_file: true
 setivar:
@@ -242,6 +242,11 @@ setivar_young:
   category: micro
   single_file: true
   ractor: true
+str_concat:
+  desc: str_concat tests the performance of string concatenation in multiple different encodings.
+  category: micro
+  single_file: true
+  ractor: true
 structaref:
   desc: structaref tests the performance of getting Struct members
   category: micro
@@ -250,11 +255,6 @@ structaset:
   desc: structaset tests the performance of setting Struct members
   category: micro
   single_file: true
-str_concat:
-  desc: str_concat tests the performance of string concatenation in multiple different encodings.
-  category: micro
-  single_file: true
-  ractor: true
 throw:
   desc: microbenchmark for the throw instruction and stack unwinding.
   category: micro
@@ -264,11 +264,6 @@ throw:
 #
 # Ractor scaling benchmarks
 #
-symbol-name-ractor:
-  desc: repeatedly calls Symbol#name on a static symbol under the ractor harness to stress ID-to-string lookup.
-  ractor: true
-  ractor_only: true
-  default_harness: harness-ractor
 gvl_release_acquire:
   desc: microbenchmark designed to test how fast the gvl can be acquired and released between ractors.
   ractor: true
@@ -281,6 +276,11 @@ json_parse_float:
   default_harness: harness-ractor
 json_parse_string:
   desc: test the performance of parsing multiple lists of strings with ractors.
+  ractor: true
+  ractor_only: true
+  default_harness: harness-ractor
+symbol-name-ractor:
+  desc: repeatedly calls Symbol#name on a static symbol under the ractor harness to stress ID-to-string lookup.
   ractor: true
   ractor_only: true
   default_harness: harness-ractor
