@@ -1,3 +1,4 @@
+# Extracted and edited from upstream tobi/liquid-il
 ---
 specs:
 - name: bench_simple_product_listing
