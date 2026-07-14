@@ -1,0 +1,59 @@
+{
+  "product": {
+    "name": "Premium Widget",
+    "price": 99.99,
+    "description": "The finest widget money can buy",
+    "sku": "WDG-001",
+    "in_stock": true,
+    "features": [
+      "Durable",
+      "Lightweight",
+      "Eco-friendly"
+    ]
+  },
+  "breadcrumbs": [
+    {
+      "label": "Home",
+      "url": "/"
+    },
+    {
+      "label": "Widgets",
+      "url": "/widgets"
+    },
+    {
+      "label": "Premium Widget",
+      "url": null
+    }
+  ],
+  "reviews": [
+    {
+      "author": "Alice",
+      "rating": 5,
+      "text": "Amazing!"
+    },
+    {
+      "author": "Bob",
+      "rating": 4,
+      "text": "Very good"
+    },
+    {
+      "author": "Carol",
+      "rating": 5,
+      "text": "Love it"
+    }
+  ],
+  "related": [
+    {
+      "name": "Basic Widget",
+      "price": 29.99
+    },
+    {
+      "name": "Super Widget",
+      "price": 149.99
+    },
+    {
+      "name": "Widget Pro",
+      "price": 199.99
+    }
+  ]
+}

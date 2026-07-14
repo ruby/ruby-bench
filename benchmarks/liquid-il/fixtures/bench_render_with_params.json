@@ -1,0 +1,29 @@
+{
+  "products": [
+    {
+      "name": "Widget",
+      "price": 9.99,
+      "description": "A useful widget"
+    },
+    {
+      "name": "Gadget",
+      "price": 19.99,
+      "description": "An amazing gadget"
+    },
+    {
+      "name": "Gizmo",
+      "price": 29.99,
+      "description": "A fantastic gizmo"
+    },
+    {
+      "name": "Doohickey",
+      "price": 39.99,
+      "description": "A wonderful doohickey"
+    },
+    {
+      "name": "Thingamajig",
+      "price": 49.99,
+      "description": "A marvelous thingamajig"
+    }
+  ]
+}

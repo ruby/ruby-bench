@@ -1,0 +1,29 @@
+GIT
+  remote: https://github.com/tobi/liquid-il.git
+  revision: 1b07d162068f1ed2becec1bafd29f36f52dbbd5b
+  ref: 1b07d162068f1ed2becec1bafd29f36f52dbbd5b
+  specs:
+    liquid-il (0.1.0)
+
+GEM
+  remote: https://rubygems.org/
+  specs:
+    base64 (0.3.0)
+    bigdecimal (4.1.2)
+
+PLATFORMS
+  ruby
+  x86_64-linux
+
+DEPENDENCIES
+  base64
+  bigdecimal
+  liquid-il!
+
+CHECKSUMS
+  base64 (0.3.0) sha256=27337aeabad6ffae05c265c450490628ef3ebd4b67be58257393227588f5a97b
+  bigdecimal (4.1.2) sha256=53d217666027eab4280346fba98e7d5b66baaae1b9c3c1c0ffe89d48188a3fbd
+  liquid-il (0.1.0)
+
+BUNDLED WITH
+  4.0.10

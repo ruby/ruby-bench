@@ -1,0 +1,1723 @@
+---
+specs:
+- name: bench_simple_product_listing
+  template: |
+    {% render 'header' with 'Products' as title %}
+    <ul>
+    {% for product in products %}
+      {% render 'item' with product as item %}
+    {% endfor %}
+    </ul>
+  filesystem:
+    header: "<header>{{ title }}</header>"
+    item: "<li>{{ item.name }}: ${{ item.price }}</li>"
+  environment:
+    products:
+    - name: Widget
+      price: 9.99
+    - name: Gadget
+      price: 19.99
+    - name: Gizmo
+      price: 29.99
+  expected: |
+    <header>Products</header>
+    <ul>
+
+      <li>Widget: $9.99</li>
+
+      <li>Gadget: $19.99</li>
+
+      <li>Gizmo: $29.99</li>
+
+    </ul>
+- name: bench_render_with_params
+  template: |
+    {% for product in products %}
+    {% render 'product_card', product: product, show_price: true %}
+    {% endfor %}
+  filesystem:
+    product_card: |
+      <div class="product">
+        <h3>{{ product.name }}</h3>
+        <p>{{ product.description }}</p>
+        {% if show_price %}<span class="price">${{ product.price }}</span>{% endif %}
+      </div>
+  environment:
+    products:
+    - name: Widget
+      price: 9.99
+      description: A useful widget
+    - name: Gadget
+      price: 19.99
+      description: An amazing gadget
+    - name: Gizmo
+      price: 29.99
+      description: A fantastic gizmo
+    - name: Doohickey
+      price: 39.99
+      description: A wonderful doohickey
+    - name: Thingamajig
+      price: 49.99
+      description: A marvelous thingamajig
+  expected: |2+
+
+    <div class="product">
+      <h3>Widget</h3>
+      <p>A useful widget</p>
+      <span class="price">$9.99</span>
+    </div>
+
+
+    <div class="product">
+      <h3>Gadget</h3>
+      <p>An amazing gadget</p>
+      <span class="price">$19.99</span>
+    </div>
+
+
+    <div class="product">
+      <h3>Gizmo</h3>
+      <p>A fantastic gizmo</p>
+      <span class="price">$29.99</span>
+    </div>
+
+
+    <div class="product">
+      <h3>Doohickey</h3>
+      <p>A wonderful doohickey</p>
+      <span class="price">$39.99</span>
+    </div>
+
+
+    <div class="product">
+      <h3>Thingamajig</h3>
+      <p>A marvelous thingamajig</p>
+      <span class="price">$49.99</span>
+    </div>
+
+
+- name: bench_render_for_loop
+  template: "{% render 'item' for items as item %}"
+  filesystem:
+    item: "{{ item }}{% unless forloop.last %}, {% endunless %}"
+  environment:
+    items:
+    - 1
+    - 2
+    - 3
+    - 4
+    - 5
+    - 6
+    - 7
+    - 8
+    - 9
+    - 10
+    - 11
+    - 12
+    - 13
+    - 14
+    - 15
+    - 16
+    - 17
+    - 18
+    - 19
+    - 20
+  expected: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20
+- name: bench_notification_center
+  template: |
+    <div class="notifications">
+      {% for notification in notifications %}
+        {% case notification.type %}
+          {% when 'order' %}
+            {% render 'notif_order', notif: notification %}
+          {% when 'shipping' %}
+            {% render 'notif_shipping', notif: notification %}
+          {% when 'review' %}
+            {% render 'notif_review', notif: notification %}
+          {% when 'promo' %}
+            {% render 'notif_promo', notif: notification %}
+          {% when 'stock' %}
+            {% render 'notif_stock', notif: notification %}
+        {% endcase %}
+      {% endfor %}
+    </div>
+  filesystem:
+    notif_order: "<div class=\"notification notification-order\">\n  <div class=\"notif-icon\">\U0001F4E6</div>\n
+      \ <div class=\"notif-content\">\n    <h4>Order {{ notif.order_id }} {{ notif.status
+      }}</h4>\n    <p>{{ notif.items }} items • ${{ notif.total }}</p>\n    <time>{{
+      notif.date }}</time>\n    {% if notif.status == 'confirmed' %}\n      <span
+      class=\"badge badge-success\">Confirmed</span>\n    {% elsif notif.status ==
+      'processing' %}\n      <span class=\"badge badge-warning\">Processing</span>\n
+      \   {% elsif notif.status == 'shipped' %}\n      <span class=\"badge badge-info\">Shipped</span>\n
+      \   {% endif %}\n  </div>\n</div>\n"
+    notif_shipping: "<div class=\"notification notification-shipping\">\n  <div class=\"notif-icon\">\U0001F69A</div>\n
+      \ <div class=\"notif-content\">\n    <h4>Shipment Update</h4>\n    <p>Order
+      {{ notif.order_id }} via {{ notif.carrier }}</p>\n    <p class=\"tracking\">Tracking:
+      {{ notif.tracking }}</p>\n    <p class=\"eta\">Expected: {{ notif.eta }}</p>\n
+      \   <a href=\"/track/{{ notif.tracking }}\" class=\"btn-track\">Track Package</a>\n
+      \ </div>\n</div>\n"
+    notif_review: |
+      <div class="notification notification-review">
+        <div class="notif-icon">⭐</div>
+        <div class="notif-content">
+          <h4>New Review for {{ notif.product }}</h4>
+          <p class="reviewer">{{ notif.customer }} rated {{ notif.rating }}/5</p>
+          <blockquote>"{{ notif.snippet }}"</blockquote>
+          <a href="/reviews" class="btn-view">View All Reviews</a>
+        </div>
+      </div>
+    notif_promo: "<div class=\"notification notification-promo\">\n  <div class=\"notif-icon\">\U0001F381</div>\n
+      \ <div class=\"notif-content\">\n    <h4>{{ notif.discount }} Off!</h4>\n    <p>Use
+      code <strong>{{ notif.code }}</strong></p>\n    <p class=\"terms\">Min. purchase
+      ${{ notif.min_purchase }} • Expires {{ notif.expires }}</p>\n    <button class=\"btn-copy\"
+      data-code=\"{{ notif.code }}\">Copy Code</button>\n  </div>\n</div>\n"
+    notif_stock: |
+      <div class="notification notification-stock">
+        <div class="notif-icon">{% if notif.status == 'back_in_stock' %}✅{% else %}⚠️{% endif %}</div>
+        <div class="notif-content">
+          <h4>{{ notif.product }}</h4>
+          <p class="sku">SKU: {{ notif.sku }}</p>
+          {% if notif.status == 'back_in_stock' %}
+            <p class="stock-status good">Back in stock! {{ notif.quantity }} available</p>
+          {% elsif notif.status == 'low_stock' %}
+            <p class="stock-status warning">Low stock: only {{ notif.quantity }} left</p>
+          {% endif %}
+          <a href="/products/{{ notif.sku }}" class="btn-view">View Product</a>
+        </div>
+      </div>
+  environment:
+    notifications:
+    - type: order
+      order_id: ORD-001
+      status: confirmed
+      total: 149.99
+      items: 3
+      date: '2024-01-15'
+    - type: shipping
+      order_id: ORD-002
+      carrier: FedEx
+      tracking: '1234567890'
+      eta: Jan 18
+    - type: review
+      product: Leather Jacket
+      customer: Alice
+      rating: 5
+      snippet: Amazing quality!
+    - type: promo
+      code: SAVE20
+      discount: 20%
+      expires: Jan 31
+      min_purchase: 50
+    - type: stock
+      product: Blue Widget
+      sku: BW-001
+      status: back_in_stock
+      quantity: 25
+    - type: order
+      order_id: ORD-003
+      status: processing
+      total: 89.5
+      items: 2
+      date: '2024-01-16'
+    - type: shipping
+      order_id: ORD-001
+      carrier: UPS
+      tracking: '9876543210'
+      eta: Jan 17
+    - type: review
+      product: Cotton T-Shirt
+      customer: Bob
+      rating: 4
+      snippet: Great fit
+    - type: promo
+      code: FREESHIP
+      discount: Free Shipping
+      expires: Feb 1
+      min_purchase: 75
+    - type: stock
+      product: Red Scarf
+      sku: RS-002
+      status: low_stock
+      quantity: 3
+    - type: order
+      order_id: ORD-004
+      status: shipped
+      total: 299.0
+      items: 1
+      date: '2024-01-14'
+    - type: shipping
+      order_id: ORD-004
+      carrier: USPS
+      tracking: '5555555555'
+      eta: Jan 19
+    - type: review
+      product: Wool Sweater
+      customer: Carol
+      rating: 5
+      snippet: Perfect for winter
+    - type: promo
+      code: VIP25
+      discount: 25%
+      expires: Jan 20
+      min_purchase: 100
+    - type: stock
+      product: Green Hat
+      sku: GH-003
+      status: back_in_stock
+      quantity: 50
+  expected: "<div class=\"notifications\">\n  \n    \n        <div class=\"notification
+    notification-order\">\n  <div class=\"notif-icon\">\U0001F4E6</div>\n  <div class=\"notif-content\">\n
+    \   <h4>Order ORD-001 confirmed</h4>\n    <p>3 items • $149.99</p>\n    <time>2024-01-15</time>\n
+    \   \n      <span class=\"badge badge-success\">Confirmed</span>\n    \n  </div>\n</div>\n\n
+    \     \n  \n    \n        <div class=\"notification notification-shipping\">\n
+    \ <div class=\"notif-icon\">\U0001F69A</div>\n  <div class=\"notif-content\">\n
+    \   <h4>Shipment Update</h4>\n    <p>Order ORD-002 via FedEx</p>\n    <p class=\"tracking\">Tracking:
+    1234567890</p>\n    <p class=\"eta\">Expected: Jan 18</p>\n    <a href=\"/track/1234567890\"
+    class=\"btn-track\">Track Package</a>\n  </div>\n</div>\n\n      \n  \n    \n
+    \       <div class=\"notification notification-review\">\n  <div class=\"notif-icon\">⭐</div>\n
+    \ <div class=\"notif-content\">\n    <h4>New Review for Leather Jacket</h4>\n
+    \   <p class=\"reviewer\">Alice rated 5/5</p>\n    <blockquote>\"Amazing quality!\"</blockquote>\n
+    \   <a href=\"/reviews\" class=\"btn-view\">View All Reviews</a>\n  </div>\n</div>\n\n
+    \     \n  \n    \n        <div class=\"notification notification-promo\">\n  <div
+    class=\"notif-icon\">\U0001F381</div>\n  <div class=\"notif-content\">\n    <h4>20%
+    Off!</h4>\n    <p>Use code <strong>SAVE20</strong></p>\n    <p class=\"terms\">Min.
+    purchase $50 • Expires Jan 31</p>\n    <button class=\"btn-copy\" data-code=\"SAVE20\">Copy
+    Code</button>\n  </div>\n</div>\n\n      \n  \n    \n        <div class=\"notification
+    notification-stock\">\n  <div class=\"notif-icon\">✅</div>\n  <div class=\"notif-content\">\n
+    \   <h4>Blue Widget</h4>\n    <p class=\"sku\">SKU: BW-001</p>\n    \n      <p
+    class=\"stock-status good\">Back in stock! 25 available</p>\n    \n    <a href=\"/products/BW-001\"
+    class=\"btn-view\">View Product</a>\n  </div>\n</div>\n\n    \n  \n    \n        <div
+    class=\"notification notification-order\">\n  <div class=\"notif-icon\">\U0001F4E6</div>\n
+    \ <div class=\"notif-content\">\n    <h4>Order ORD-003 processing</h4>\n    <p>2
+    items • $89.5</p>\n    <time>2024-01-16</time>\n    \n      <span class=\"badge
+    badge-warning\">Processing</span>\n    \n  </div>\n</div>\n\n      \n  \n    \n
+    \       <div class=\"notification notification-shipping\">\n  <div class=\"notif-icon\">\U0001F69A</div>\n
+    \ <div class=\"notif-content\">\n    <h4>Shipment Update</h4>\n    <p>Order ORD-001
+    via UPS</p>\n    <p class=\"tracking\">Tracking: 9876543210</p>\n    <p class=\"eta\">Expected:
+    Jan 17</p>\n    <a href=\"/track/9876543210\" class=\"btn-track\">Track Package</a>\n
+    \ </div>\n</div>\n\n      \n  \n    \n        <div class=\"notification notification-review\">\n
+    \ <div class=\"notif-icon\">⭐</div>\n  <div class=\"notif-content\">\n    <h4>New
+    Review for Cotton T-Shirt</h4>\n    <p class=\"reviewer\">Bob rated 4/5</p>\n
+    \   <blockquote>\"Great fit\"</blockquote>\n    <a href=\"/reviews\" class=\"btn-view\">View
+    All Reviews</a>\n  </div>\n</div>\n\n      \n  \n    \n        <div class=\"notification
+    notification-promo\">\n  <div class=\"notif-icon\">\U0001F381</div>\n  <div class=\"notif-content\">\n
+    \   <h4>Free Shipping Off!</h4>\n    <p>Use code <strong>FREESHIP</strong></p>\n
+    \   <p class=\"terms\">Min. purchase $75 • Expires Feb 1</p>\n    <button class=\"btn-copy\"
+    data-code=\"FREESHIP\">Copy Code</button>\n  </div>\n</div>\n\n      \n  \n    \n
+    \       <div class=\"notification notification-stock\">\n  <div class=\"notif-icon\">⚠️</div>\n
+    \ <div class=\"notif-content\">\n    <h4>Red Scarf</h4>\n    <p class=\"sku\">SKU:
+    RS-002</p>\n    \n      <p class=\"stock-status warning\">Low stock: only 3 left</p>\n
+    \   \n    <a href=\"/products/RS-002\" class=\"btn-view\">View Product</a>\n  </div>\n</div>\n\n
+    \   \n  \n    \n        <div class=\"notification notification-order\">\n  <div
+    class=\"notif-icon\">\U0001F4E6</div>\n  <div class=\"notif-content\">\n    <h4>Order
+    ORD-004 shipped</h4>\n    <p>1 items • $299.0</p>\n    <time>2024-01-14</time>\n
+    \   \n      <span class=\"badge badge-info\">Shipped</span>\n    \n  </div>\n</div>\n\n
+    \     \n  \n    \n        <div class=\"notification notification-shipping\">\n
+    \ <div class=\"notif-icon\">\U0001F69A</div>\n  <div class=\"notif-content\">\n
+    \   <h4>Shipment Update</h4>\n    <p>Order ORD-004 via USPS</p>\n    <p class=\"tracking\">Tracking:
+    5555555555</p>\n    <p class=\"eta\">Expected: Jan 19</p>\n    <a href=\"/track/5555555555\"
+    class=\"btn-track\">Track Package</a>\n  </div>\n</div>\n\n      \n  \n    \n
+    \       <div class=\"notification notification-review\">\n  <div class=\"notif-icon\">⭐</div>\n
+    \ <div class=\"notif-content\">\n    <h4>New Review for Wool Sweater</h4>\n    <p
+    class=\"reviewer\">Carol rated 5/5</p>\n    <blockquote>\"Perfect for winter\"</blockquote>\n
+    \   <a href=\"/reviews\" class=\"btn-view\">View All Reviews</a>\n  </div>\n</div>\n\n
+    \     \n  \n    \n        <div class=\"notification notification-promo\">\n  <div
+    class=\"notif-icon\">\U0001F381</div>\n  <div class=\"notif-content\">\n    <h4>25%
+    Off!</h4>\n    <p>Use code <strong>VIP25</strong></p>\n    <p class=\"terms\">Min.
+    purchase $100 • Expires Jan 20</p>\n    <button class=\"btn-copy\" data-code=\"VIP25\">Copy
+    Code</button>\n  </div>\n</div>\n\n      \n  \n    \n        <div class=\"notification
+    notification-stock\">\n  <div class=\"notif-icon\">✅</div>\n  <div class=\"notif-content\">\n
+    \   <h4>Green Hat</h4>\n    <p class=\"sku\">SKU: GH-003</p>\n    \n      <p class=\"stock-status
+    good\">Back in stock! 50 available</p>\n    \n    <a href=\"/products/GH-003\"
+    class=\"btn-view\">View Product</a>\n  </div>\n</div>\n\n    \n  \n</div>\n"
+- name: bench_ecommerce_product_page
+  template: |
+    {% render 'page_header', page_title: product.name %}
+    {% render 'breadcrumbs', items: breadcrumbs %}
+    {% render 'product_detail', product: product %}
+    {% render 'product_reviews', reviews: reviews %}
+    {% render 'related_products', products: related %}
+    {% render 'page_footer' %}
+  filesystem:
+    page_header: |
+      <header>
+        <h1>{{ page_title }}</h1>
+      </header>
+    breadcrumbs: |
+      <nav class="breadcrumbs">
+        {% for item in items %}
+          {% if item.url %}
+            <a href="{{ item.url }}">{{ item.label }}</a>
+          {% else %}
+            <span>{{ item.label }}</span>
+          {% endif %}
+          {% unless forloop.last %} &gt; {% endunless %}
+        {% endfor %}
+      </nav>
+    product_detail: |
+      <article class="product">
+        <h2>{{ product.name }}</h2>
+        <p class="price">${{ product.price }}</p>
+        <p class="description">{{ product.description }}</p>
+        <p class="sku">SKU: {{ product.sku }}</p>
+        {% if product.in_stock %}
+          <p class="stock in-stock">In Stock</p>
+        {% else %}
+          <p class="stock out-of-stock">Out of Stock</p>
+        {% endif %}
+        <ul class="features">
+          {% for feature in product.features %}
+            <li>{{ feature }}</li>
+          {% endfor %}
+        </ul>
+      </article>
+    product_reviews: |
+      <section class="reviews">
+        <h3>Customer Reviews</h3>
+        {% for review in reviews %}
+          {% render 'review_card', review: review %}
+        {% endfor %}
+      </section>
+    review_card: |
+      <div class="review">
+        <strong>{{ review.author }}</strong>
+        <span class="rating">{{ review.rating }}/5</span>
+        <p>{{ review.text }}</p>
+      </div>
+    related_products: |
+      <section class="related">
+        <h3>Related Products</h3>
+        <ul>
+          {% for product in products %}
+            <li>{{ product.name }} - ${{ product.price }}</li>
+          {% endfor %}
+        </ul>
+      </section>
+    page_footer: |
+      <footer>
+        <p>Thank you for shopping with us!</p>
+      </footer>
+  environment:
+    product:
+      name: Premium Widget
+      price: 99.99
+      description: The finest widget money can buy
+      sku: WDG-001
+      in_stock: true
+      features:
+      - Durable
+      - Lightweight
+      - Eco-friendly
+    breadcrumbs:
+    - label: Home
+      url: "/"
+    - label: Widgets
+      url: "/widgets"
+    - label: Premium Widget
+      url:
+    reviews:
+    - author: Alice
+      rating: 5
+      text: Amazing!
+    - author: Bob
+      rating: 4
+      text: Very good
+    - author: Carol
+      rating: 5
+      text: Love it
+    related:
+    - name: Basic Widget
+      price: 29.99
+    - name: Super Widget
+      price: 149.99
+    - name: Widget Pro
+      price: 199.99
+  expected: "<header>\n  <h1>Premium Widget</h1>\n</header>\n\n<nav class=\"breadcrumbs\">\n
+    \ \n    \n      <a href=\"/\">Home</a>\n    \n     &gt; \n  \n    \n      <a href=\"/widgets\">Widgets</a>\n
+    \   \n     &gt; \n  \n    \n      <span>Premium Widget</span>\n    \n    \n  \n</nav>\n\n<article
+    class=\"product\">\n  <h2>Premium Widget</h2>\n  <p class=\"price\">$99.99</p>\n
+    \ <p class=\"description\">The finest widget money can buy</p>\n  <p class=\"sku\">SKU:
+    WDG-001</p>\n  \n    <p class=\"stock in-stock\">In Stock</p>\n  \n  <ul class=\"features\">\n
+    \   \n      <li>Durable</li>\n    \n      <li>Lightweight</li>\n    \n      <li>Eco-friendly</li>\n
+    \   \n  </ul>\n</article>\n\n<section class=\"reviews\">\n  <h3>Customer Reviews</h3>\n
+    \ \n    <div class=\"review\">\n  <strong>Alice</strong>\n  <span class=\"rating\">5/5</span>\n
+    \ <p>Amazing!</p>\n</div>\n\n  \n    <div class=\"review\">\n  <strong>Bob</strong>\n
+    \ <span class=\"rating\">4/5</span>\n  <p>Very good</p>\n</div>\n\n  \n    <div
+    class=\"review\">\n  <strong>Carol</strong>\n  <span class=\"rating\">5/5</span>\n
+    \ <p>Love it</p>\n</div>\n\n  \n</section>\n\n<section class=\"related\">\n  <h3>Related
+    Products</h3>\n  <ul>\n    \n      <li>Basic Widget - $29.99</li>\n    \n      <li>Super
+    Widget - $149.99</li>\n    \n      <li>Widget Pro - $199.99</li>\n    \n  </ul>\n</section>\n\n<footer>\n
+    \ <p>Thank you for shopping with us!</p>\n</footer>\n\n"
+- name: bench_theme_product_page
+  template: |
+    {% render 'theme_header', shop: shop %}
+    {% render 'breadcrumb_nav', crumbs: breadcrumbs %}
+    <main class="product-page">
+      {% render 'product_gallery', images: product.images %}
+      {% render 'product_info', product: product, variants: variants %}
+      {% render 'variant_selector', variants: variants %}
+      {% render 'add_to_cart_form', product: product %}
+      {% render 'product_tabs', product: product %}
+      {% render 'related_grid', products: related_products, title: 'You may also like' %}
+      {% render 'recently_viewed', products: recent_products %}
+    </main>
+    {% render 'theme_footer', shop: shop, links: footer_links %}
+  filesystem:
+    theme_header: |
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>{{ shop.name }}</title>
+        <meta charset="utf-8">
+      </head>
+      <body>
+        <header class="site-header">
+          <div class="logo">{{ shop.name }}</div>
+          {% render 'main_nav' %}
+          {% render 'cart_icon' %}
+        </header>
+    main_nav: |
+      <nav class="main-nav">
+        <a href="/">Home</a>
+        <a href="/collections">Shop</a>
+        <a href="/about">About</a>
+        <a href="/contact">Contact</a>
+      </nav>
+    cart_icon: |
+      <div class="cart-icon">
+        <a href="/cart">Cart</a>
+      </div>
+    breadcrumb_nav: |
+      <nav class="breadcrumbs" aria-label="Breadcrumb">
+        <ol>
+        {% for crumb in crumbs %}
+          <li>
+            {% if crumb.url %}
+              <a href="{{ crumb.url }}">{{ crumb.title }}</a>
+            {% else %}
+              <span aria-current="page">{{ crumb.title }}</span>
+            {% endif %}
+          </li>
+        {% endfor %}
+        </ol>
+      </nav>
+    product_gallery: |
+      <div class="product-gallery">
+        {% for image in images %}
+          <div class="gallery-image{% if forloop.first %} active{% endif %}">
+            <img src="{{ image.src }}" alt="{{ image.alt }}" loading="{% if forloop.first %}eager{% else %}lazy{% endif %}">
+          </div>
+        {% endfor %}
+        <div class="gallery-thumbs">
+          {% for image in images %}
+            <button class="thumb{% if forloop.first %} active{% endif %}" data-index="{{ forloop.index0 }}">
+              <img src="{{ image.src }}" alt="{{ image.alt }}">
+            </button>
+          {% endfor %}
+        </div>
+      </div>
+    product_info: |
+      <div class="product-info">
+        <p class="vendor">{{ product.vendor }}</p>
+        <h1 class="title">{{ product.title }}</h1>
+        <div class="price">
+          {% if product.compare_at_price > product.price %}
+            <span class="compare-price">${{ product.compare_at_price }}</span>
+          {% endif %}
+          <span class="current-price">${{ product.price }}</span>
+          {% if product.compare_at_price > product.price %}
+            {% assign savings = product.compare_at_price | minus: product.price %}
+            <span class="savings">Save ${{ savings }}</span>
+          {% endif %}
+        </div>
+        <div class="description">{{ product.description }}</div>
+        <div class="tags">
+          {% for tag in product.tags %}
+            <span class="tag">{{ tag }}</span>
+          {% endfor %}
+        </div>
+      </div>
+    variant_selector: |
+      <div class="variant-selector">
+        <label for="variant-select">Select variant:</label>
+        <select id="variant-select" name="variant">
+          {% for variant in variants %}
+            <option value="{{ variant.id }}" {% unless variant.available %}disabled{% endunless %}>
+              {{ variant.title }} - ${{ variant.price }}{% unless variant.available %} (Sold out){% endunless %}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+    add_to_cart_form: |
+      <form class="add-to-cart" action="/cart/add" method="post">
+        <input type="hidden" name="id" value="{{ product.id }}">
+        <div class="quantity">
+          <label for="quantity">Quantity:</label>
+          <input type="number" id="quantity" name="quantity" value="1" min="1">
+        </div>
+        {% if product.available %}
+          <button type="submit" class="btn-add">Add to Cart</button>
+        {% else %}
+          <button type="button" class="btn-sold-out" disabled>Sold Out</button>
+        {% endif %}
+      </form>
+    product_tabs: |
+      <div class="product-tabs">
+        <div class="tab-panel" id="features">
+          <h3>Features</h3>
+          <ul>
+            {% for feature in product.features %}
+              <li>{{ feature }}</li>
+            {% endfor %}
+          </ul>
+        </div>
+        <div class="tab-panel" id="care">
+          <h3>Care Instructions</h3>
+          <ul>
+            {% for instruction in product.care %}
+              <li>{{ instruction }}</li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+    related_grid: |
+      <section class="related-products">
+        <h2>{{ title }}</h2>
+        <div class="product-grid">
+          {% for product in products %}
+            {% render 'product_card', product: product %}
+          {% endfor %}
+        </div>
+      </section>
+    product_card: |
+      <div class="product-card">
+        <a href="{{ product.url }}">
+          <img src="{{ product.image }}" alt="{{ product.title }}">
+          <h3>{{ product.title }}</h3>
+          <p class="price">${{ product.price }}</p>
+        </a>
+      </div>
+    recently_viewed: |
+      <section class="recently-viewed">
+        <h2>Recently Viewed</h2>
+        <div class="product-row">
+          {% for product in products %}
+            {% render 'product_card', product: product %}
+          {% endfor %}
+        </div>
+      </section>
+    theme_footer: |
+      <footer class="site-footer">
+        <div class="footer-links">
+          {% for link in links %}
+            <a href="{{ link.url }}">{{ link.title }}</a>
+          {% endfor %}
+        </div>
+        <div class="footer-info">
+          <p>&copy; {{ shop.name }}</p>
+          <p>Contact: {{ shop.email }}</p>
+        </div>
+      </footer>
+      </body>
+      </html>
+  environment:
+    shop:
+      name: Acme Store
+      currency: USD
+      email: support@acme.test
+    product:
+      id: 12345
+      title: Classic Leather Jacket
+      vendor: Acme Apparel
+      type: Outerwear
+      price: 299.99
+      compare_at_price: 399.99
+      description: Premium quality genuine leather jacket with satin lining. Features
+        two front pockets and an interior pocket.
+      sku: LJ-BLK-M
+      available: true
+      tags:
+      - leather
+      - jacket
+      - outerwear
+      - premium
+      images:
+      - src: "/images/jacket-front.jpg"
+        alt: Front view
+      - src: "/images/jacket-back.jpg"
+        alt: Back view
+      - src: "/images/jacket-detail.jpg"
+        alt: Detail view
+      - src: "/images/jacket-pocket.jpg"
+        alt: Pocket detail
+      options:
+      - name: Size
+        values:
+        - S
+        - M
+        - L
+        - XL
+      - name: Color
+        values:
+        - Black
+        - Brown
+        - Navy
+      features:
+      - 100% genuine leather
+      - Satin lining
+      - YKK zippers
+      - Two exterior pockets
+      - One interior pocket
+      care:
+      - Dry clean only
+      - Store on padded hanger
+      - Keep away from heat
+    variants:
+    - id: 1
+      title: S / Black
+      price: 299.99
+      available: true
+      sku: LJ-BLK-S
+    - id: 2
+      title: M / Black
+      price: 299.99
+      available: true
+      sku: LJ-BLK-M
+    - id: 3
+      title: L / Black
+      price: 299.99
+      available: false
+      sku: LJ-BLK-L
+    - id: 4
+      title: XL / Black
+      price: 299.99
+      available: true
+      sku: LJ-BLK-XL
+    - id: 5
+      title: S / Brown
+      price: 299.99
+      available: true
+      sku: LJ-BRN-S
+    - id: 6
+      title: M / Brown
+      price: 299.99
+      available: true
+      sku: LJ-BRN-M
+    - id: 7
+      title: L / Brown
+      price: 299.99
+      available: true
+      sku: LJ-BRN-L
+    - id: 8
+      title: XL / Brown
+      price: 299.99
+      available: false
+      sku: LJ-BRN-XL
+    breadcrumbs:
+    - title: Home
+      url: "/"
+    - title: Apparel
+      url: "/collections/apparel"
+    - title: Outerwear
+      url: "/collections/outerwear"
+    - title: Classic Leather Jacket
+      url:
+    related_products:
+    - title: Bomber Jacket
+      price: 249.99
+      image: "/images/bomber.jpg"
+      url: "/products/bomber"
+    - title: Denim Jacket
+      price: 149.99
+      image: "/images/denim.jpg"
+      url: "/products/denim"
+    - title: Suede Jacket
+      price: 279.99
+      image: "/images/suede.jpg"
+      url: "/products/suede"
+    - title: Windbreaker
+      price: 99.99
+      image: "/images/wind.jpg"
+      url: "/products/windbreaker"
+    recent_products:
+    - title: Wool Sweater
+      price: 89.99
+      image: "/images/sweater.jpg"
+      url: "/products/sweater"
+    - title: Cotton T-Shirt
+      price: 29.99
+      image: "/images/tshirt.jpg"
+      url: "/products/tshirt"
+    footer_links:
+    - title: About
+      url: "/about"
+    - title: Contact
+      url: "/contact"
+    - title: Shipping
+      url: "/shipping"
+    - title: Returns
+      url: "/returns"
+  expected: "<!DOCTYPE html>\n<html>\n<head>\n  <title>Acme Store</title>\n  <meta
+    charset=\"utf-8\">\n</head>\n<body>\n  <header class=\"site-header\">\n    <div
+    class=\"logo\">Acme Store</div>\n    <nav class=\"main-nav\">\n  <a href=\"/\">Home</a>\n
+    \ <a href=\"/collections\">Shop</a>\n  <a href=\"/about\">About</a>\n  <a href=\"/contact\">Contact</a>\n</nav>\n\n
+    \   <div class=\"cart-icon\">\n  <a href=\"/cart\">Cart</a>\n</div>\n\n  </header>\n\n<nav
+    class=\"breadcrumbs\" aria-label=\"Breadcrumb\">\n  <ol>\n  \n    <li>\n      \n
+    \       <a href=\"/\">Home</a>\n      \n    </li>\n  \n    <li>\n      \n        <a
+    href=\"/collections/apparel\">Apparel</a>\n      \n    </li>\n  \n    <li>\n      \n
+    \       <a href=\"/collections/outerwear\">Outerwear</a>\n      \n    </li>\n
+    \ \n    <li>\n      \n        <span aria-current=\"page\">Classic Leather Jacket</span>\n
+    \     \n    </li>\n  \n  </ol>\n</nav>\n\n<main class=\"product-page\">\n  <div
+    class=\"product-gallery\">\n  \n    <div class=\"gallery-image active\">\n      <img
+    src=\"/images/jacket-front.jpg\" alt=\"Front view\" loading=\"eager\">\n    </div>\n
+    \ \n    <div class=\"gallery-image\">\n      <img src=\"/images/jacket-back.jpg\"
+    alt=\"Back view\" loading=\"lazy\">\n    </div>\n  \n    <div class=\"gallery-image\">\n
+    \     <img src=\"/images/jacket-detail.jpg\" alt=\"Detail view\" loading=\"lazy\">\n
+    \   </div>\n  \n    <div class=\"gallery-image\">\n      <img src=\"/images/jacket-pocket.jpg\"
+    alt=\"Pocket detail\" loading=\"lazy\">\n    </div>\n  \n  <div class=\"gallery-thumbs\">\n
+    \   \n      <button class=\"thumb active\" data-index=\"0\">\n        <img src=\"/images/jacket-front.jpg\"
+    alt=\"Front view\">\n      </button>\n    \n      <button class=\"thumb\" data-index=\"1\">\n
+    \       <img src=\"/images/jacket-back.jpg\" alt=\"Back view\">\n      </button>\n
+    \   \n      <button class=\"thumb\" data-index=\"2\">\n        <img src=\"/images/jacket-detail.jpg\"
+    alt=\"Detail view\">\n      </button>\n    \n      <button class=\"thumb\" data-index=\"3\">\n
+    \       <img src=\"/images/jacket-pocket.jpg\" alt=\"Pocket detail\">\n      </button>\n
+    \   \n  </div>\n</div>\n\n  <div class=\"product-info\">\n  <p class=\"vendor\">Acme
+    Apparel</p>\n  <h1 class=\"title\">Classic Leather Jacket</h1>\n  <div class=\"price\">\n
+    \   \n      <span class=\"compare-price\">$399.99</span>\n    \n    <span class=\"current-price\">$299.99</span>\n
+    \   \n      \n      <span class=\"savings\">Save $100.0</span>\n    \n  </div>\n
+    \ <div class=\"description\">Premium quality genuine leather jacket with satin
+    lining. Features two front pockets and an interior pocket.</div>\n  <div class=\"tags\">\n
+    \   \n      <span class=\"tag\">leather</span>\n    \n      <span class=\"tag\">jacket</span>\n
+    \   \n      <span class=\"tag\">outerwear</span>\n    \n      <span class=\"tag\">premium</span>\n
+    \   \n  </div>\n</div>\n\n  <div class=\"variant-selector\">\n  <label for=\"variant-select\">Select
+    variant:</label>\n  <select id=\"variant-select\" name=\"variant\">\n    \n      <option
+    value=\"1\" >\n        S / Black - $299.99\n      </option>\n    \n      <option
+    value=\"2\" >\n        M / Black - $299.99\n      </option>\n    \n      <option
+    value=\"3\" disabled>\n        L / Black - $299.99 (Sold out)\n      </option>\n
+    \   \n      <option value=\"4\" >\n        XL / Black - $299.99\n      </option>\n
+    \   \n      <option value=\"5\" >\n        S / Brown - $299.99\n      </option>\n
+    \   \n      <option value=\"6\" >\n        M / Brown - $299.99\n      </option>\n
+    \   \n      <option value=\"7\" >\n        L / Brown - $299.99\n      </option>\n
+    \   \n      <option value=\"8\" disabled>\n        XL / Brown - $299.99 (Sold
+    out)\n      </option>\n    \n  </select>\n</div>\n\n  <form class=\"add-to-cart\"
+    action=\"/cart/add\" method=\"post\">\n  <input type=\"hidden\" name=\"id\" value=\"12345\">\n
+    \ <div class=\"quantity\">\n    <label for=\"quantity\">Quantity:</label>\n    <input
+    type=\"number\" id=\"quantity\" name=\"quantity\" value=\"1\" min=\"1\">\n  </div>\n
+    \ \n    <button type=\"submit\" class=\"btn-add\">Add to Cart</button>\n  \n</form>\n\n
+    \ <div class=\"product-tabs\">\n  <div class=\"tab-panel\" id=\"features\">\n
+    \   <h3>Features</h3>\n    <ul>\n      \n        <li>100% genuine leather</li>\n
+    \     \n        <li>Satin lining</li>\n      \n        <li>YKK zippers</li>\n
+    \     \n        <li>Two exterior pockets</li>\n      \n        <li>One interior
+    pocket</li>\n      \n    </ul>\n  </div>\n  <div class=\"tab-panel\" id=\"care\">\n
+    \   <h3>Care Instructions</h3>\n    <ul>\n      \n        <li>Dry clean only</li>\n
+    \     \n        <li>Store on padded hanger</li>\n      \n        <li>Keep away
+    from heat</li>\n      \n    </ul>\n  </div>\n</div>\n\n  <section class=\"related-products\">\n
+    \ <h2>You may also like</h2>\n  <div class=\"product-grid\">\n    \n      <div
+    class=\"product-card\">\n  <a href=\"/products/bomber\">\n    <img src=\"/images/bomber.jpg\"
+    alt=\"Bomber Jacket\">\n    <h3>Bomber Jacket</h3>\n    <p class=\"price\">$249.99</p>\n
+    \ </a>\n</div>\n\n    \n      <div class=\"product-card\">\n  <a href=\"/products/denim\">\n
+    \   <img src=\"/images/denim.jpg\" alt=\"Denim Jacket\">\n    <h3>Denim Jacket</h3>\n
+    \   <p class=\"price\">$149.99</p>\n  </a>\n</div>\n\n    \n      <div class=\"product-card\">\n
+    \ <a href=\"/products/suede\">\n    <img src=\"/images/suede.jpg\" alt=\"Suede
+    Jacket\">\n    <h3>Suede Jacket</h3>\n    <p class=\"price\">$279.99</p>\n  </a>\n</div>\n\n
+    \   \n      <div class=\"product-card\">\n  <a href=\"/products/windbreaker\">\n
+    \   <img src=\"/images/wind.jpg\" alt=\"Windbreaker\">\n    <h3>Windbreaker</h3>\n
+    \   <p class=\"price\">$99.99</p>\n  </a>\n</div>\n\n    \n  </div>\n</section>\n\n
+    \ <section class=\"recently-viewed\">\n  <h2>Recently Viewed</h2>\n  <div class=\"product-row\">\n
+    \   \n      <div class=\"product-card\">\n  <a href=\"/products/sweater\">\n    <img
+    src=\"/images/sweater.jpg\" alt=\"Wool Sweater\">\n    <h3>Wool Sweater</h3>\n
+    \   <p class=\"price\">$89.99</p>\n  </a>\n</div>\n\n    \n      <div class=\"product-card\">\n
+    \ <a href=\"/products/tshirt\">\n    <img src=\"/images/tshirt.jpg\" alt=\"Cotton
+    T-Shirt\">\n    <h3>Cotton T-Shirt</h3>\n    <p class=\"price\">$29.99</p>\n  </a>\n</div>\n\n
+    \   \n  </div>\n</section>\n\n</main>\n<footer class=\"site-footer\">\n  <div
+    class=\"footer-links\">\n    \n      <a href=\"/about\">About</a>\n    \n      <a
+    href=\"/contact\">Contact</a>\n    \n      <a href=\"/shipping\">Shipping</a>\n
+    \   \n      <a href=\"/returns\">Returns</a>\n    \n  </div>\n  <div class=\"footer-info\">\n
+    \   <p>&copy; Acme Store</p>\n    <p>Contact: support@acme.test</p>\n  </div>\n</footer>\n</body>\n</html>\n\n"
+- name: bench_theme_cart_page
+  template: |
+    {% render 'theme_header', shop: shop %}
+    <main class="cart-page">
+      <h1>Shopping Cart</h1>
+      {% if cart.items.size > 0 %}
+        {% render 'cart_table', cart: cart %}
+        {% render 'cart_totals', cart: cart %}
+        {% render 'cart_actions' %}
+        {% render 'shipping_calculator', rates: shipping_rates %}
+      {% else %}
+        {% render 'empty_cart' %}
+      {% endif %}
+      {% render 'cart_recommendations', products: recommendations %}
+    </main>
+    {% render 'theme_footer', shop: shop, links: footer_links %}
+  filesystem:
+    theme_header: |
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>{{ shop.name }} - Cart</title>
+      </head>
+      <body>
+        <header class="site-header">
+          <div class="logo">{{ shop.name }}</div>
+        </header>
+    cart_table: |
+      <table class="cart-table">
+        <thead>
+          <tr>
+            <th>Product</th>
+            <th>Price</th>
+            <th>Quantity</th>
+            <th>Total</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in cart.items %}
+            {% render 'cart_line_item', item: item %}
+          {% endfor %}
+        </tbody>
+      </table>
+    cart_line_item: |
+      <tr class="cart-item" data-id="{{ item.id }}">
+        <td class="product-info">
+          <img src="{{ item.image }}" alt="{{ item.title }}" class="cart-thumb">
+          <div class="details">
+            <a href="{{ item.url }}">{{ item.title }}</a>
+            <p class="variant">{{ item.variant_title }}</p>
+            <p class="sku">SKU: {{ item.sku }}</p>
+            {% if item.properties.size > 0 %}
+              <div class="properties">
+                {% for prop in item.properties %}
+                  <p class="property"><strong>{{ prop[0] }}:</strong> {{ prop[1] }}</p>
+                {% endfor %}
+              </div>
+            {% endif %}
+          </div>
+        </td>
+        <td class="price">${{ item.price }}</td>
+        <td class="quantity">
+          <input type="number" value="{{ item.quantity }}" min="1" name="updates[{{ item.id }}]">
+        </td>
+        <td class="line-total">${{ item.line_price }}</td>
+        <td class="actions">
+          <button class="btn-remove" data-id="{{ item.id }}">Remove</button>
+        </td>
+      </tr>
+    cart_totals: |
+      <div class="cart-totals">
+        <div class="subtotal">
+          <span>Subtotal ({{ cart.item_count }} items):</span>
+          <span>${{ cart.total_price }}</span>
+        </div>
+        {% if cart.discounts.size > 0 %}
+          <div class="discounts">
+            {% for discount in cart.discounts %}
+              <div class="discount">
+                <span>{{ discount.title }} ({{ discount.code }}):</span>
+                <span>-${{ discount.amount }}</span>
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+        {% assign final_total = cart.total_price %}
+        {% for discount in cart.discounts %}
+          {% assign final_total = final_total | minus: discount.amount %}
+        {% endfor %}
+        <div class="total">
+          <span>Total:</span>
+          <span>${{ final_total }}</span>
+        </div>
+      </div>
+    cart_actions: |
+      <div class="cart-actions">
+        <a href="/collections" class="btn-continue">Continue Shopping</a>
+        <button class="btn-update">Update Cart</button>
+        <a href="/checkout" class="btn-checkout">Proceed to Checkout</a>
+      </div>
+    shipping_calculator: |
+      <div class="shipping-calculator">
+        <h3>Shipping Estimates</h3>
+        <ul class="shipping-rates">
+          {% for rate in rates %}
+            <li class="rate">
+              <label>
+                <input type="radio" name="shipping" value="{{ rate.name }}">
+                <span class="rate-name">{{ rate.name }}</span>
+                <span class="rate-price">${{ rate.price }}</span>
+                <span class="rate-delivery">{{ rate.delivery }}</span>
+              </label>
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+    empty_cart: |
+      <div class="empty-cart">
+        <p>Your cart is empty.</p>
+        <a href="/collections" class="btn-shop">Start Shopping</a>
+      </div>
+    cart_recommendations: |
+      <section class="cart-recommendations">
+        <h2>You might also like</h2>
+        <div class="product-grid">
+          {% for product in products %}
+            {% render 'product_card', product: product %}
+          {% endfor %}
+        </div>
+      </section>
+    product_card: |
+      <div class="product-card">
+        <a href="{{ product.url }}">
+          <img src="{{ product.image }}" alt="{{ product.title }}">
+          <h3>{{ product.title }}</h3>
+          <p class="price">${{ product.price }}</p>
+        </a>
+      </div>
+    theme_footer: |
+      <footer class="site-footer">
+        <div class="footer-links">
+          {% for link in links %}
+            <a href="{{ link.url }}">{{ link.title }}</a>
+          {% endfor %}
+        </div>
+        <p>&copy; {{ shop.name }}</p>
+      </footer>
+      </body>
+      </html>
+  environment:
+    shop:
+      name: Acme Store
+      currency: USD
+      email: support@acme.test
+    cart:
+      item_count: 5
+      total_price: 549.95
+      items:
+      - id: 1
+        title: Classic Leather Jacket
+        variant_title: M / Black
+        price: 299.99
+        quantity: 1
+        line_price: 299.99
+        image: "/images/jacket.jpg"
+        url: "/products/jacket"
+        sku: LJ-BLK-M
+        properties:
+          gift_wrap: 'Yes'
+          gift_message: Happy Birthday!
+      - id: 2
+        title: Cotton T-Shirt
+        variant_title: L / White
+        price: 29.99
+        quantity: 3
+        line_price: 89.97
+        image: "/images/tshirt.jpg"
+        url: "/products/tshirt"
+        sku: TS-WHT-L
+        properties: {}
+      - id: 3
+        title: Wool Beanie
+        variant_title: One Size / Navy
+        price: 24.99
+        quantity: 2
+        line_price: 49.98
+        image: "/images/beanie.jpg"
+        url: "/products/beanie"
+        sku: BN-NVY-OS
+        properties: {}
+      - id: 4
+        title: Leather Belt
+        variant_title: 34 / Brown
+        price: 59.99
+        quantity: 1
+        line_price: 59.99
+        image: "/images/belt.jpg"
+        url: "/products/belt"
+        sku: BT-BRN-34
+        properties: {}
+      - id: 5
+        title: Silk Scarf
+        variant_title: One Size / Burgundy
+        price: 49.99
+        quantity: 1
+        line_price: 49.99
+        image: "/images/scarf.jpg"
+        url: "/products/scarf"
+        sku: SC-BUR-OS
+        properties:
+          monogram: ABC
+      discounts:
+      - code: SAVE10
+        amount: 54.99
+        title: 10% Off
+    shipping_rates:
+    - name: Standard Shipping
+      price: 5.99
+      delivery: 5-7 business days
+    - name: Express Shipping
+      price: 15.99
+      delivery: 2-3 business days
+    - name: Overnight
+      price: 29.99
+      delivery: Next business day
+    recommendations:
+    - title: Leather Gloves
+      price: 49.99
+      image: "/images/gloves.jpg"
+      url: "/products/gloves"
+    - title: Wool Socks
+      price: 19.99
+      image: "/images/socks.jpg"
+      url: "/products/socks"
+    - title: Sunglasses
+      price: 79.99
+      image: "/images/sunglasses.jpg"
+      url: "/products/sunglasses"
+    footer_links:
+    - title: About
+      url: "/about"
+    - title: Contact
+      url: "/contact"
+    - title: Shipping
+      url: "/shipping"
+    - title: Returns
+      url: "/returns"
+  expected: "<!DOCTYPE html>\n<html>\n<head>\n  <title>Acme Store - Cart</title>\n</head>\n<body>\n
+    \ <header class=\"site-header\">\n    <div class=\"logo\">Acme Store</div>\n  </header>\n\n<main
+    class=\"cart-page\">\n  <h1>Shopping Cart</h1>\n  \n    <table class=\"cart-table\">\n
+    \ <thead>\n    <tr>\n      <th>Product</th>\n      <th>Price</th>\n      <th>Quantity</th>\n
+    \     <th>Total</th>\n      <th>Actions</th>\n    </tr>\n  </thead>\n  <tbody>\n
+    \   \n      <tr class=\"cart-item\" data-id=\"1\">\n  <td class=\"product-info\">\n
+    \   <img src=\"/images/jacket.jpg\" alt=\"Classic Leather Jacket\" class=\"cart-thumb\">\n
+    \   <div class=\"details\">\n      <a href=\"/products/jacket\">Classic Leather
+    Jacket</a>\n      <p class=\"variant\">M / Black</p>\n      <p class=\"sku\">SKU:
+    LJ-BLK-M</p>\n      \n        <div class=\"properties\">\n          \n            <p
+    class=\"property\"><strong>gift_wrap:</strong> Yes</p>\n          \n            <p
+    class=\"property\"><strong>gift_message:</strong> Happy Birthday!</p>\n          \n
+    \       </div>\n      \n    </div>\n  </td>\n  <td class=\"price\">$299.99</td>\n
+    \ <td class=\"quantity\">\n    <input type=\"number\" value=\"1\" min=\"1\" name=\"updates[1]\">\n
+    \ </td>\n  <td class=\"line-total\">$299.99</td>\n  <td class=\"actions\">\n    <button
+    class=\"btn-remove\" data-id=\"1\">Remove</button>\n  </td>\n</tr>\n\n    \n      <tr
+    class=\"cart-item\" data-id=\"2\">\n  <td class=\"product-info\">\n    <img src=\"/images/tshirt.jpg\"
+    alt=\"Cotton T-Shirt\" class=\"cart-thumb\">\n    <div class=\"details\">\n      <a
+    href=\"/products/tshirt\">Cotton T-Shirt</a>\n      <p class=\"variant\">L / White</p>\n
+    \     <p class=\"sku\">SKU: TS-WHT-L</p>\n      \n    </div>\n  </td>\n  <td class=\"price\">$29.99</td>\n
+    \ <td class=\"quantity\">\n    <input type=\"number\" value=\"3\" min=\"1\" name=\"updates[2]\">\n
+    \ </td>\n  <td class=\"line-total\">$89.97</td>\n  <td class=\"actions\">\n    <button
+    class=\"btn-remove\" data-id=\"2\">Remove</button>\n  </td>\n</tr>\n\n    \n      <tr
+    class=\"cart-item\" data-id=\"3\">\n  <td class=\"product-info\">\n    <img src=\"/images/beanie.jpg\"
+    alt=\"Wool Beanie\" class=\"cart-thumb\">\n    <div class=\"details\">\n      <a
+    href=\"/products/beanie\">Wool Beanie</a>\n      <p class=\"variant\">One Size
+    / Navy</p>\n      <p class=\"sku\">SKU: BN-NVY-OS</p>\n      \n    </div>\n  </td>\n
+    \ <td class=\"price\">$24.99</td>\n  <td class=\"quantity\">\n    <input type=\"number\"
+    value=\"2\" min=\"1\" name=\"updates[3]\">\n  </td>\n  <td class=\"line-total\">$49.98</td>\n
+    \ <td class=\"actions\">\n    <button class=\"btn-remove\" data-id=\"3\">Remove</button>\n
+    \ </td>\n</tr>\n\n    \n      <tr class=\"cart-item\" data-id=\"4\">\n  <td class=\"product-info\">\n
+    \   <img src=\"/images/belt.jpg\" alt=\"Leather Belt\" class=\"cart-thumb\">\n
+    \   <div class=\"details\">\n      <a href=\"/products/belt\">Leather Belt</a>\n
+    \     <p class=\"variant\">34 / Brown</p>\n      <p class=\"sku\">SKU: BT-BRN-34</p>\n
+    \     \n    </div>\n  </td>\n  <td class=\"price\">$59.99</td>\n  <td class=\"quantity\">\n
+    \   <input type=\"number\" value=\"1\" min=\"1\" name=\"updates[4]\">\n  </td>\n
+    \ <td class=\"line-total\">$59.99</td>\n  <td class=\"actions\">\n    <button
+    class=\"btn-remove\" data-id=\"4\">Remove</button>\n  </td>\n</tr>\n\n    \n      <tr
+    class=\"cart-item\" data-id=\"5\">\n  <td class=\"product-info\">\n    <img src=\"/images/scarf.jpg\"
+    alt=\"Silk Scarf\" class=\"cart-thumb\">\n    <div class=\"details\">\n      <a
+    href=\"/products/scarf\">Silk Scarf</a>\n      <p class=\"variant\">One Size /
+    Burgundy</p>\n      <p class=\"sku\">SKU: SC-BUR-OS</p>\n      \n        <div
+    class=\"properties\">\n          \n            <p class=\"property\"><strong>monogram:</strong>
+    ABC</p>\n          \n        </div>\n      \n    </div>\n  </td>\n  <td class=\"price\">$49.99</td>\n
+    \ <td class=\"quantity\">\n    <input type=\"number\" value=\"1\" min=\"1\" name=\"updates[5]\">\n
+    \ </td>\n  <td class=\"line-total\">$49.99</td>\n  <td class=\"actions\">\n    <button
+    class=\"btn-remove\" data-id=\"5\">Remove</button>\n  </td>\n</tr>\n\n    \n  </tbody>\n</table>\n\n
+    \   <div class=\"cart-totals\">\n  <div class=\"subtotal\">\n    <span>Subtotal
+    (5 items):</span>\n    <span>$549.95</span>\n  </div>\n  \n    <div class=\"discounts\">\n
+    \     \n        <div class=\"discount\">\n          <span>10% Off (SAVE10):</span>\n
+    \         <span>-$54.99</span>\n        </div>\n      \n    </div>\n  \n  \n  \n
+    \ <div class=\"total\">\n    <span>Total:</span>\n    <span>$494.96</span>\n  </div>\n</div>\n\n
+    \   <div class=\"cart-actions\">\n  <a href=\"/collections\" class=\"btn-continue\">Continue
+    Shopping</a>\n  <button class=\"btn-update\">Update Cart</button>\n  <a href=\"/checkout\"
+    class=\"btn-checkout\">Proceed to Checkout</a>\n</div>\n\n    <div class=\"shipping-calculator\">\n
+    \ <h3>Shipping Estimates</h3>\n  <ul class=\"shipping-rates\">\n    \n      <li
+    class=\"rate\">\n        <label>\n          <input type=\"radio\" name=\"shipping\"
+    value=\"Standard Shipping\">\n          <span class=\"rate-name\">Standard Shipping</span>\n
+    \         <span class=\"rate-price\">$5.99</span>\n          <span class=\"rate-delivery\">5-7
+    business days</span>\n        </label>\n      </li>\n    \n      <li class=\"rate\">\n
+    \       <label>\n          <input type=\"radio\" name=\"shipping\" value=\"Express
+    Shipping\">\n          <span class=\"rate-name\">Express Shipping</span>\n          <span
+    class=\"rate-price\">$15.99</span>\n          <span class=\"rate-delivery\">2-3
+    business days</span>\n        </label>\n      </li>\n    \n      <li class=\"rate\">\n
+    \       <label>\n          <input type=\"radio\" name=\"shipping\" value=\"Overnight\">\n
+    \         <span class=\"rate-name\">Overnight</span>\n          <span class=\"rate-price\">$29.99</span>\n
+    \         <span class=\"rate-delivery\">Next business day</span>\n        </label>\n
+    \     </li>\n    \n  </ul>\n</div>\n\n  \n  <section class=\"cart-recommendations\">\n
+    \ <h2>You might also like</h2>\n  <div class=\"product-grid\">\n    \n      <div
+    class=\"product-card\">\n  <a href=\"/products/gloves\">\n    <img src=\"/images/gloves.jpg\"
+    alt=\"Leather Gloves\">\n    <h3>Leather Gloves</h3>\n    <p class=\"price\">$49.99</p>\n
+    \ </a>\n</div>\n\n    \n      <div class=\"product-card\">\n  <a href=\"/products/socks\">\n
+    \   <img src=\"/images/socks.jpg\" alt=\"Wool Socks\">\n    <h3>Wool Socks</h3>\n
+    \   <p class=\"price\">$19.99</p>\n  </a>\n</div>\n\n    \n      <div class=\"product-card\">\n
+    \ <a href=\"/products/sunglasses\">\n    <img src=\"/images/sunglasses.jpg\" alt=\"Sunglasses\">\n
+    \   <h3>Sunglasses</h3>\n    <p class=\"price\">$79.99</p>\n  </a>\n</div>\n\n
+    \   \n  </div>\n</section>\n\n</main>\n<footer class=\"site-footer\">\n  <div
+    class=\"footer-links\">\n    \n      <a href=\"/about\">About</a>\n    \n      <a
+    href=\"/contact\">Contact</a>\n    \n      <a href=\"/shipping\">Shipping</a>\n
+    \   \n      <a href=\"/returns\">Returns</a>\n    \n  </div>\n  <p>&copy; Acme
+    Store</p>\n</footer>\n</body>\n</html>\n\n"
+- name: bench_theme_collection_page
+  template: |
+    {% render 'theme_header', shop: shop %}
+    {% render 'collection_hero', collection: collection %}
+    <main class="collection-page">
+      {% render 'filter_sidebar', filters: filters, active_filters: active_filters %}
+      <div class="collection-main">
+        {% render 'sort_bar', sort_options: sort_options, current_sort: current_sort, product_count: collection.products.size %}
+        {% render 'product_grid', products: collection.products %}
+        {% render 'pagination', pages: pagination %}
+      </div>
+    </main>
+    {% render 'theme_footer', shop: shop, links: footer_links %}
+  filesystem:
+    theme_header: |
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>{{ shop.name }}</title>
+      </head>
+      <body>
+        <header class="site-header">
+          <div class="logo">{{ shop.name }}</div>
+        </header>
+    collection_hero: |
+      <section class="collection-hero" style="background-image: url('{{ collection.image }}')">
+        <div class="hero-content">
+          <h1>{{ collection.title }}</h1>
+          <p>{{ collection.description }}</p>
+          <span class="product-count">{{ collection.products_count }} products</span>
+        </div>
+      </section>
+    filter_sidebar: |
+      <aside class="filter-sidebar">
+        <h2>Filter By</h2>
+        {% for filter in filters %}
+          <div class="filter-group">
+            <h3>{{ filter.name }}</h3>
+            <ul class="filter-options">
+              {% for value in filter.values %}
+                <li class="filter-option{% if active_filters contains value.value %} active{% endif %}">
+                  <label>
+                    <input type="checkbox" name="filter[{{ filter.name }}]" value="{{ value.value }}"
+                      {% if active_filters contains value.value %}checked{% endif %}>
+                    {{ value.label }}
+                    <span class="count">({{ value.count }})</span>
+                  </label>
+                </li>
+              {% endfor %}
+            </ul>
+          </div>
+        {% endfor %}
+        <button class="btn-clear-filters">Clear All</button>
+      </aside>
+    sort_bar: |
+      <div class="sort-bar">
+        <span class="result-count">{{ product_count }} products</span>
+        <div class="sort-select">
+          <label for="sort">Sort by:</label>
+          <select id="sort" name="sort">
+            {% for option in sort_options %}
+              <option value="{{ option.value }}"{% if current_sort == option.value %} selected{% endif %}>
+                {{ option.label }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="view-toggle">
+          <button class="view-grid active">Grid</button>
+          <button class="view-list">List</button>
+        </div>
+      </div>
+    product_grid: |
+      <div class="product-grid">
+        {% for product in products %}
+          {% render 'collection_product_card', product: product %}
+        {% endfor %}
+      </div>
+    collection_product_card: |
+      <article class="product-card{% unless product.available %} sold-out{% endunless %}">
+        <a href="{{ product.url }}" class="product-link">
+          <div class="product-image">
+            <img src="{{ product.image }}" alt="{{ product.title }}" loading="lazy">
+            {% if product.compare_at_price %}
+              <span class="badge sale">Sale</span>
+            {% endif %}
+            {% unless product.available %}
+              <span class="badge sold-out">Sold Out</span>
+            {% endunless %}
+          </div>
+          <div class="product-details">
+            <p class="vendor">{{ product.vendor }}</p>
+            <h3 class="title">{{ product.title }}</h3>
+            <div class="price">
+              {% if product.compare_at_price %}
+                <span class="compare-price">${{ product.compare_at_price }}</span>
+              {% endif %}
+              <span class="current-price">${{ product.price }}</span>
+            </div>
+            <div class="tags">
+              {% for tag in product.tags %}
+                <span class="tag">{{ tag }}</span>
+              {% endfor %}
+            </div>
+          </div>
+        </a>
+        {% if product.available %}
+          <button class="btn-quick-add" data-id="{{ product.id }}">Quick Add</button>
+        {% endif %}
+      </article>
+    pagination: |
+      <nav class="pagination" aria-label="Pagination">
+        {% if pages.current > 1 %}
+          <a href="?page={{ pages.current | minus: 1 }}" class="prev">Previous</a>
+        {% endif %}
+        <ul class="page-numbers">
+          {% for page in pages.pages %}
+            <li>
+              {% if page == pages.current %}
+                <span class="current" aria-current="page">{{ page }}</span>
+              {% else %}
+                <a href="?page={{ page }}">{{ page }}</a>
+              {% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+        {% if pages.current < pages.total %}
+          <a href="?page={{ pages.current | plus: 1 }}" class="next">Next</a>
+        {% endif %}
+      </nav>
+    theme_footer: |
+      <footer class="site-footer">
+        <div class="footer-links">
+          {% for link in links %}
+            <a href="{{ link.url }}">{{ link.title }}</a>
+          {% endfor %}
+        </div>
+        <p>&copy; {{ shop.name }}</p>
+      </footer>
+      </body>
+      </html>
+  environment:
+    shop:
+      name: Acme Store
+      currency: USD
+      email: support@acme.test
+    collection:
+      title: Men's Outerwear
+      description: Premium jackets and coats for every season
+      image: "/images/outerwear-hero.jpg"
+      products_count: 48
+      products:
+      - id: 1
+        title: Classic Leather Jacket
+        price: 299.99
+        compare_at_price: 399.99
+        image: "/images/leather.jpg"
+        url: "/products/leather-jacket"
+        vendor: Acme Apparel
+        available: true
+        tags:
+        - leather
+        - classic
+      - id: 2
+        title: Bomber Jacket
+        price: 249.99
+        compare_at_price:
+        image: "/images/bomber.jpg"
+        url: "/products/bomber"
+        vendor: Acme Apparel
+        available: true
+        tags:
+        - bomber
+        - casual
+      - id: 3
+        title: Denim Jacket
+        price: 149.99
+        compare_at_price: 179.99
+        image: "/images/denim.jpg"
+        url: "/products/denim-jacket"
+        vendor: Acme Apparel
+        available: true
+        tags:
+        - denim
+        - casual
+      - id: 4
+        title: Wool Peacoat
+        price: 349.99
+        compare_at_price:
+        image: "/images/peacoat.jpg"
+        url: "/products/peacoat"
+        vendor: Acme Apparel
+        available: false
+        tags:
+        - wool
+        - formal
+      - id: 5
+        title: Quilted Vest
+        price: 129.99
+        compare_at_price:
+        image: "/images/vest.jpg"
+        url: "/products/vest"
+        vendor: Acme Apparel
+        available: true
+        tags:
+        - vest
+        - layering
+      - id: 6
+        title: Windbreaker
+        price: 99.99
+        compare_at_price: 129.99
+        image: "/images/windbreaker.jpg"
+        url: "/products/windbreaker"
+        vendor: Acme Apparel
+        available: true
+        tags:
+        - light
+        - athletic
+      - id: 7
+        title: Parka
+        price: 399.99
+        compare_at_price:
+        image: "/images/parka.jpg"
+        url: "/products/parka"
+        vendor: Acme Apparel
+        available: true
+        tags:
+        - winter
+        - heavy
+      - id: 8
+        title: Suede Jacket
+        price: 279.99
+        compare_at_price: 329.99
+        image: "/images/suede.jpg"
+        url: "/products/suede-jacket"
+        vendor: Premium Line
+        available: true
+        tags:
+        - suede
+        - premium
+      - id: 9
+        title: Rain Jacket
+        price: 149.99
+        compare_at_price:
+        image: "/images/rain.jpg"
+        url: "/products/rain-jacket"
+        vendor: Acme Apparel
+        available: true
+        tags:
+        - waterproof
+        - light
+      - id: 10
+        title: Down Jacket
+        price: 279.99
+        compare_at_price:
+        image: "/images/down.jpg"
+        url: "/products/down-jacket"
+        vendor: Acme Apparel
+        available: true
+        tags:
+        - winter
+        - warm
+      - id: 11
+        title: Fleece Jacket
+        price: 89.99
+        compare_at_price:
+        image: "/images/fleece.jpg"
+        url: "/products/fleece"
+        vendor: Acme Apparel
+        available: true
+        tags:
+        - fleece
+        - casual
+      - id: 12
+        title: Blazer
+        price: 199.99
+        compare_at_price: 249.99
+        image: "/images/blazer.jpg"
+        url: "/products/blazer"
+        vendor: Premium Line
+        available: true
+        tags:
+        - formal
+        - business
+    filters:
+    - name: Price
+      values:
+      - label: Under $100
+        value: 0-100
+        count: 2
+      - label: "$100-$200"
+        value: 100-200
+        count: 4
+      - label: "$200-$300"
+        value: 200-300
+        count: 4
+      - label: Over $300
+        value: 300-
+        count: 2
+    - name: Size
+      values:
+      - label: S
+        value: s
+        count: 10
+      - label: M
+        value: m
+        count: 12
+      - label: L
+        value: l
+        count: 11
+      - label: XL
+        value: xl
+        count: 9
+    - name: Color
+      values:
+      - label: Black
+        value: black
+        count: 6
+      - label: Brown
+        value: brown
+        count: 4
+      - label: Navy
+        value: navy
+        count: 3
+      - label: Gray
+        value: gray
+        count: 2
+    - name: Availability
+      values:
+      - label: In Stock
+        value: 'true'
+        count: 11
+      - label: Out of Stock
+        value: 'false'
+        count: 1
+    active_filters:
+    - 100-200
+    sort_options:
+    - label: Featured
+      value: featured
+    - label: 'Price: Low to High'
+      value: price-asc
+    - label: 'Price: High to Low'
+      value: price-desc
+    - label: Newest
+      value: created-desc
+    - label: Best Selling
+      value: best-selling
+    current_sort: featured
+    pagination:
+      current: 1
+      total: 4
+      pages:
+      - 1
+      - 2
+      - 3
+      - 4
+    footer_links:
+    - title: About
+      url: "/about"
+    - title: Contact
+      url: "/contact"
+    - title: Shipping
+      url: "/shipping"
+    - title: Returns
+      url: "/returns"
+  expected: "<!DOCTYPE html>\n<html>\n<head>\n  <title>Acme Store</title>\n</head>\n<body>\n
+    \ <header class=\"site-header\">\n    <div class=\"logo\">Acme Store</div>\n  </header>\n\n<section
+    class=\"collection-hero\" style=\"background-image: url('/images/outerwear-hero.jpg')\">\n
+    \ <div class=\"hero-content\">\n    <h1>Men's Outerwear</h1>\n    <p>Premium jackets
+    and coats for every season</p>\n    <span class=\"product-count\">48 products</span>\n
+    \ </div>\n</section>\n\n<main class=\"collection-page\">\n  <aside class=\"filter-sidebar\">\n
+    \ <h2>Filter By</h2>\n  \n    <div class=\"filter-group\">\n      <h3>Price</h3>\n
+    \     <ul class=\"filter-options\">\n        \n          <li class=\"filter-option\">\n
+    \           <label>\n              <input type=\"checkbox\" name=\"filter[Price]\"
+    value=\"0-100\"\n                >\n              Under $100\n              <span
+    class=\"count\">(2)</span>\n            </label>\n          </li>\n        \n
+    \         <li class=\"filter-option active\">\n            <label>\n              <input
+    type=\"checkbox\" name=\"filter[Price]\" value=\"100-200\"\n                checked>\n
+    \             $100-$200\n              <span class=\"count\">(4)</span>\n            </label>\n
+    \         </li>\n        \n          <li class=\"filter-option\">\n            <label>\n
+    \             <input type=\"checkbox\" name=\"filter[Price]\" value=\"200-300\"\n
+    \               >\n              $200-$300\n              <span class=\"count\">(4)</span>\n
+    \           </label>\n          </li>\n        \n          <li class=\"filter-option\">\n
+    \           <label>\n              <input type=\"checkbox\" name=\"filter[Price]\"
+    value=\"300-\"\n                >\n              Over $300\n              <span
+    class=\"count\">(2)</span>\n            </label>\n          </li>\n        \n
+    \     </ul>\n    </div>\n  \n    <div class=\"filter-group\">\n      <h3>Size</h3>\n
+    \     <ul class=\"filter-options\">\n        \n          <li class=\"filter-option\">\n
+    \           <label>\n              <input type=\"checkbox\" name=\"filter[Size]\"
+    value=\"s\"\n                >\n              S\n              <span class=\"count\">(10)</span>\n
+    \           </label>\n          </li>\n        \n          <li class=\"filter-option\">\n
+    \           <label>\n              <input type=\"checkbox\" name=\"filter[Size]\"
+    value=\"m\"\n                >\n              M\n              <span class=\"count\">(12)</span>\n
+    \           </label>\n          </li>\n        \n          <li class=\"filter-option\">\n
+    \           <label>\n              <input type=\"checkbox\" name=\"filter[Size]\"
+    value=\"l\"\n                >\n              L\n              <span class=\"count\">(11)</span>\n
+    \           </label>\n          </li>\n        \n          <li class=\"filter-option\">\n
+    \           <label>\n              <input type=\"checkbox\" name=\"filter[Size]\"
+    value=\"xl\"\n                >\n              XL\n              <span class=\"count\">(9)</span>\n
+    \           </label>\n          </li>\n        \n      </ul>\n    </div>\n  \n
+    \   <div class=\"filter-group\">\n      <h3>Color</h3>\n      <ul class=\"filter-options\">\n
+    \       \n          <li class=\"filter-option\">\n            <label>\n              <input
+    type=\"checkbox\" name=\"filter[Color]\" value=\"black\"\n                >\n
+    \             Black\n              <span class=\"count\">(6)</span>\n            </label>\n
+    \         </li>\n        \n          <li class=\"filter-option\">\n            <label>\n
+    \             <input type=\"checkbox\" name=\"filter[Color]\" value=\"brown\"\n
+    \               >\n              Brown\n              <span class=\"count\">(4)</span>\n
+    \           </label>\n          </li>\n        \n          <li class=\"filter-option\">\n
+    \           <label>\n              <input type=\"checkbox\" name=\"filter[Color]\"
+    value=\"navy\"\n                >\n              Navy\n              <span class=\"count\">(3)</span>\n
+    \           </label>\n          </li>\n        \n          <li class=\"filter-option\">\n
+    \           <label>\n              <input type=\"checkbox\" name=\"filter[Color]\"
+    value=\"gray\"\n                >\n              Gray\n              <span class=\"count\">(2)</span>\n
+    \           </label>\n          </li>\n        \n      </ul>\n    </div>\n  \n
+    \   <div class=\"filter-group\">\n      <h3>Availability</h3>\n      <ul class=\"filter-options\">\n
+    \       \n          <li class=\"filter-option\">\n            <label>\n              <input
+    type=\"checkbox\" name=\"filter[Availability]\" value=\"true\"\n                >\n
+    \             In Stock\n              <span class=\"count\">(11)</span>\n            </label>\n
+    \         </li>\n        \n          <li class=\"filter-option\">\n            <label>\n
+    \             <input type=\"checkbox\" name=\"filter[Availability]\" value=\"false\"\n
+    \               >\n              Out of Stock\n              <span class=\"count\">(1)</span>\n
+    \           </label>\n          </li>\n        \n      </ul>\n    </div>\n  \n
+    \ <button class=\"btn-clear-filters\">Clear All</button>\n</aside>\n\n  <div class=\"collection-main\">\n
+    \   <div class=\"sort-bar\">\n  <span class=\"result-count\">12 products</span>\n
+    \ <div class=\"sort-select\">\n    <label for=\"sort\">Sort by:</label>\n    <select
+    id=\"sort\" name=\"sort\">\n      \n        <option value=\"featured\" selected>\n
+    \         Featured\n        </option>\n      \n        <option value=\"price-asc\">\n
+    \         Price: Low to High\n        </option>\n      \n        <option value=\"price-desc\">\n
+    \         Price: High to Low\n        </option>\n      \n        <option value=\"created-desc\">\n
+    \         Newest\n        </option>\n      \n        <option value=\"best-selling\">\n
+    \         Best Selling\n        </option>\n      \n    </select>\n  </div>\n  <div
+    class=\"view-toggle\">\n    <button class=\"view-grid active\">Grid</button>\n
+    \   <button class=\"view-list\">List</button>\n  </div>\n</div>\n\n    <div class=\"product-grid\">\n
+    \ \n    <article class=\"product-card\">\n  <a href=\"/products/leather-jacket\"
+    class=\"product-link\">\n    <div class=\"product-image\">\n      <img src=\"/images/leather.jpg\"
+    alt=\"Classic Leather Jacket\" loading=\"lazy\">\n      \n        <span class=\"badge
+    sale\">Sale</span>\n      \n      \n    </div>\n    <div class=\"product-details\">\n
+    \     <p class=\"vendor\">Acme Apparel</p>\n      <h3 class=\"title\">Classic
+    Leather Jacket</h3>\n      <div class=\"price\">\n        \n          <span class=\"compare-price\">$399.99</span>\n
+    \       \n        <span class=\"current-price\">$299.99</span>\n      </div>\n
+    \     <div class=\"tags\">\n        \n          <span class=\"tag\">leather</span>\n
+    \       \n          <span class=\"tag\">classic</span>\n        \n      </div>\n
+    \   </div>\n  </a>\n  \n    <button class=\"btn-quick-add\" data-id=\"1\">Quick
+    Add</button>\n  \n</article>\n\n  \n    <article class=\"product-card\">\n  <a
+    href=\"/products/bomber\" class=\"product-link\">\n    <div class=\"product-image\">\n
+    \     <img src=\"/images/bomber.jpg\" alt=\"Bomber Jacket\" loading=\"lazy\">\n
+    \     \n      \n    </div>\n    <div class=\"product-details\">\n      <p class=\"vendor\">Acme
+    Apparel</p>\n      <h3 class=\"title\">Bomber Jacket</h3>\n      <div class=\"price\">\n
+    \       \n        <span class=\"current-price\">$249.99</span>\n      </div>\n
+    \     <div class=\"tags\">\n        \n          <span class=\"tag\">bomber</span>\n
+    \       \n          <span class=\"tag\">casual</span>\n        \n      </div>\n
+    \   </div>\n  </a>\n  \n    <button class=\"btn-quick-add\" data-id=\"2\">Quick
+    Add</button>\n  \n</article>\n\n  \n    <article class=\"product-card\">\n  <a
+    href=\"/products/denim-jacket\" class=\"product-link\">\n    <div class=\"product-image\">\n
+    \     <img src=\"/images/denim.jpg\" alt=\"Denim Jacket\" loading=\"lazy\">\n
+    \     \n        <span class=\"badge sale\">Sale</span>\n      \n      \n    </div>\n
+    \   <div class=\"product-details\">\n      <p class=\"vendor\">Acme Apparel</p>\n
+    \     <h3 class=\"title\">Denim Jacket</h3>\n      <div class=\"price\">\n        \n
+    \         <span class=\"compare-price\">$179.99</span>\n        \n        <span
+    class=\"current-price\">$149.99</span>\n      </div>\n      <div class=\"tags\">\n
+    \       \n          <span class=\"tag\">denim</span>\n        \n          <span
+    class=\"tag\">casual</span>\n        \n      </div>\n    </div>\n  </a>\n  \n
+    \   <button class=\"btn-quick-add\" data-id=\"3\">Quick Add</button>\n  \n</article>\n\n
+    \ \n    <article class=\"product-card sold-out\">\n  <a href=\"/products/peacoat\"
+    class=\"product-link\">\n    <div class=\"product-image\">\n      <img src=\"/images/peacoat.jpg\"
+    alt=\"Wool Peacoat\" loading=\"lazy\">\n      \n      \n        <span class=\"badge
+    sold-out\">Sold Out</span>\n      \n    </div>\n    <div class=\"product-details\">\n
+    \     <p class=\"vendor\">Acme Apparel</p>\n      <h3 class=\"title\">Wool Peacoat</h3>\n
+    \     <div class=\"price\">\n        \n        <span class=\"current-price\">$349.99</span>\n
+    \     </div>\n      <div class=\"tags\">\n        \n          <span class=\"tag\">wool</span>\n
+    \       \n          <span class=\"tag\">formal</span>\n        \n      </div>\n
+    \   </div>\n  </a>\n  \n</article>\n\n  \n    <article class=\"product-card\">\n
+    \ <a href=\"/products/vest\" class=\"product-link\">\n    <div class=\"product-image\">\n
+    \     <img src=\"/images/vest.jpg\" alt=\"Quilted Vest\" loading=\"lazy\">\n      \n
+    \     \n    </div>\n    <div class=\"product-details\">\n      <p class=\"vendor\">Acme
+    Apparel</p>\n      <h3 class=\"title\">Quilted Vest</h3>\n      <div class=\"price\">\n
+    \       \n        <span class=\"current-price\">$129.99</span>\n      </div>\n
+    \     <div class=\"tags\">\n        \n          <span class=\"tag\">vest</span>\n
+    \       \n          <span class=\"tag\">layering</span>\n        \n      </div>\n
+    \   </div>\n  </a>\n  \n    <button class=\"btn-quick-add\" data-id=\"5\">Quick
+    Add</button>\n  \n</article>\n\n  \n    <article class=\"product-card\">\n  <a
+    href=\"/products/windbreaker\" class=\"product-link\">\n    <div class=\"product-image\">\n
+    \     <img src=\"/images/windbreaker.jpg\" alt=\"Windbreaker\" loading=\"lazy\">\n
+    \     \n        <span class=\"badge sale\">Sale</span>\n      \n      \n    </div>\n
+    \   <div class=\"product-details\">\n      <p class=\"vendor\">Acme Apparel</p>\n
+    \     <h3 class=\"title\">Windbreaker</h3>\n      <div class=\"price\">\n        \n
+    \         <span class=\"compare-price\">$129.99</span>\n        \n        <span
+    class=\"current-price\">$99.99</span>\n      </div>\n      <div class=\"tags\">\n
+    \       \n          <span class=\"tag\">light</span>\n        \n          <span
+    class=\"tag\">athletic</span>\n        \n      </div>\n    </div>\n  </a>\n  \n
+    \   <button class=\"btn-quick-add\" data-id=\"6\">Quick Add</button>\n  \n</article>\n\n
+    \ \n    <article class=\"product-card\">\n  <a href=\"/products/parka\" class=\"product-link\">\n
+    \   <div class=\"product-image\">\n      <img src=\"/images/parka.jpg\" alt=\"Parka\"
+    loading=\"lazy\">\n      \n      \n    </div>\n    <div class=\"product-details\">\n
+    \     <p class=\"vendor\">Acme Apparel</p>\n      <h3 class=\"title\">Parka</h3>\n
+    \     <div class=\"price\">\n        \n        <span class=\"current-price\">$399.99</span>\n
+    \     </div>\n      <div class=\"tags\">\n        \n          <span class=\"tag\">winter</span>\n
+    \       \n          <span class=\"tag\">heavy</span>\n        \n      </div>\n
+    \   </div>\n  </a>\n  \n    <button class=\"btn-quick-add\" data-id=\"7\">Quick
+    Add</button>\n  \n</article>\n\n  \n    <article class=\"product-card\">\n  <a
+    href=\"/products/suede-jacket\" class=\"product-link\">\n    <div class=\"product-image\">\n
+    \     <img src=\"/images/suede.jpg\" alt=\"Suede Jacket\" loading=\"lazy\">\n
+    \     \n        <span class=\"badge sale\">Sale</span>\n      \n      \n    </div>\n
+    \   <div class=\"product-details\">\n      <p class=\"vendor\">Premium Line</p>\n
+    \     <h3 class=\"title\">Suede Jacket</h3>\n      <div class=\"price\">\n        \n
+    \         <span class=\"compare-price\">$329.99</span>\n        \n        <span
+    class=\"current-price\">$279.99</span>\n      </div>\n      <div class=\"tags\">\n
+    \       \n          <span class=\"tag\">suede</span>\n        \n          <span
+    class=\"tag\">premium</span>\n        \n      </div>\n    </div>\n  </a>\n  \n
+    \   <button class=\"btn-quick-add\" data-id=\"8\">Quick Add</button>\n  \n</article>\n\n
+    \ \n    <article class=\"product-card\">\n  <a href=\"/products/rain-jacket\"
+    class=\"product-link\">\n    <div class=\"product-image\">\n      <img src=\"/images/rain.jpg\"
+    alt=\"Rain Jacket\" loading=\"lazy\">\n      \n      \n    </div>\n    <div class=\"product-details\">\n
+    \     <p class=\"vendor\">Acme Apparel</p>\n      <h3 class=\"title\">Rain Jacket</h3>\n
+    \     <div class=\"price\">\n        \n        <span class=\"current-price\">$149.99</span>\n
+    \     </div>\n      <div class=\"tags\">\n        \n          <span class=\"tag\">waterproof</span>\n
+    \       \n          <span class=\"tag\">light</span>\n        \n      </div>\n
+    \   </div>\n  </a>\n  \n    <button class=\"btn-quick-add\" data-id=\"9\">Quick
+    Add</button>\n  \n</article>\n\n  \n    <article class=\"product-card\">\n  <a
+    href=\"/products/down-jacket\" class=\"product-link\">\n    <div class=\"product-image\">\n
+    \     <img src=\"/images/down.jpg\" alt=\"Down Jacket\" loading=\"lazy\">\n      \n
+    \     \n    </div>\n    <div class=\"product-details\">\n      <p class=\"vendor\">Acme
+    Apparel</p>\n      <h3 class=\"title\">Down Jacket</h3>\n      <div class=\"price\">\n
+    \       \n        <span class=\"current-price\">$279.99</span>\n      </div>\n
+    \     <div class=\"tags\">\n        \n          <span class=\"tag\">winter</span>\n
+    \       \n          <span class=\"tag\">warm</span>\n        \n      </div>\n
+    \   </div>\n  </a>\n  \n    <button class=\"btn-quick-add\" data-id=\"10\">Quick
+    Add</button>\n  \n</article>\n\n  \n    <article class=\"product-card\">\n  <a
+    href=\"/products/fleece\" class=\"product-link\">\n    <div class=\"product-image\">\n
+    \     <img src=\"/images/fleece.jpg\" alt=\"Fleece Jacket\" loading=\"lazy\">\n
+    \     \n      \n    </div>\n    <div class=\"product-details\">\n      <p class=\"vendor\">Acme
+    Apparel</p>\n      <h3 class=\"title\">Fleece Jacket</h3>\n      <div class=\"price\">\n
+    \       \n        <span class=\"current-price\">$89.99</span>\n      </div>\n
+    \     <div class=\"tags\">\n        \n          <span class=\"tag\">fleece</span>\n
+    \       \n          <span class=\"tag\">casual</span>\n        \n      </div>\n
+    \   </div>\n  </a>\n  \n    <button class=\"btn-quick-add\" data-id=\"11\">Quick
+    Add</button>\n  \n</article>\n\n  \n    <article class=\"product-card\">\n  <a
+    href=\"/products/blazer\" class=\"product-link\">\n    <div class=\"product-image\">\n
+    \     <img src=\"/images/blazer.jpg\" alt=\"Blazer\" loading=\"lazy\">\n      \n
+    \       <span class=\"badge sale\">Sale</span>\n      \n      \n    </div>\n    <div
+    class=\"product-details\">\n      <p class=\"vendor\">Premium Line</p>\n      <h3
+    class=\"title\">Blazer</h3>\n      <div class=\"price\">\n        \n          <span
+    class=\"compare-price\">$249.99</span>\n        \n        <span class=\"current-price\">$199.99</span>\n
+    \     </div>\n      <div class=\"tags\">\n        \n          <span class=\"tag\">formal</span>\n
+    \       \n          <span class=\"tag\">business</span>\n        \n      </div>\n
+    \   </div>\n  </a>\n  \n    <button class=\"btn-quick-add\" data-id=\"12\">Quick
+    Add</button>\n  \n</article>\n\n  \n</div>\n\n    <nav class=\"pagination\" aria-label=\"Pagination\">\n
+    \ \n  <ul class=\"page-numbers\">\n    \n      <li>\n        \n          <span
+    class=\"current\" aria-current=\"page\">1</span>\n        \n      </li>\n    \n
+    \     <li>\n        \n          <a href=\"?page=2\">2</a>\n        \n      </li>\n
+    \   \n      <li>\n        \n          <a href=\"?page=3\">3</a>\n        \n      </li>\n
+    \   \n      <li>\n        \n          <a href=\"?page=4\">4</a>\n        \n      </li>\n
+    \   \n  </ul>\n  \n    <a href=\"?page=2\" class=\"next\">Next</a>\n  \n</nav>\n\n
+    \ </div>\n</main>\n<footer class=\"site-footer\">\n  <div class=\"footer-links\">\n
+    \   \n      <a href=\"/about\">About</a>\n    \n      <a href=\"/contact\">Contact</a>\n
+    \   \n      <a href=\"/shipping\">Shipping</a>\n    \n      <a href=\"/returns\">Returns</a>\n
+    \   \n  </div>\n  <p>&copy; Acme Store</p>\n</footer>\n</body>\n</html>\n\n"

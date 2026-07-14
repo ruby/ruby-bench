@@ -1,0 +1,13 @@
+# frozen_string_literal: true
+
+source "https://rubygems.org"
+git_source(:github) do |repo_name|
+  "https://github.com/#{repo_name}.git"
+end
+
+# LiquidIL compiles Liquid to Ruby; this benchmark renders its generated Ruby.
+# See extract.rb for how generated/ is produced from templates.yml.
+gem "liquid-il", github: "tobi/liquid-il", ref: "1b07d162068f1ed2becec1bafd29f36f52dbbd5b"
+
+gem "base64"
+gem "bigdecimal"

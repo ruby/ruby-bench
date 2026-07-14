@@ -1,0 +1,329 @@
+{
+  "shop": {
+    "name": "Acme Store",
+    "currency": "USD",
+    "email": "support@acme.test"
+  },
+  "collection": {
+    "title": "Men's Outerwear",
+    "description": "Premium jackets and coats for every season",
+    "image": "/images/outerwear-hero.jpg",
+    "products_count": 48,
+    "products": [
+      {
+        "id": 1,
+        "title": "Classic Leather Jacket",
+        "price": 299.99,
+        "compare_at_price": 399.99,
+        "image": "/images/leather.jpg",
+        "url": "/products/leather-jacket",
+        "vendor": "Acme Apparel",
+        "available": true,
+        "tags": [
+          "leather",
+          "classic"
+        ]
+      },
+      {
+        "id": 2,
+        "title": "Bomber Jacket",
+        "price": 249.99,
+        "compare_at_price": null,
+        "image": "/images/bomber.jpg",
+        "url": "/products/bomber",
+        "vendor": "Acme Apparel",
+        "available": true,
+        "tags": [
+          "bomber",
+          "casual"
+        ]
+      },
+      {
+        "id": 3,
+        "title": "Denim Jacket",
+        "price": 149.99,
+        "compare_at_price": 179.99,
+        "image": "/images/denim.jpg",
+        "url": "/products/denim-jacket",
+        "vendor": "Acme Apparel",
+        "available": true,
+        "tags": [
+          "denim",
+          "casual"
+        ]
+      },
+      {
+        "id": 4,
+        "title": "Wool Peacoat",
+        "price": 349.99,
+        "compare_at_price": null,
+        "image": "/images/peacoat.jpg",
+        "url": "/products/peacoat",
+        "vendor": "Acme Apparel",
+        "available": false,
+        "tags": [
+          "wool",
+          "formal"
+        ]
+      },
+      {
+        "id": 5,
+        "title": "Quilted Vest",
+        "price": 129.99,
+        "compare_at_price": null,
+        "image": "/images/vest.jpg",
+        "url": "/products/vest",
+        "vendor": "Acme Apparel",
+        "available": true,
+        "tags": [
+          "vest",
+          "layering"
+        ]
+      },
+      {
+        "id": 6,
+        "title": "Windbreaker",
+        "price": 99.99,
+        "compare_at_price": 129.99,
+        "image": "/images/windbreaker.jpg",
+        "url": "/products/windbreaker",
+        "vendor": "Acme Apparel",
+        "available": true,
+        "tags": [
+          "light",
+          "athletic"
+        ]
+      },
+      {
+        "id": 7,
+        "title": "Parka",
+        "price": 399.99,
+        "compare_at_price": null,
+        "image": "/images/parka.jpg",
+        "url": "/products/parka",
+        "vendor": "Acme Apparel",
+        "available": true,
+        "tags": [
+          "winter",
+          "heavy"
+        ]
+      },
+      {
+        "id": 8,
+        "title": "Suede Jacket",
+        "price": 279.99,
+        "compare_at_price": 329.99,
+        "image": "/images/suede.jpg",
+        "url": "/products/suede-jacket",
+        "vendor": "Premium Line",
+        "available": true,
+        "tags": [
+          "suede",
+          "premium"
+        ]
+      },
+      {
+        "id": 9,
+        "title": "Rain Jacket",
+        "price": 149.99,
+        "compare_at_price": null,
+        "image": "/images/rain.jpg",
+        "url": "/products/rain-jacket",
+        "vendor": "Acme Apparel",
+        "available": true,
+        "tags": [
+          "waterproof",
+          "light"
+        ]
+      },
+      {
+        "id": 10,
+        "title": "Down Jacket",
+        "price": 279.99,
+        "compare_at_price": null,
+        "image": "/images/down.jpg",
+        "url": "/products/down-jacket",
+        "vendor": "Acme Apparel",
+        "available": true,
+        "tags": [
+          "winter",
+          "warm"
+        ]
+      },
+      {
+        "id": 11,
+        "title": "Fleece Jacket",
+        "price": 89.99,
+        "compare_at_price": null,
+        "image": "/images/fleece.jpg",
+        "url": "/products/fleece",
+        "vendor": "Acme Apparel",
+        "available": true,
+        "tags": [
+          "fleece",
+          "casual"
+        ]
+      },
+      {
+        "id": 12,
+        "title": "Blazer",
+        "price": 199.99,
+        "compare_at_price": 249.99,
+        "image": "/images/blazer.jpg",
+        "url": "/products/blazer",
+        "vendor": "Premium Line",
+        "available": true,
+        "tags": [
+          "formal",
+          "business"
+        ]
+      }
+    ]
+  },
+  "filters": [
+    {
+      "name": "Price",
+      "values": [
+        {
+          "label": "Under $100",
+          "value": "0-100",
+          "count": 2
+        },
+        {
+          "label": "$100-$200",
+          "value": "100-200",
+          "count": 4
+        },
+        {
+          "label": "$200-$300",
+          "value": "200-300",
+          "count": 4
+        },
+        {
+          "label": "Over $300",
+          "value": "300-",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "name": "Size",
+      "values": [
+        {
+          "label": "S",
+          "value": "s",
+          "count": 10
+        },
+        {
+          "label": "M",
+          "value": "m",
+          "count": 12
+        },
+        {
+          "label": "L",
+          "value": "l",
+          "count": 11
+        },
+        {
+          "label": "XL",
+          "value": "xl",
+          "count": 9
+        }
+      ]
+    },
+    {
+      "name": "Color",
+      "values": [
+        {
+          "label": "Black",
+          "value": "black",
+          "count": 6
+        },
+        {
+          "label": "Brown",
+          "value": "brown",
+          "count": 4
+        },
+        {
+          "label": "Navy",
+          "value": "navy",
+          "count": 3
+        },
+        {
+          "label": "Gray",
+          "value": "gray",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "name": "Availability",
+      "values": [
+        {
+          "label": "In Stock",
+          "value": "true",
+          "count": 11
+        },
+        {
+          "label": "Out of Stock",
+          "value": "false",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "active_filters": [
+    "100-200"
+  ],
+  "sort_options": [
+    {
+      "label": "Featured",
+      "value": "featured"
+    },
+    {
+      "label": "Price: Low to High",
+      "value": "price-asc"
+    },
+    {
+      "label": "Price: High to Low",
+      "value": "price-desc"
+    },
+    {
+      "label": "Newest",
+      "value": "created-desc"
+    },
+    {
+      "label": "Best Selling",
+      "value": "best-selling"
+    }
+  ],
+  "current_sort": "featured",
+  "pagination": {
+    "current": 1,
+    "total": 4,
+    "pages": [
+      1,
+      2,
+      3,
+      4
+    ]
+  },
+  "footer_links": [
+    {
+      "title": "About",
+      "url": "/about"
+    },
+    {
+      "title": "Contact",
+      "url": "/contact"
+    },
+    {
+      "title": "Shipping",
+      "url": "/shipping"
+    },
+    {
+      "title": "Returns",
+      "url": "/returns"
+    }
+  ]
+}

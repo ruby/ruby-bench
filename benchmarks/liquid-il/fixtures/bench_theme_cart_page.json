@@ -1,0 +1,140 @@
+{
+  "shop": {
+    "name": "Acme Store",
+    "currency": "USD",
+    "email": "support@acme.test"
+  },
+  "cart": {
+    "item_count": 5,
+    "total_price": 549.95,
+    "items": [
+      {
+        "id": 1,
+        "title": "Classic Leather Jacket",
+        "variant_title": "M / Black",
+        "price": 299.99,
+        "quantity": 1,
+        "line_price": 299.99,
+        "image": "/images/jacket.jpg",
+        "url": "/products/jacket",
+        "sku": "LJ-BLK-M",
+        "properties": {
+          "gift_wrap": "Yes",
+          "gift_message": "Happy Birthday!"
+        }
+      },
+      {
+        "id": 2,
+        "title": "Cotton T-Shirt",
+        "variant_title": "L / White",
+        "price": 29.99,
+        "quantity": 3,
+        "line_price": 89.97,
+        "image": "/images/tshirt.jpg",
+        "url": "/products/tshirt",
+        "sku": "TS-WHT-L",
+        "properties": {}
+      },
+      {
+        "id": 3,
+        "title": "Wool Beanie",
+        "variant_title": "One Size / Navy",
+        "price": 24.99,
+        "quantity": 2,
+        "line_price": 49.98,
+        "image": "/images/beanie.jpg",
+        "url": "/products/beanie",
+        "sku": "BN-NVY-OS",
+        "properties": {}
+      },
+      {
+        "id": 4,
+        "title": "Leather Belt",
+        "variant_title": "34 / Brown",
+        "price": 59.99,
+        "quantity": 1,
+        "line_price": 59.99,
+        "image": "/images/belt.jpg",
+        "url": "/products/belt",
+        "sku": "BT-BRN-34",
+        "properties": {}
+      },
+      {
+        "id": 5,
+        "title": "Silk Scarf",
+        "variant_title": "One Size / Burgundy",
+        "price": 49.99,
+        "quantity": 1,
+        "line_price": 49.99,
+        "image": "/images/scarf.jpg",
+        "url": "/products/scarf",
+        "sku": "SC-BUR-OS",
+        "properties": {
+          "monogram": "ABC"
+        }
+      }
+    ],
+    "discounts": [
+      {
+        "code": "SAVE10",
+        "amount": 54.99,
+        "title": "10% Off"
+      }
+    ]
+  },
+  "shipping_rates": [
+    {
+      "name": "Standard Shipping",
+      "price": 5.99,
+      "delivery": "5-7 business days"
+    },
+    {
+      "name": "Express Shipping",
+      "price": 15.99,
+      "delivery": "2-3 business days"
+    },
+    {
+      "name": "Overnight",
+      "price": 29.99,
+      "delivery": "Next business day"
+    }
+  ],
+  "recommendations": [
+    {
+      "title": "Leather Gloves",
+      "price": 49.99,
+      "image": "/images/gloves.jpg",
+      "url": "/products/gloves"
+    },
+    {
+      "title": "Wool Socks",
+      "price": 19.99,
+      "image": "/images/socks.jpg",
+      "url": "/products/socks"
+    },
+    {
+      "title": "Sunglasses",
+      "price": 79.99,
+      "image": "/images/sunglasses.jpg",
+      "url": "/products/sunglasses"
+    }
+  ],
+  "footer_links": [
+    {
+      "title": "About",
+      "url": "/about"
+    },
+    {
+      "title": "Contact",
+      "url": "/contact"
+    },
+    {
+      "title": "Shipping",
+      "url": "/shipping"
+    },
+    {
+      "title": "Returns",
+      "url": "/returns"
+    }
+  ]
+}
