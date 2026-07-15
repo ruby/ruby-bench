@@ -25,7 +25,7 @@ CASES.each { |mod, assigns| raise "empty render for #{mod}" if mod.render(assign
 run_benchmark(150) do
   # Each render is quick; render the whole template set several times per
   # iteration to reduce time-measurement noise (mirrors liquid-render).
-  100.times do
+  1000.times do
     CASES.each { |mod, assigns| mod.render(assigns) }
   end
 end
