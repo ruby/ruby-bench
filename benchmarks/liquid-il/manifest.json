@@ -1,0 +1,42 @@
+[
+  {
+    "spec": "bench_simple_product_listing",
+    "module": "LiquidILBenchBenchSimpleProductListing",
+    "ruby_bytes": 2249
+  },
+  {
+    "spec": "bench_render_with_params",
+    "module": "LiquidILBenchBenchRenderWithParams",
+    "ruby_bytes": 1684
+  },
+  {
+    "spec": "bench_render_for_loop",
+    "module": "LiquidILBenchBenchRenderForLoop",
+    "ruby_bytes": 1486
+  },
+  {
+    "spec": "bench_notification_center",
+    "module": "LiquidILBenchBenchNotificationCenter",
+    "ruby_bytes": 6449
+  },
+  {
+    "spec": "bench_ecommerce_product_page",
+    "module": "LiquidILBenchBenchEcommerceProductPage",
+    "ruby_bytes": 4510
+  },
+  {
+    "spec": "bench_theme_product_page",
+    "module": "LiquidILBenchBenchThemeProductPage",
+    "ruby_bytes": 11008
+  },
+  {
+    "spec": "bench_theme_cart_page",
+    "module": "LiquidILBenchBenchThemeCartPage",
+    "ruby_bytes": 8886
+  },
+  {
+    "spec": "bench_theme_collection_page",
+    "module": "LiquidILBenchBenchThemeCollectionPage",
+    "ruby_bytes": 9026
+  }
+]

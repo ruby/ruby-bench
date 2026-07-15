@@ -19,6 +19,9 @@ liquid-c:
 liquid-compile:
   desc: compiles a chosen-for-profiling Liquid theme repeatedly.
   category: headline
+liquid-il:
+  desc: renders LiquidIL-generated Ruby for a set of Liquid templates repeatedly (Liquid compiled to standalone Ruby).
+  category: headline
 liquid-render:
   desc: renders a chosen-for-profiling Liquid theme repeatedly.
   category: headline

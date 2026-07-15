@@ -1,0 +1,112 @@
+{
+  "notifications": [
+    {
+      "type": "order",
+      "order_id": "ORD-001",
+      "status": "confirmed",
+      "total": 149.99,
+      "items": 3,
+      "date": "2024-01-15"
+    },
+    {
+      "type": "shipping",
+      "order_id": "ORD-002",
+      "carrier": "FedEx",
+      "tracking": "1234567890",
+      "eta": "Jan 18"
+    },
+    {
+      "type": "review",
+      "product": "Leather Jacket",
+      "customer": "Alice",
+      "rating": 5,
+      "snippet": "Amazing quality!"
+    },
+    {
+      "type": "promo",
+      "code": "SAVE20",
+      "discount": "20%",
+      "expires": "Jan 31",
+      "min_purchase": 50
+    },
+    {
+      "type": "stock",
+      "product": "Blue Widget",
+      "sku": "BW-001",
+      "status": "back_in_stock",
+      "quantity": 25
+    },
+    {
+      "type": "order",
+      "order_id": "ORD-003",
+      "status": "processing",
+      "total": 89.5,
+      "items": 2,
+      "date": "2024-01-16"
+    },
+    {
+      "type": "shipping",
+      "order_id": "ORD-001",
+      "carrier": "UPS",
+      "tracking": "9876543210",
+      "eta": "Jan 17"
+    },
+    {
+      "type": "review",
+      "product": "Cotton T-Shirt",
+      "customer": "Bob",
+      "rating": 4,
+      "snippet": "Great fit"
+    },
+    {
+      "type": "promo",
+      "code": "FREESHIP",
+      "discount": "Free Shipping",
+      "expires": "Feb 1",
+      "min_purchase": 75
+    },
+    {
+      "type": "stock",
+      "product": "Red Scarf",
+      "sku": "RS-002",
+      "status": "low_stock",
+      "quantity": 3
+    },
+    {
+      "type": "order",
+      "order_id": "ORD-004",
+      "status": "shipped",
+      "total": 299.0,
+      "items": 1,
+      "date": "2024-01-14"
+    },
+    {
+      "type": "shipping",
+      "order_id": "ORD-004",
+      "carrier": "USPS",
+      "tracking": "5555555555",
+      "eta": "Jan 19"
+    },
+    {
+      "type": "review",
+      "product": "Wool Sweater",
+      "customer": "Carol",
+      "rating": 5,
+      "snippet": "Perfect for winter"
+    },
+    {
+      "type": "promo",
+      "code": "VIP25",
+      "discount": "25%",
+      "expires": "Jan 20",
+      "min_purchase": 100
+    },
+    {
+      "type": "stock",
+      "product": "Green Hat",
+      "sku": "GH-003",
+      "status": "back_in_stock",
+      "quantity": 50
+    }
+  ]
+}

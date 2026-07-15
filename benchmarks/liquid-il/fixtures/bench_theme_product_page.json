@@ -1,0 +1,207 @@
+{
+  "shop": {
+    "name": "Acme Store",
+    "currency": "USD",
+    "email": "support@acme.test"
+  },
+  "product": {
+    "id": 12345,
+    "title": "Classic Leather Jacket",
+    "vendor": "Acme Apparel",
+    "type": "Outerwear",
+    "price": 299.99,
+    "compare_at_price": 399.99,
+    "description": "Premium quality genuine leather jacket with satin lining. Features two front pockets and an interior pocket.",
+    "sku": "LJ-BLK-M",
+    "available": true,
+    "tags": [
+      "leather",
+      "jacket",
+      "outerwear",
+      "premium"
+    ],
+    "images": [
+      {
+        "src": "/images/jacket-front.jpg",
+        "alt": "Front view"
+      },
+      {
+        "src": "/images/jacket-back.jpg",
+        "alt": "Back view"
+      },
+      {
+        "src": "/images/jacket-detail.jpg",
+        "alt": "Detail view"
+      },
+      {
+        "src": "/images/jacket-pocket.jpg",
+        "alt": "Pocket detail"
+      }
+    ],
+    "options": [
+      {
+        "name": "Size",
+        "values": [
+          "S",
+          "M",
+          "L",
+          "XL"
+        ]
+      },
+      {
+        "name": "Color",
+        "values": [
+          "Black",
+          "Brown",
+          "Navy"
+        ]
+      }
+    ],
+    "features": [
+      "100% genuine leather",
+      "Satin lining",
+      "YKK zippers",
+      "Two exterior pockets",
+      "One interior pocket"
+    ],
+    "care": [
+      "Dry clean only",
+      "Store on padded hanger",
+      "Keep away from heat"
+    ]
+  },
+  "variants": [
+    {
+      "id": 1,
+      "title": "S / Black",
+      "price": 299.99,
+      "available": true,
+      "sku": "LJ-BLK-S"
+    },
+    {
+      "id": 2,
+      "title": "M / Black",
+      "price": 299.99,
+      "available": true,
+      "sku": "LJ-BLK-M"
+    },
+    {
+      "id": 3,
+      "title": "L / Black",
+      "price": 299.99,
+      "available": false,
+      "sku": "LJ-BLK-L"
+    },
+    {
+      "id": 4,
+      "title": "XL / Black",
+      "price": 299.99,
+      "available": true,
+      "sku": "LJ-BLK-XL"
+    },
+    {
+      "id": 5,
+      "title": "S / Brown",
+      "price": 299.99,
+      "available": true,
+      "sku": "LJ-BRN-S"
+    },
+    {
+      "id": 6,
+      "title": "M / Brown",
+      "price": 299.99,
+      "available": true,
+      "sku": "LJ-BRN-M"
+    },
+    {
+      "id": 7,
+      "title": "L / Brown",
+      "price": 299.99,
+      "available": true,
+      "sku": "LJ-BRN-L"
+    },
+    {
+      "id": 8,
+      "title": "XL / Brown",
+      "price": 299.99,
+      "available": false,
+      "sku": "LJ-BRN-XL"
+    }
+  ],
+  "breadcrumbs": [
+    {
+      "title": "Home",
+      "url": "/"
+    },
+    {
+      "title": "Apparel",
+      "url": "/collections/apparel"
+    },
+    {
+      "title": "Outerwear",
+      "url": "/collections/outerwear"
+    },
+    {
+      "title": "Classic Leather Jacket",
+      "url": null
+    }
+  ],
+  "related_products": [
+    {
+      "title": "Bomber Jacket",
+      "price": 249.99,
+      "image": "/images/bomber.jpg",
+      "url": "/products/bomber"
+    },
+    {
+      "title": "Denim Jacket",
+      "price": 149.99,
+      "image": "/images/denim.jpg",
+      "url": "/products/denim"
+    },
+    {
+      "title": "Suede Jacket",
+      "price": 279.99,
+      "image": "/images/suede.jpg",
+      "url": "/products/suede"
+    },
+    {
+      "title": "Windbreaker",
+      "price": 99.99,
+      "image": "/images/wind.jpg",
+      "url": "/products/windbreaker"
+    }
+  ],
+  "recent_products": [
+    {
+      "title": "Wool Sweater",
+      "price": 89.99,
+      "image": "/images/sweater.jpg",
+      "url": "/products/sweater"
+    },
+    {
+      "title": "Cotton T-Shirt",
+      "price": 29.99,
+      "image": "/images/tshirt.jpg",
+      "url": "/products/tshirt"
+    }
+  ],
+  "footer_links": [
+    {
+      "title": "About",
+      "url": "/about"
+    },
+    {
+      "title": "Contact",
+      "url": "/contact"
+    },
+    {
+      "title": "Shipping",
+      "url": "/shipping"
+    },
+    {
+      "title": "Returns",
+      "url": "/returns"
+    }
+  ]
+}
