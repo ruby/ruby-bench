@@ -84,6 +84,41 @@ describe BenchmarkRunner::CLI do
     end
   end
 
+  describe '#build_output_sections' do
+    it 'splits text summary tables by harness in sorted benchmark order' do
+      args = create_args
+      cli = BenchmarkRunner::CLI.new(args)
+      bench_data = {
+        'ruby' => {
+          'fib' => {
+            'warmup' => [],
+            'bench' => [0.1],
+            'rss' => 10 * 1024 * 1024
+          },
+          'symbol-name-ractor' => {
+            'warmup' => [],
+            'bench' => [1.0, 2.0],
+            'bench_by_ractors' => { '0' => [1.0], '2' => [2.0] },
+            'rss' => 10 * 1024 * 1024
+          }
+        }
+      }
+      bench_harnesses = {
+        'fib' => 'harness',
+        'symbol-name-ractor' => 'harness-ractor'
+      }
+
+      sections = cli.send(:build_output_sections, ['ruby'], bench_data, bench_harnesses, {})
+
+      assert_equal ['harness-ractor', 'harness'], sections.map { |section| section[:title] }
+      assert_equal ['bench', 'ractors', 'ruby (ms)'], sections[0][:table][0]
+      assert_equal ['symbol-name-ractor', '0', '1000.0 ± 0.0%'], sections[0][:table][1]
+      assert_equal ['', '2', '2000.0 ± 0.0%'], sections[0][:table][2]
+      assert_equal ['bench', 'ruby (ms)'], sections[1][:table][0]
+      assert_equal ['fib', '100.0 ± 0.0%'], sections[1][:table][1]
+    end
+  end
+
   describe '#run integration test' do
     it 'runs a simple benchmark end-to-end and produces all output files' do
       Dir.mktmpdir do |tmpdir|

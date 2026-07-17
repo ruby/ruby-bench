@@ -48,7 +48,7 @@ module BenchmarkRunner
     end
 
     # Build output text string with metadata, table, and legend
-    def build_output_text(ruby_descriptions, table, format, bench_failures, include_rss: false, include_gc: false, include_pvalue: false, gc_table: nil, gc_format: nil)
+    def build_output_text(ruby_descriptions, table, format, bench_failures, include_rss: false, include_gc: false, include_pvalue: false, gc_table: nil, gc_format: nil, sections: nil)
       base_name, *other_names = ruby_descriptions.keys
 
       output_str = +""
@@ -58,11 +58,17 @@ module BenchmarkRunner
       end
 
       output_str << "\n"
-      output_str << TableFormatter.new(table, format, bench_failures).to_s + "\n"
+      sections ||= [{ table: table, format: format, failures: bench_failures, include_gc: include_gc, gc_table: gc_table, gc_format: gc_format }]
+      has_gc_summary = sections.any? { |section| section[:include_gc] && section[:gc_table] }
+      sections.each do |section|
+        title = section[:title]
+        output_str << "#{title}:\n" if title
+        output_str << TableFormatter.new(section[:table], section[:format], section.fetch(:failures, {})).to_s + "\n"
 
-      if include_gc && gc_table && gc_format
-        output_str << "GC summary:\n"
-        output_str << TableFormatter.new(gc_table, gc_format, {}).to_s + "\n"
+        if section[:include_gc] && section[:gc_table] && section[:gc_format]
+          output_str << (title ? "GC summary (#{title}):\n" : "GC summary:\n")
+          output_str << TableFormatter.new(section[:gc_table], section[:gc_format], {}).to_s + "\n"
+        end
       end
 
       unless other_names.empty?
@@ -74,7 +80,7 @@ module BenchmarkRunner
             output_str << "- RSS #{base_name}/#{name}: ratio of #{base_name}/#{name} RSS. Higher is better for #{name}. Above 1 means lower memory usage.\n"
           end
         end
-        if include_gc && gc_table
+        if has_gc_summary
           output_str << "- GC summary compares #{base_name} → comparison. Ratio columns are #{base_name}/comparison; above 1 means the comparison spent less GC time.\n"
           output_str << "- mark/iter ratio and sweep/iter ratio compare total GC phase time per benchmark iteration, so they include both per-GC cost and GC frequency changes.\n"
           output_str << "- mark/GC ratio and sweep/GC ratio compare average phase time per GC, isolating whether each GC became cheaper or more expensive.\n"

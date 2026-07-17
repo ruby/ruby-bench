@@ -496,6 +496,57 @@ describe BenchmarkRunner do
       assert_includes result, '100.0'
     end
 
+    it 'prints multiple table sections when provided' do
+      ruby_descriptions = { 'ruby' => 'ruby 3.3.0' }
+      sections = [
+        {
+          title: 'harness',
+          table: [['bench', 'ruby (ms)'], ['fib', '100.0']],
+          format: ['%s', '%.1f'],
+          failures: {},
+          include_gc: false,
+        },
+        {
+          title: 'harness-ractor',
+          table: [['bench', 'ractors', 'ruby (ms)'], ['symbol-name-ractor', '0', '200.0']],
+          format: ['%s', '%s', '%.1f'],
+          failures: {},
+          include_gc: false,
+        }
+      ]
+
+      result = BenchmarkRunner.build_output_text(
+        ruby_descriptions, sections.first[:table], sections.first[:format], {}, sections: sections
+      )
+
+      assert_includes result, "harness:\n"
+      assert_includes result, "harness-ractor:\n"
+      assert_includes result, 'fib'
+      assert_includes result, 'symbol-name-ractor'
+    end
+
+    it 'labels GC summaries by section title' do
+      ruby_descriptions = { 'ruby' => 'ruby 3.3.0', 'exp' => 'ruby 3.3.0 exp' }
+      sections = [
+        {
+          title: 'harness-gc',
+          table: [['bench', 'ruby (ms)', 'exp (ms)'], ['gcbench', '100.0', '90.0']],
+          format: ['%s', '%.1f', '%.1f'],
+          failures: {},
+          include_gc: true,
+          gc_table: [['bench', 'mark/iter ratio'], ['gcbench', '1.100']],
+          gc_format: ['%s', '%s'],
+        }
+      ]
+
+      result = BenchmarkRunner.build_output_text(
+        ruby_descriptions, sections.first[:table], sections.first[:format], {}, sections: sections
+      )
+
+      assert_includes result, "GC summary (harness-gc):\n"
+      assert_includes result, '- GC summary compares ruby → comparison.'
+    end
+
     it 'omits legend when no other executables' do
       ruby_descriptions = { 'ruby' => 'ruby 3.3.0' }
       table = [['bench', 'ruby (ms)'], ['fib', '100.0']]

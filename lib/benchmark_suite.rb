@@ -38,6 +38,10 @@ class BenchmarkSuite
     @benchmarks ||= discover_benchmarks
   end
 
+  def harness_for(benchmark_name)
+    benchmark_harness_for(benchmark_name)
+  end
+
   # Run a single benchmark entry on a single executable.
   # Returns { name:, data: } on success, { name:, failure: } on error.
   def run_benchmark(entry, ruby:, ruby_description:)
@@ -50,19 +54,21 @@ class BenchmarkSuite
 
     # Clear project-level Bundler environment so benchmarks run in a clean context.
     # Benchmarks that need Bundler (e.g., railsbench) set up their own via use_gemfile.
+    benchmark_harness = benchmark_harness_for(entry.name)
+
     result = if defined?(Bundler)
       Bundler.with_unbundled_env do
-        run_single_benchmark(entry.script_path, result_json_path, ruby, cmd_prefix, env, entry.name, quiet: quiet)
+        run_single_benchmark(entry.script_path, result_json_path, ruby, cmd_prefix, env, benchmark_harness, quiet: quiet)
       end
     else
-      run_single_benchmark(entry.script_path, result_json_path, ruby, cmd_prefix, env, entry.name, quiet: quiet)
+      run_single_benchmark(entry.script_path, result_json_path, ruby, cmd_prefix, env, benchmark_harness, quiet: quiet)
     end
 
     if result[:success]
-      { name: entry.name, data: process_benchmark_result(result_json_path, result[:command], delete_file: !caller_json_path) }
+      { name: entry.name, data: process_benchmark_result(result_json_path, result[:command], delete_file: !caller_json_path), harness: benchmark_harness }
     else
       FileUtils.rm_f(result_json_path) unless caller_json_path
-      { name: entry.name, failure: result[:status].exitstatus }
+      { name: entry.name, failure: result[:status].exitstatus, harness: benchmark_harness }
     end
   end
 
@@ -145,7 +151,7 @@ class BenchmarkSuite
     entries.select { |entry| filter.match?(entry.name) }
   end
 
-  def run_single_benchmark(script_path, result_json_path, ruby, cmd_prefix, env, benchmark_name, quiet: false)
+  def run_single_benchmark(script_path, result_json_path, ruby, cmd_prefix, env, benchmark_harness, quiet: false)
     # Fix for jruby/jruby#7394 in JRuby 9.4.2.0
     script_path = File.expand_path(script_path)
 
@@ -153,9 +159,6 @@ class BenchmarkSuite
     # for subsequent runs (e.g., when running multiple executables)
     original_result_json_path = ENV["RESULT_JSON_PATH"]
     ENV["RESULT_JSON_PATH"] = result_json_path
-
-    # Use per-benchmark default_harness if set, otherwise use global harness
-    benchmark_harness = benchmark_harness_for(benchmark_name)
 
     # Set up the benchmarking command
     cmd = cmd_prefix + [
