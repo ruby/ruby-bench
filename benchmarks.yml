@@ -160,6 +160,10 @@ tinygql:
   category: micro
   single_file: true
   ractor: true
+30k_variables:
+  desc: 30k_variables tests 30k local variables spread across many methods, read and written back and forth.
+  category: micro
+  single_file: true
 attr_accessor:
   desc: attr_accessor tests the performance of getting instance variable values via an attr_accessor imemo.
   category: micro
