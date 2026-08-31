@@ -1,3 +1,9 @@
+GIT
+  remote: https://github.com/k0kubun/activerecord-jdbc-adapter.git
+  revision: 29cd69f6be61cfeb2ff810352c7c80bf074cf8a6
+  ref: rails-8.1-sqlite3
+  specs:
+
 GEM
   remote: https://rubygems.org/
   specs:
@@ -22,12 +28,14 @@ GEM
       uri (>= 0.13.1)
     base64 (0.3.0)
     bigdecimal (3.3.1)
+    bigdecimal (3.3.1-java)
     concurrent-ruby (1.3.5)
     connection_pool (3.0.2)
     drb (2.2.3)
     i18n (1.14.7)
       concurrent-ruby (~> 1.0)
     json (2.17.1)
+    json (2.17.1-java)
     logger (1.7.0)
     mini_portile2 (2.8.9)
     minitest (5.26.2)
@@ -43,11 +51,13 @@ GEM
 
 PLATFORMS
   ruby
+  universal-java
   x86_64-linux
 
 DEPENDENCIES
   activerecord (~> 8.0)
-  activerecord-jdbcsqlite3-adapter (~> 70)
+  activerecord-jdbc-adapter!
+  activerecord-jdbcsqlite3-adapter!
   base64
   bigdecimal
   mutex_m
@@ -59,12 +69,14 @@ CHECKSUMS
   activesupport (8.1.1) sha256=5e92534e8d0c8b8b5e6b16789c69dbea65c1d7b752269f71a39422e9546cea67
   base64 (0.3.0) sha256=27337aeabad6ffae05c265c450490628ef3ebd4b67be58257393227588f5a97b
   bigdecimal (3.3.1) sha256=eaa01e228be54c4f9f53bf3cc34fe3d5e845c31963e7fcc5bedb05a4e7d52218
+  bigdecimal (3.3.1-java) sha256=ed496e9c075dd501d58a519707bf704dba82a0cef658c719c929789551ec7d85
   bundler (4.0.12) sha256=7f8b757d28dfb636e7b24fba2344ac6dd13b5b24f4b46d62573d483f211825ac
   concurrent-ruby (1.3.5) sha256=813b3e37aca6df2a21a3b9f1d497f8cbab24a2b94cab325bffe65ee0f6cbebc6
   connection_pool (3.0.2) sha256=33fff5ba71a12d2aa26cb72b1db8bba2a1a01823559fb01d29eb74c286e62e0a
   drb (2.2.3) sha256=0b00d6fdb50995fe4a45dea13663493c841112e4068656854646f418fda13373
   i18n (1.14.7) sha256=ceba573f8138ff2c0915427f1fc5bdf4aa3ab8ae88c8ce255eb3ecf0a11a5d0f
   json (2.17.1) sha256=e0e4824541336a44915436f53e7ea74c687314fb8f88080fa1456f6a34ead92e
+  json (2.17.1-java) sha256=4e570fb6f3f7888c8de7c121b6328a6971414601cb7e1d4ab8f28da42e3ef524
   logger (1.7.0) sha256=196edec7cc44b66cfb40f9755ce11b392f21f7967696af15d274dde7edff0203
   mini_portile2 (2.8.9) sha256=0cd7c7f824e010c072e33f68bc02d85a00aeb6fce05bb4819c03dfd3c140c289
   minitest (5.26.2) sha256=f021118a6185b9ba9f5af71f2ba103ad770c75afde9f2ab8da512677c550cde3

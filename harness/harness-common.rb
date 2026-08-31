@@ -95,7 +95,10 @@ def get_maxrss
     # In Ruby 3.5+, fiddle is no longer a default gem. Load the bundled-gem fiddle instead.
     if defined?(Bundler) # benchmarks with Gemfile
       bundler_ui_level, Bundler.ui.level = Bundler.ui.level, :error if defined?(Bundler) # suppress warnings from force_activate
-      Gem::BUNDLED_GEMS.force_activate("fiddle")
+      begin
+        Gem::BUNDLED_GEMS.force_activate("fiddle")
+      rescue Bundler::BundlerError # git sources may fail re-evaluation of Gemfile
+      end
       Bundler.ui.level = bundler_ui_level if bundler_ui_level
     else # benchmarks without Gemfile
       gem "fiddle", ">= 1.1.8"

@@ -1,3 +1,9 @@
+GIT
+  remote: https://github.com/k0kubun/activerecord-jdbc-adapter.git
+  revision: 29cd69f6be61cfeb2ff810352c7c80bf074cf8a6
+  ref: rails-8.1-sqlite3
+  specs:
+
 GEM
   remote: https://rubygems.org/
   specs:
@@ -71,12 +77,15 @@ GEM
       uri (>= 0.13.1)
     base64 (0.3.0)
     bigdecimal (3.3.1)
+    bigdecimal (3.3.1-java)
     builder (3.3.0)
     cgi (0.5.0)
+    cgi (0.5.0-java)
     concurrent-ruby (1.3.5)
     connection_pool (3.0.2)
     crass (1.0.6)
     digest (3.2.0)
+    digest (3.2.0-java)
     drb (2.2.3)
     erubi (1.13.1)
     globalid (1.2.1)
@@ -84,6 +93,7 @@ GEM
     i18n (1.14.7)
       concurrent-ruby (~> 1.0)
     io-console (0.8.1)
+    io-console (0.8.1-java)
     irb (1.15.2)
       pp (>= 0.6.0)
       rdoc (>= 4.0.0)
@@ -92,6 +102,7 @@ GEM
       actionview (>= 5.0.0)
       activesupport (>= 5.0.0)
     json (2.17.1)
+    json (2.17.1-java)
     logger (1.7.0)
     loofah (2.24.1)
       crass (~> 1.0.2)
@@ -121,12 +132,15 @@ GEM
     nokogiri (1.18.9)
       mini_portile2 (~> 2.8.2)
       racc (~> 1.4)
+    nokogiri (1.18.9-java)
+      racc (~> 1.4)
     nokogiri (1.18.9-x86_64-linux-gnu)
       racc (~> 1.4)
     pp (0.6.2)
       prettyprint
     prettyprint (0.2.0)
     racc (1.8.1)
+    racc (1.8.1-java)
     rack (3.1.17)
     rack-session (2.1.1)
       base64 (>= 0.1.0)
@@ -169,6 +183,7 @@ GEM
     sqlite3 (2.7.3-x86_64-linux-gnu)
     stackprof (0.2.28)
     strscan (3.1.5)
+    strscan (3.1.5-java)
     thor (1.4.0)
     timeout (0.4.3)
     tsort (0.2.0)
@@ -181,6 +196,7 @@ GEM
 
 PLATFORMS
   ruby
+  universal-java
   x86_64-linux
 
 DEPENDENCIES
@@ -192,7 +208,8 @@ DEPENDENCIES
   activejob (~> 8.0)
   activemodel (~> 8.0)
   activerecord (~> 8.0)
-  activerecord-jdbcsqlite3-adapter (~> 70)
+  activerecord-jdbc-adapter!
+  activerecord-jdbcsqlite3-adapter!
   activestorage (~> 8.0)
   activesupport (~> 8.0)
   base64
@@ -224,21 +241,26 @@ CHECKSUMS
   activesupport (8.1.1) sha256=5e92534e8d0c8b8b5e6b16789c69dbea65c1d7b752269f71a39422e9546cea67
   base64 (0.3.0) sha256=27337aeabad6ffae05c265c450490628ef3ebd4b67be58257393227588f5a97b
   bigdecimal (3.3.1) sha256=eaa01e228be54c4f9f53bf3cc34fe3d5e845c31963e7fcc5bedb05a4e7d52218
+  bigdecimal (3.3.1-java) sha256=ed496e9c075dd501d58a519707bf704dba82a0cef658c719c929789551ec7d85
   builder (3.3.0) sha256=497918d2f9dca528fdca4b88d84e4ef4387256d984b8154e9d5d3fe5a9c8835f
   bundler (4.0.12) sha256=7f8b757d28dfb636e7b24fba2344ac6dd13b5b24f4b46d62573d483f211825ac
   cgi (0.5.0) sha256=fe99f65bb2c146e294372ebb27602adbc3b4c008e9ea7038c6bd48c1ec9759da
+  cgi (0.5.0-java) sha256=e39b3e7d74961e5474bb18d9bbfd7308f01cc7e9f1cfe7f379281c5d0c26f90d
   concurrent-ruby (1.3.5) sha256=813b3e37aca6df2a21a3b9f1d497f8cbab24a2b94cab325bffe65ee0f6cbebc6
   connection_pool (3.0.2) sha256=33fff5ba71a12d2aa26cb72b1db8bba2a1a01823559fb01d29eb74c286e62e0a
   crass (1.0.6) sha256=dc516022a56e7b3b156099abc81b6d2b08ea1ed12676ac7a5657617f012bd45d
   digest (3.2.0) sha256=fa2e7092ec683f65d82fadde5ff4ca3b32e23ee0b19f1fc1a5e09993ad2d3991
+  digest (3.2.0-java) sha256=fe5c47eecd1d807e741dae525495faa6bfcd38e7c89c9c7d40444632144369e4
   drb (2.2.3) sha256=0b00d6fdb50995fe4a45dea13663493c841112e4068656854646f418fda13373
   erubi (1.13.1) sha256=a082103b0885dbc5ecf1172fede897f9ebdb745a4b97a5e8dc63953db1ee4ad9
   globalid (1.2.1) sha256=70bf76711871f843dbba72beb8613229a49429d1866828476f9c9d6ccc327ce9
   i18n (1.14.7) sha256=ceba573f8138ff2c0915427f1fc5bdf4aa3ab8ae88c8ce255eb3ecf0a11a5d0f
   io-console (0.8.1) sha256=1e15440a6b2f67b6ea496df7c474ed62c860ad11237f29b3bd187f054b925fcb
+  io-console (0.8.1-java) sha256=9457a61a7b23aab11e9e9ff67f71ae81d7f1a6a2e582bb5d65d754cbb546c06f
   irb (1.15.2) sha256=222f32952e278da34b58ffe45e8634bf4afc2dc7aa9da23fed67e581aa50fdba
   jbuilder (2.13.0) sha256=7200a38a1c0081aa81b7a9757e7a299db75bc58cf1fd45ca7919a91627d227d6
   json (2.17.1) sha256=e0e4824541336a44915436f53e7ea74c687314fb8f88080fa1456f6a34ead92e
+  json (2.17.1-java) sha256=4e570fb6f3f7888c8de7c121b6328a6971414601cb7e1d4ab8f28da42e3ef524
   logger (1.7.0) sha256=196edec7cc44b66cfb40f9755ce11b392f21f7967696af15d274dde7edff0203
   loofah (2.24.1) sha256=655a30842b70ec476410b347ab1cd2a5b92da46a19044357bbd9f401b009a337
   mail (2.8.1) sha256=ec3b9fadcf2b3755c78785cb17bc9a0ca9ee9857108a64b6f5cfc9c0b5bfc9ad
@@ -252,10 +274,12 @@ CHECKSUMS
   net-protocol (0.2.2) sha256=aa73e0cba6a125369de9837b8d8ef82a61849360eba0521900e2c3713aa162a8
   net-smtp (0.2.2) sha256=2487b00fa352d533512b57c79377e933163cf7a91201a8795822e8edab2b1231
   nokogiri (1.18.9) sha256=ac5a7d93fd0e3cef388800b037407890882413feccca79eb0272a2715a82fa33
+  nokogiri (1.18.9-java) sha256=1fe5b7aa4a054eda689a969bb4e03999960a6ea806582d327207d687168bceb5
   nokogiri (1.18.9-x86_64-linux-gnu) sha256=b52f5defedc53d14f71eeaaf990da66b077e1918a2e13088b6a96d0230f44360
   pp (0.6.2) sha256=947ec3120c6f92195f8ee8aa25a7b2c5297bb106d83b41baa02983686577b6ff
   prettyprint (0.2.0) sha256=2bc9e15581a94742064a3cc8b0fb9d45aae3d03a1baa6ef80922627a0766f193
   racc (1.8.1) sha256=4a7f6929691dbec8b5209a0b373bc2614882b55fc5d2e447a21aaa691303d62f
+  racc (1.8.1-java) sha256=54f2e6d1e1b91c154013277d986f52a90e5ececbe91465d29172e49342732b98
   rack (3.1.17) sha256=99b718e98f2cc4a68a08078ec4f0b64bc3f76f67a51785cb0044cc30429d05d1
   rack-session (2.1.1) sha256=0b6dc07dea7e4b583f58a48e8b806d4c9f1c6c9214ebc202ec94562cbea2e4e9
   rack-test (2.2.0) sha256=005a36692c306ac0b4a9350355ee080fd09ddef1148a5f8b2ac636c720f5c463
@@ -273,6 +297,7 @@ CHECKSUMS
   sqlite3 (2.7.3-x86_64-linux-gnu) sha256=11b2612fddf56602d238be7a984fa0633e591edd034f7520747bc0927b7fa865
   stackprof (0.2.28) sha256=4ec2ace02f386012b40ca20ef80c030ad711831f59511da12e83b34efb0f9a04
   strscan (3.1.5) sha256=f8413b90ea9395a69609a4414a8c88551bcda64337e234272c24fcd4c83e5947
+  strscan (3.1.5-java) sha256=84805eaad025f64854376608a6dbd49d4a22740ec3f21ba880434a6641621f1e
   thor (1.4.0) sha256=8763e822ccb0f1d7bee88cde131b19a65606657b847cc7b7b4b82e772bcd8a3d
   timeout (0.4.3) sha256=9509f079b2b55fe4236d79633bd75e34c1c1e7e3fb4b56cb5fda61f80a0fe30e
   tsort (0.2.0) sha256=9650a793f6859a43b6641671278f79cfead60ac714148aabe4e3f0060480089f
