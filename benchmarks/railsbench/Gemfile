@@ -21,7 +21,8 @@ gem 'sprockets-rails', '3.2.2'
 gem 'stackprof', platforms: :mri
 # Use sqlite3 as the database for Active Record
 gem 'sqlite3', platform: :ruby
-gem 'activerecord-jdbcsqlite3-adapter', '~> 70', platform: :jruby
+gem 'activerecord-jdbc-adapter', github: 'k0kubun/activerecord-jdbc-adapter', ref: 'rails-8.1-sqlite3', platform: :jruby
+gem 'activerecord-jdbcsqlite3-adapter', github: 'k0kubun/activerecord-jdbc-adapter', ref: 'rails-8.1-sqlite3', platform: :jruby
 # Use webrick for the web server since it's easy to install.
 # The web server is not used during the benchmark.
 gem 'webrick', '~> 1.8.2'
