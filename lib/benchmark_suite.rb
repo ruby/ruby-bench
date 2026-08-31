@@ -236,8 +236,8 @@ class BenchmarkSuite
       # Pin the process to one given core to improve caching and reduce variance on CRuby
       # Other Rubies need to use multiple cores, e.g., for JIT threads
       if ruby_description.start_with?('ruby ') && should_pin?(benchmark_name)
-        # The last few cores of Intel CPU may be slow E-Cores, so avoid using the last one.
-        cpu = [(Etc.nprocessors / 2) - 1, 0].max
+        # Up to the last two thirds of Intel CPU cores may be slow E-Cores, so avoid using them.
+        cpu = [(Etc.nprocessors / 3) - 1, 0].max
         cmd.concat(["taskset", "-c", "#{cpu}"])
       end
 
