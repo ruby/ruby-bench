@@ -163,7 +163,7 @@ describe IntelCPUConfig do
       end
 
       assert_equal 1, cleanup_commands.length, "at_exit block should call check_call once"
-      assert_equal "sudo -n sh -c 'echo 0 > /sys/devices/system/cpu/intel_pstate/no_turbo'", cleanup_commands[0][:cmd]
+      assert_equal "sudo -n #{CPUConfig::TURBO_BOOST_COMMAND} on", cleanup_commands[0][:cmd]
       assert_equal({ quiet: true, raise_error: false }, cleanup_commands[0][:opts])
     end
 
@@ -192,7 +192,7 @@ describe IntelCPUConfig do
 
       assert_equal(-1, exit_code)
       assert_includes output[0], "You forgot to disable turbo"
-      assert_includes output[0], "sudo sh -c 'echo 1 > /sys/devices/system/cpu/intel_pstate/no_turbo'"
+      assert_includes output[0], "sudo #{CPUConfig::TURBO_BOOST_COMMAND} off"
     end
 
     it 'exits when Intel min perf is not 100%' do
@@ -220,7 +220,7 @@ describe IntelCPUConfig do
 
       assert_equal(-1, exit_code)
       assert_includes output[0], "You forgot to set the min perf percentage to 100"
-      assert_includes output[0], "sudo sh -c 'echo 100 > /sys/devices/system/cpu/intel_pstate/min_perf_pct'"
+      assert_includes output[0], "sudo #{CPUConfig::MAXIMIZE_FREQUENCY_COMMAND}"
     end
   end
 end
@@ -306,7 +306,7 @@ describe AMDCPUConfig do
       end
 
       assert_equal 1, cleanup_commands.length, "at_exit block should call check_call once"
-      assert_equal "sudo -n sh -c 'echo 1 > /sys/devices/system/cpu/cpufreq/boost'", cleanup_commands[0][:cmd]
+      assert_equal "sudo -n #{CPUConfig::TURBO_BOOST_COMMAND} on", cleanup_commands[0][:cmd]
       assert_equal({ quiet: true, raise_error: false }, cleanup_commands[0][:opts])
     end
 
@@ -337,7 +337,7 @@ describe AMDCPUConfig do
 
       assert_equal(-1, exit_code)
       assert_includes output[0], "You forgot to disable boost"
-      assert_includes output[0], "sudo sh -c 'echo 0 > /sys/devices/system/cpu/cpufreq/boost'"
+      assert_includes output[0], "sudo #{CPUConfig::TURBO_BOOST_COMMAND} off"
     end
 
     it 'exits when AMD performance governor is not set' do
@@ -367,7 +367,7 @@ describe AMDCPUConfig do
 
       assert_equal(-1, exit_code)
       assert_includes output[0], "You forgot to set the performance governor"
-      assert_includes output[0], "sudo cpupower frequency-set -g performance"
+      assert_includes output[0], "sudo #{CPUConfig::MAXIMIZE_FREQUENCY_COMMAND}"
     end
   end
 end

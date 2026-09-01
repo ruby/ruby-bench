@@ -2,6 +2,11 @@ require_relative 'benchmark_runner'
 
 # Manages CPU frequency and turbo boost configuration for benchmark consistency
 class CPUConfig
+  # These scripts are separate commands so that sudoers can allow just them
+  # with NOPASSWD, skipping the password prompt.
+  TURBO_BOOST_COMMAND = File.expand_path('../misc/turbo_boost', __dir__)
+  MAXIMIZE_FREQUENCY_COMMAND = File.expand_path('../misc/maximize_frequency', __dir__)
+
   class << self
     # Configure CPU for benchmarking: disable frequency scaling and verify settings
     def configure_for_benchmarking(turbo:)
@@ -42,11 +47,14 @@ class CPUConfig
   end
 
   def disable_turbo_boost
-    # Override in subclasses
+    # sudo requires the flag '-S' in order to take input from stdin
+    BenchmarkRunner.check_call("sudo -S #{TURBO_BOOST_COMMAND} off")
+    at_exit { sudo_prefer_quiet("#{TURBO_BOOST_COMMAND} on") }
   end
 
   def maximize_frequency
-    # Override in subclasses
+    # Disabling Turbo Boost reduces the CPU frequency, so this should be run after that.
+    BenchmarkRunner.check_call("sudo -S #{MAXIMIZE_FREQUENCY_COMMAND}")
   end
 
   def check_pstate(turbo:)
@@ -75,17 +83,6 @@ class IntelCPUConfig < CPUConfig
 
   private
 
-  def disable_turbo_boost
-    # sudo requires the flag '-S' in order to take input from stdin
-    BenchmarkRunner.check_call("sudo -S sh -c 'echo #{TURBO_DISABLED_VALUE} > #{NO_TURBO_PATH}'")
-    at_exit { sudo_prefer_quiet("sh -c 'echo 0 > #{NO_TURBO_PATH}'") }
-  end
-
-  def maximize_frequency
-    # Disabling Turbo Boost reduces the CPU frequency, so this should be run after that.
-    BenchmarkRunner.check_call("sudo -S sh -c 'echo #{FREQUENCY_MAXIMIZED_VALUE} > #{MIN_PERF_PCT_PATH}'")
-  end
-
   def turbo_disabled?
     @turbo_disabled ||= File.exist?(NO_TURBO_PATH) &&
       File.read(NO_TURBO_PATH).strip == TURBO_DISABLED_VALUE
@@ -99,13 +96,13 @@ class IntelCPUConfig < CPUConfig
   def check_pstate(turbo:)
     unless turbo || turbo_disabled?
       puts("You forgot to disable turbo:")
-      puts("  sudo sh -c 'echo #{TURBO_DISABLED_VALUE} > #{NO_TURBO_PATH}'")
+      puts("  sudo #{TURBO_BOOST_COMMAND} off")
       exit(-1)
     end
 
     unless frequency_maximized?
       puts("You forgot to set the min perf percentage to 100:")
-      puts("  sudo sh -c 'echo #{FREQUENCY_MAXIMIZED_VALUE} > #{MIN_PERF_PCT_PATH}'")
+      puts("  sudo #{MAXIMIZE_FREQUENCY_COMMAND}")
       exit(-1)
     end
   end
@@ -117,20 +114,9 @@ class AMDCPUConfig < CPUConfig
   BOOST_PATH = "#{CPUFREQ_DIR}/boost"
   SCALING_GOVERNOR_GLOB = '/sys/devices/system/cpu/cpu*/cpufreq/scaling_governor'
   TURBO_DISABLED_VALUE = '0'
-  TURBO_ENABLED_VALUE = '1'
   PERFORMANCE_GOVERNOR = 'performance'
 
   private
-
-  def disable_turbo_boost
-    # sudo requires the flag '-S' in order to take input from stdin
-    BenchmarkRunner.check_call("sudo -S sh -c 'echo #{TURBO_DISABLED_VALUE} > #{BOOST_PATH}'")
-    at_exit { sudo_prefer_quiet("sh -c 'echo #{TURBO_ENABLED_VALUE} > #{BOOST_PATH}'") }
-  end
-
-  def maximize_frequency
-    BenchmarkRunner.check_call("sudo -S cpupower frequency-set -g performance")
-  end
 
   def turbo_disabled?
     @turbo_disabled ||= File.exist?(BOOST_PATH) &&
@@ -146,13 +132,13 @@ class AMDCPUConfig < CPUConfig
   def check_pstate(turbo:)
     unless turbo || turbo_disabled?
       puts("You forgot to disable boost:")
-      puts("  sudo sh -c 'echo #{TURBO_DISABLED_VALUE} > #{BOOST_PATH}'")
+      puts("  sudo #{TURBO_BOOST_COMMAND} off")
       exit(-1)
     end
 
     unless frequency_maximized?
       puts("You forgot to set the performance governor:")
-      puts("  sudo cpupower frequency-set -g #{PERFORMANCE_GOVERNOR}")
+      puts("  sudo #{MAXIMIZE_FREQUENCY_COMMAND}")
       exit(-1)
     end
   end

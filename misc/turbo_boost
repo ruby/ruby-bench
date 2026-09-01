@@ -1,0 +1,23 @@
+#!/bin/sh
+# Enable or disable CPU turbo boost (Intel pstate or AMD cpufreq).
+# run_benchmarks.rb runs this with sudo. Allowing this command in sudoers
+# with NOPASSWD skips the password prompt.
+set -eu
+
+INTEL_NO_TURBO=/sys/devices/system/cpu/intel_pstate/no_turbo
+AMD_BOOST=/sys/devices/system/cpu/cpufreq/boost
+
+case "${1:-}" in
+  on)  intel_value=0 amd_value=1 ;;
+  off) intel_value=1 amd_value=0 ;;
+  *)   echo "Usage: $0 {on|off}" >&2; exit 1 ;;
+esac
+
+if [ -e "$INTEL_NO_TURBO" ]; then
+  echo "$intel_value" > "$INTEL_NO_TURBO"
+elif [ -e "$AMD_BOOST" ]; then
+  echo "$amd_value" > "$AMD_BOOST"
+else
+  echo "$0: no turbo boost control found under /sys" >&2
+  exit 1
+fi

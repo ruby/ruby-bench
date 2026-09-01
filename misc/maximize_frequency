@@ -1,0 +1,18 @@
+#!/bin/sh
+# Maximize the minimum CPU frequency for stable benchmark results:
+# min_perf_pct=100 on Intel pstate, or the performance governor on AMD cpufreq.
+# run_benchmarks.rb runs this with sudo. Allowing this command in sudoers
+# with NOPASSWD skips the password prompt.
+set -eu
+
+INTEL_MIN_PERF_PCT=/sys/devices/system/cpu/intel_pstate/min_perf_pct
+AMD_BOOST=/sys/devices/system/cpu/cpufreq/boost
+
+if [ -e "$INTEL_MIN_PERF_PCT" ]; then
+  echo 100 > "$INTEL_MIN_PERF_PCT"
+elif [ -e "$AMD_BOOST" ]; then
+  cpupower frequency-set -g performance
+else
+  echo "$0: no CPU frequency control found under /sys" >&2
+  exit 1
+fi
