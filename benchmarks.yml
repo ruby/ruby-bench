@@ -92,6 +92,8 @@ fannkuchredux:
   ractor: true
 fluentd:
   desc: fluentd is a log collector, which parses logs in a server and forwards them to various destinations.
+grape:
+  desc: Grape REST-like API framework routing and responding to a versioned JSON endpoint, adapted from Grape's version_throughput benchmark.
 graphql:
   desc: GraphQL gem parsing a large file, uses Racc which has some Ruby->native->Ruby calls
   ractor: true
