@@ -73,6 +73,7 @@ class ZjitDiff
     compile_side_exit_time_ns
     side_exit_count
     side_exit_size
+    side_exit_size_bytes
     total_insn_count
     vm_insn_count
     zjit_insn_count
