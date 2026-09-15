@@ -256,6 +256,10 @@ str_concat:
   category: micro
   single_file: true
   ractor: true
+struct-new-no-escape:
+  desc: instantiate new struct objects with fields in a loop to test allocation and escape analysis performance
+  category: micro
+  single_file: true
 structaref:
   desc: structaref tests the performance of getting Struct members
   category: micro
