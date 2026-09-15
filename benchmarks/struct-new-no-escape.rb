@@ -14,4 +14,3 @@ run_benchmark(100) do
     i += 1
   end
 end
-
