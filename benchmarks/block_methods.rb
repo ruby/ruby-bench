@@ -67,7 +67,7 @@ ARRAY = (1..K).to_a
 
 run_benchmark(1000) do
   i = 0
-  while i < 10
+  while i < 50
     array_each(ARRAY)
     array_map(ARRAY)
     array_select(ARRAY)
