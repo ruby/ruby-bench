@@ -8,6 +8,17 @@ ENV["RUBY_BENCH_RACTOR_HARNESS"] = "1"
 RACTOR_GC_ENABLED = ENV["RUBY_BENCH_RACTOR_GC"] == "1"
 require_relative '../harness/gc-stats' if RACTOR_GC_ENABLED
 
+# Process-global GC counter support. GC.stat(key) raises ArgumentError for
+# unknown keys on builds without it. This counter is process-wide, so it is
+# measured as a controller-side per-iteration delta, never aggregated from
+# per-worker samples.
+HAS_GLOBAL_GC_COUNT = RACTOR_GC_ENABLED && begin
+  GC.stat(:global_gc_count)
+  true
+rescue ArgumentError
+  false
+end
+
 default_ractors = [
   0, # without ractor
   1, 2, 4, 6, 8#, 12, 16, 32
@@ -128,6 +139,7 @@ def run_benchmark_gc(bench_itrs, block, ractor_args)
   gc_by_ractors = {}
 
   header = "r:   itr:   time   gc_total   marking  sweeping  gc_count     major     minor"
+  header = "#{header}    global" if HAS_GLOBAL_GC_COUNT
   puts header
 
   RACTORS.each do |rs|
@@ -138,7 +150,7 @@ def run_benchmark_gc(bench_itrs, block, ractor_args)
     num_itrs = 0
     while num_itrs < bench_itrs
       num_itrs += 1
-      elapsed, worker_samples, controller_sample = run_ractor_gc_iteration(rs, ractor_args, &block)
+      elapsed, worker_samples, controller_sample, global_delta = run_ractor_gc_iteration(rs, ractor_args, &block)
       stats[rs] << elapsed
       group["gc_worker_samples"] << worker_samples
       group["gc_controller_samples"] << controller_sample if controller_sample
@@ -149,6 +161,7 @@ def run_benchmark_gc(bench_itrs, block, ractor_args)
         value = value / 1_000_000.0 if value && field == "gc_total_time_ns"
         series[series_name] << value
       end
+      series["gc_global_count_bench"] << global_delta if HAS_GLOBAL_GC_COUNT
 
       fmt_ms = ->(v) { v.nil? ? "N/A" : ("%.1f" % v) }
       fmt_int = ->(v) { v.nil? ? "N/A" : v.to_s }
@@ -157,6 +170,7 @@ def run_benchmark_gc(bench_itrs, block, ractor_args)
       itr_str << " %8s" % (agg["gc_marking_time"] ? "#{agg["gc_marking_time"]}ms" : "N/A")
       itr_str << " %8s" % (agg["gc_sweeping_time"] ? "#{agg["gc_sweeping_time"]}ms" : "N/A")
       itr_str << " %9s %9s %9s" % [fmt_int.call(agg["gc_count"]), fmt_int.call(agg["gc_major_count"]), fmt_int.call(agg["gc_minor_count"])]
+      itr_str << " %9s" % fmt_int.call(global_delta) if HAS_GLOBAL_GC_COUNT
       puts itr_str
     end
 
@@ -175,16 +189,22 @@ def run_benchmark_gc(bench_itrs, block, ractor_args)
 end
 
 # One measured GC-mode iteration. Returns
-# [elapsed_seconds, worker_samples, controller_sample]. worker_samples are
-# ordered by zero-based spawn index; controller_sample is nil for count 0 so
-# the main Ractor's workload sample is not counted twice.
+# [elapsed_seconds, worker_samples, controller_sample, global_gc_delta].
+# worker_samples are ordered by zero-based spawn index; controller_sample is
+# nil for count 0 so the main Ractor's workload sample is not counted twice.
+# global_gc_delta is the process-wide GC.stat(:global_gc_count) delta across
+# the whole iteration (spawn through join), or nil when unsupported; it is
+# process-global and must never be summed across workers or counts.
 def run_ractor_gc_iteration(num_ractors, ractor_args, &block)
+  global_gc_before = GC.stat(:global_gc_count) if HAS_GLOBAL_GC_COUNT
+
   if num_ractors.zero?
     started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
     sample = GCStats.measure(0, *ractor_deep_dup(ractor_args), &block)
     elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started
     sample["worker_index"] = 0
-    return [elapsed, [sample], nil]
+    global_gc_delta = GC.stat(:global_gc_count) - global_gc_before if HAS_GLOBAL_GC_COUNT
+    return [elapsed, [sample], nil, global_gc_delta]
   end
 
   # Controller observations span worker creation through joining and are kept
@@ -211,7 +231,8 @@ def run_ractor_gc_iteration(num_ractors, ractor_args, &block)
 
   elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started
   controller_sample = GCStats.delta(controller_before, GCStats.snapshot)
-  [elapsed, samples, controller_sample]
+  global_gc_delta = GC.stat(:global_gc_count) - global_gc_before if HAS_GLOBAL_GC_COUNT
+  [elapsed, samples, controller_sample, global_gc_delta]
 end
 
 # NOTE: we use `ractor_deep_dup` instead of `Ractor.make_shareable(copy: true)` for the case of

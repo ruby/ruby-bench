@@ -143,6 +143,15 @@ describe 'Ractor GC harness' do
         %w[gc_marking_time_bench gc_sweeping_time_bench].each do |series|
           assert_equal 2, group[series].length, "count #{count} #{series}" if group.key?(series)
         end
+        # Process-global counter: controller-observed per-iteration delta,
+        # present only on builds with GC.stat(:global_gc_count).
+        if group.key?('gc_global_count_bench')
+          assert_equal 2, group['gc_global_count_bench'].length, "count #{count} gc_global_count_bench"
+          group['gc_global_count_bench'].each do |delta|
+            assert_kind_of Integer, delta
+            assert_operator delta, :>=, 0
+          end
+        end
 
         expected_workers = [count.to_i, 1].max
         group['gc_worker_samples'].each_with_index do |workers, i|
