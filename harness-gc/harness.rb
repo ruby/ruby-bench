@@ -22,6 +22,7 @@ def run_benchmark(_num_itrs_hint, **, &block)
   gc_counts = []
   major_counts = []
   minor_counts = []
+  global_counts = []
   gc_heap_deltas = []
   gc_total_time_ns = []
   total_time = 0
@@ -30,6 +31,13 @@ def run_benchmark(_num_itrs_hint, **, &block)
   has_marking = GC.stat.key?(:marking_time)
   has_sweeping = GC.stat.key?(:sweeping_time)
   has_total_time = GC.respond_to?(:total_time)
+  # GC.stat(key) raises ArgumentError for unknown keys on older Rubies.
+  has_global_gc = begin
+    GC.stat(:global_gc_count)
+    true
+  rescue ArgumentError
+    false
+  end
 
   header = "itr:   time"
   header << "   marking" if has_marking
@@ -37,11 +45,13 @@ def run_benchmark(_num_itrs_hint, **, &block)
   header << "  gc_count"
   header << "     major"
   header << "     minor"
+  header << "    global" if has_global_gc
   header << "  maj/min"
   puts header
 
   begin
     gc_before = GCStats.snapshot
+    global_gc_before = GC.stat(:global_gc_count) if has_global_gc
 
     time = realtime(&block)
     num_itrs += 1
@@ -54,6 +64,7 @@ def run_benchmark(_num_itrs_hint, **, &block)
     count_delta = sample["gc_count"]
     major_delta = sample["gc_major_count"]
     minor_delta = sample["gc_minor_count"]
+    global_delta = has_global_gc ? GC.stat(:global_gc_count) - global_gc_before : nil
     ratio_str = minor_delta > 0 ? "%.2f" % (major_delta.to_f / minor_delta) : "-"
 
     itr_str = "%4s %6s" % ["##{num_itrs}:", "#{time_ms}ms"]
@@ -62,6 +73,7 @@ def run_benchmark(_num_itrs_hint, **, &block)
     itr_str << " %9d" % count_delta
     itr_str << " %9d" % major_delta
     itr_str << " %9d" % minor_delta
+    itr_str << " %9d" % global_delta if has_global_gc
     itr_str << "%9s" % ratio_str
     puts itr_str
 
@@ -72,6 +84,7 @@ def run_benchmark(_num_itrs_hint, **, &block)
     gc_counts << count_delta
     major_counts << major_delta
     minor_counts << minor_delta
+    global_counts << global_delta if has_global_gc
     gc_heap_deltas << sample["gc_stat_heap_delta"]
     gc_total_time_ns << sample["gc_total_time_ns"]
     total_time += time
@@ -93,6 +106,10 @@ def run_benchmark(_num_itrs_hint, **, &block)
   extra["gc_major_count_bench"] = major_counts[bench_range]
   extra["gc_minor_count_warmup"] = minor_counts[warmup_range]
   extra["gc_minor_count_bench"] = minor_counts[bench_range]
+  if has_global_gc
+    extra["gc_global_count_warmup"] = global_counts[warmup_range]
+    extra["gc_global_count_bench"] = global_counts[bench_range]
+  end
   extra["gc_stat_heap_deltas"] = gc_heap_deltas[bench_range]
   if has_total_time
     total_ns = gc_total_time_ns
