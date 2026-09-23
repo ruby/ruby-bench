@@ -802,4 +802,140 @@ describe ResultsTableBuilder do
       assert_equal ['%s', '%s', '%.1f'], format
     end
   end
+
+  describe 'Ractor GC data' do
+    def gc_group(total:, major:, minor:, mark: nil, sweep: nil)
+      group = {
+        'gc_count_bench' => major.zip(minor).map { |a, b| a + b },
+        'gc_major_count_bench' => major,
+        'gc_minor_count_bench' => minor,
+        'gc_worker_samples' => major.each_index.map { |i| [{ 'gc_count' => major[i] + minor[i], 'worker_index' => 0 }] }
+      }
+      group['gc_total_time_bench'] = total if total
+      group['gc_marking_time_bench'] = mark if mark
+      group['gc_sweeping_time_bench'] = sweep if sweep
+      group
+    end
+
+    def ractor_gc_blob(groups)
+      {
+        'warmup' => [],
+        'bench' => groups.values.flat_map { |g| g[:bench] },
+        'rss' => 10 * 1024 * 1024,
+        'gc_scope' => 'ractor-local-workload',
+        'bench_by_ractors' => groups.transform_values { |g| g[:bench] },
+        'gc_by_ractors' => groups.transform_values { |g| g[:gc] }
+      }
+    end
+
+    def build_ractor_gc(bench_data)
+      expanded = RactorBreakdown.expand(bench_data)
+      ResultsTableBuilder.new(
+        executable_names: bench_data.keys,
+        bench_data: expanded.bench_data,
+        row_layout: RactorRowLayout.new(groups: expanded.groups)
+      ).build
+    end
+
+    it 'renders per-count comparison rows using only each count\'s own series' do
+      bench_data = {
+        'base' => {
+          'object-new' => ractor_gc_blob(
+            '0' => { bench: [1.0, 1.0], gc: gc_group(total: [4.0, 4.0], major: [1, 1], minor: [3, 3], mark: [1.0, 1.0], sweep: [1.0, 1.0]) },
+            '2' => { bench: [1.0, 1.0], gc: gc_group(total: [12.0, 12.0], major: [2, 2], minor: [6, 6], mark: [2.0, 2.0], sweep: [2.0, 2.0]) }
+          )
+        },
+        'candidate' => {
+          'object-new' => ractor_gc_blob(
+            '0' => { bench: [1.0, 1.0], gc: gc_group(total: [2.0, 2.0], major: [1, 1], minor: [1, 1], mark: [1.0, 1.0], sweep: [1.0, 1.0]) },
+            '2' => { bench: [1.0, 1.0], gc: gc_group(total: [3.0, 3.0], major: [1, 1], minor: [3, 3], mark: [1.0, 1.0], sweep: [1.0, 1.0]) }
+          )
+        }
+      }
+
+      table, _format, gc_table, gc_format = build_ractor_gc(bench_data)
+
+      assert_equal ['bench', 'ractors', 'base (ms)', 'candidate (ms)', 'candidate 1st itr', 'base/candidate'], table[0]
+      assert_equal [
+        'bench', 'ractors', 'gc/iter ratio', 'gc/GC ratio', 'mark/iter ratio', 'sweep/iter ratio',
+        'mark/GC ratio', 'sweep/GC ratio', 'major/iter', 'minor/iter', 'minor GC %'
+      ], gc_table[0]
+      assert_equal ['%s'] * gc_table[0].size, gc_format
+
+      rows = gc_table[1..].to_h { |row| [row[1], row] }
+      assert_equal %w[0 2], gc_table[1..].map { |row| row[1] }
+
+      # Every row repeats the benchmark name; no blank group-continuation cells.
+      assert_equal ['object-new', 'object-new'], gc_table[1..].map(&:first)
+
+      # Count 0: gc/iter 4/2, gc/GC (4/4)/(2/2), mark/GC (1/4)/(1/2).
+      assert_equal ['object-new', '0', '2.000', '1.000', '1.000', '1.000', '0.500', '0.500', ' 1.0  →   1.0', ' 3.0  →   1.0', ' 75%  →   50%'], rows['0']
+      # Count 2: gc/iter 12/3, gc/GC (12/8)/(3/4) — the distinct values rule out cross-count leakage.
+      assert_equal ['object-new', '2', '4.000', '2.000', '2.000', '2.000', '1.000', '1.000', ' 2.0  →   1.0', ' 6.0  →   3.0', ' 75%  →   75%'], rows['2']
+
+      gc_table.flatten.each { |cell| refute_includes cell.to_s, "\x00" }
+    end
+
+    it 'renders N/A for a count missing optional GC data instead of reusing another count' do
+      bench_data = {
+        'base' => {
+          'object-new' => ractor_gc_blob(
+            '0' => { bench: [1.0], gc: gc_group(total: [4.0], major: [1], minor: [3], mark: [1.0], sweep: [1.0]) },
+            '2' => { bench: [1.0], gc: gc_group(total: [12.0], major: [2], minor: [6], mark: [2.0], sweep: [2.0]) }
+          )
+        },
+        'candidate' => {
+          'object-new' => ractor_gc_blob(
+            '0' => { bench: [1.0], gc: gc_group(total: [2.0], major: [1], minor: [1], mark: [1.0], sweep: [1.0]) },
+            # count 2 lacks the total-time and marking series entirely
+            '2' => { bench: [1.0], gc: gc_group(total: nil, major: [1], minor: [3], mark: nil, sweep: [1.0]) }
+          )
+        }
+      }
+
+      _table, _format, gc_table, _gc_format = build_ractor_gc(bench_data)
+
+      rows = gc_table[1..].to_h { |row| [row[1], row] }
+      assert_equal '2.000', rows['0'][2], 'count 0 keeps its own gc/iter ratio'
+      assert_equal '1.000', rows['0'][4]
+      assert_equal 'N/A', rows['2'][2], 'missing total-time series must not reuse count 0 data or zero'
+      assert_equal 'N/A', rows['2'][3]
+      assert_equal 'N/A', rows['2'][4], 'missing marking series must not be fabricated'
+      assert_equal '2.000', rows['2'][5], 'present sweeping series still renders'
+    end
+
+    it 'builds an absolute GC table for one executable, keeping supported all-zero rows' do
+      bench_data = {
+        'reference' => {
+          'object-new' => ractor_gc_blob(
+            # count 0: supported but no recorded activity; sweeping unsupported
+            '0' => { bench: [1.0, 1.0], gc: gc_group(total: [0.0, 0.0], major: [0, 0], minor: [0, 0], mark: [0.0, 0.0]) },
+            '2' => { bench: [1.0, 1.0], gc: gc_group(total: [3.0, 5.0], major: [1, 1], minor: [3, 5], mark: [1.0, 3.0], sweep: [0.5, 1.5]) }
+          )
+        }
+      }
+
+      _table, _format, gc_table, gc_format = build_ractor_gc(bench_data)
+
+      assert_equal ['bench', 'ractors', 'GC ms/iter', 'mark ms/iter', 'sweep ms/iter', 'GCs/iter', 'major/iter', 'minor/iter'], gc_table[0]
+      assert_equal ['%s'] * 8, gc_format
+      assert_equal ['object-new', '0', '0.000', '0.000', 'N/A', '0.0', '0.0', '0.0'], gc_table[1]
+      assert_equal ['object-new', '2', '4.000', '2.000', '1.000', '5.0', '1.0', '4.0'], gc_table[2]
+    end
+
+    it 'detects GC data from any recognized series, not just marking time' do
+      bench_data = {
+        'reference' => {
+          'object-new' => ractor_gc_blob(
+            '0' => { bench: [1.0], gc: gc_group(total: nil, major: [2], minor: [4]) }
+          )
+        }
+      }
+
+      _table, _format, gc_table, _gc_format = build_ractor_gc(bench_data)
+
+      refute_nil gc_table, 'a blob with only count series is still GC data'
+      assert_equal ['object-new', '0', 'N/A', 'N/A', 'N/A', '6.0', '2.0', '4.0'], gc_table[1]
+    end
+  end
 end

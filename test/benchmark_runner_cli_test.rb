@@ -9,7 +9,7 @@ require 'csv'
 describe BenchmarkRunner::CLI do
   before do
     @original_env = {}
-    ['WARMUP_ITRS', 'MIN_BENCH_ITRS', 'MIN_BENCH_TIME', 'BENCHMARK_QUIET'].each do |key|
+    ['WARMUP_ITRS', 'MIN_BENCH_ITRS', 'MIN_BENCH_TIME', 'BENCHMARK_QUIET', 'RUBY_BENCH_RACTOR_GC'].each do |key|
       @original_env[key] = ENV[key]
     end
 
@@ -116,6 +116,65 @@ describe BenchmarkRunner::CLI do
       assert_equal ['', '2', '2000.0 ± 0.0%'], sections[0][:table][2]
       assert_equal ['bench', 'ruby (ms)'], sections[1][:table][0]
       assert_equal ['fib', '100.0 ± 0.0%'], sections[1][:table][1]
+    end
+
+    it 'renders a Ractor GC section whose GC rows identify the same counts as the timing rows' do
+      args = create_args
+      cli = BenchmarkRunner::CLI.new(args)
+      gc_group = ->(total, major, minor) do
+        {
+          'gc_count_bench' => [major + minor],
+          'gc_major_count_bench' => [major],
+          'gc_minor_count_bench' => [minor],
+          'gc_marking_time_bench' => [1.0],
+          'gc_sweeping_time_bench' => [1.0],
+          'gc_total_time_bench' => [total],
+          'gc_worker_samples' => [[{ 'gc_count' => major + minor, 'worker_index' => 0 }]]
+        }
+      end
+      bench_data = {
+        'ruby' => {
+          'fib' => {
+            'warmup' => [],
+            'bench' => [0.1],
+            'rss' => 10 * 1024 * 1024
+          },
+          'object-new' => {
+            'warmup' => [],
+            'bench' => [1.0, 2.0],
+            'rss' => 10 * 1024 * 1024,
+            'gc_scope' => 'ractor-local-workload',
+            'bench_by_ractors' => { '0' => [1.0], '2' => [2.0] },
+            'gc_by_ractors' => { '0' => gc_group.call(4.0, 1, 3), '2' => gc_group.call(12.0, 2, 6) }
+          }
+        }
+      }
+      bench_harnesses = { 'fib' => 'harness', 'object-new' => 'harness-ractor' }
+
+      sections = cli.send(:build_output_sections, ['ruby'], bench_data, bench_harnesses, {})
+      ractor = sections.find { |section| section[:title] == 'harness-ractor' }
+      normal = sections.find { |section| section[:title] == 'harness' }
+
+      assert_equal 'ractor-local-workload', ractor[:gc_scope]
+      refute normal.key?(:gc_scope)
+
+      # Timing rows and GC rows identify the same counts; the benchmark name
+      # is repeated on every GC row.
+      assert_equal ['object-new', '0'], ractor[:table][1][0..1]
+      assert_equal ['', '2'], ractor[:table][2][0..1]
+      assert_equal ['object-new', '0'], ractor[:gc_table][1][0..1]
+      assert_equal ['object-new', '2'], ractor[:gc_table][2][0..1]
+      assert_equal ['bench', 'ractors', 'GC ms/iter', 'mark ms/iter', 'sweep ms/iter', 'GCs/iter', 'major/iter', 'minor/iter'], ractor[:gc_table][0]
+      ractor[:gc_table].flatten.each { |cell| refute_includes cell.to_s, "\x00" }
+
+      # The timing-only section has no GC summary.
+      assert_nil normal[:gc_table]
+
+      # The scope note appears even for a one-executable report (no Legend).
+      output = BenchmarkRunner.build_output_text({ 'ruby' => 'ruby 4.1.0dev' }, nil, nil, {}, sections: sections)
+      assert_match(/Ractor GC scope note:/, output)
+      assert_match(/CPU-time accounting, not elapsed pause time/, output)
+      refute_match(/\x00/, output)
     end
   end
 

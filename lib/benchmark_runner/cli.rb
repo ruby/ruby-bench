@@ -195,7 +195,7 @@ module BenchmarkRunner
       )
       table, format, gc_table, gc_format = builder.build
 
-      {
+      section = {
         title: harness,
         table: table,
         format: format,
@@ -204,6 +204,10 @@ module BenchmarkRunner
         gc_table: gc_table,
         gc_format: gc_format,
       }
+      if section_data.values.any? { |benchmarks| benchmarks.values.any? { |d| d.is_a?(Hash) && d['gc_scope'] == 'ractor-local-workload' } }
+        section[:gc_scope] = 'ractor-local-workload'
+      end
+      section
     end
 
     def sorted_benchmark_names(executable_names, bench_data)

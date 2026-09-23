@@ -82,13 +82,21 @@ module BenchmarkRunner
         end
         if has_gc_summary
           output_str << "- GC summary compares #{base_name} → comparison. Ratio columns are #{base_name}/comparison; above 1 means the comparison spent less GC time.\n"
-          output_str << "- mark/iter ratio and sweep/iter ratio compare total GC phase time per benchmark iteration, so they include both per-GC cost and GC frequency changes.\n"
-          output_str << "- mark/GC ratio and sweep/GC ratio compare average phase time per GC, isolating whether each GC became cheaper or more expensive.\n"
+          output_str << "- gc/iter, mark/iter, and sweep/iter ratio compare total GC (or phase) time per benchmark iteration, so they include both per-GC cost and GC frequency changes.\n"
+          output_str << "- gc/GC, mark/GC, and sweep/GC ratio divide average GC (or phase) time by the GCs recorded in the measured window; they are not complete per-cycle attribution of process-wide GC.\n"
           output_str << "- major/iter, minor/iter, and minor GC % show #{base_name} → comparison values, not ratios. Rows with no GC activity are omitted.\n"
         end
         if include_pvalue
           output_str << "- ***: p < 0.001, **: p < 0.01, *: p < 0.05 (Welch's t-test)\n"
         end
+      end
+
+      if sections.any? { |section| section[:gc_scope] == 'ractor-local-workload' }
+        output_str << "Ractor GC scope note:\n"
+        output_str << "- GC values sum Ractor-local counters over each workload's measurement window; the main Ractor performs the count-0 workload. Controller snapshots and per-worker heap detail are in the JSON output, not this table.\n"
+        output_str << "- Ruby's Ractor-retirement GC (after a worker's stack is torn down) and Ractors created by the workload itself are not sampled.\n"
+        output_str << "- GC time is CPU-time accounting, not elapsed pause time; summed across Ractors it can exceed wall time.\n"
+        output_str << "- Per-GC ratios divide by recorded GC counts, not complete process-wide GC cycles. Phase times are integer milliseconds; total GC time is kept at nanosecond resolution in the raw worker samples.\n"
       end
 
       output_str

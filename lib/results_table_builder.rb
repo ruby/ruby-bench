@@ -105,31 +105,96 @@ class ResultsTableBuilder
     format
   end
 
+  # Recognized per-benchmark GC series. detect_gc_data accepts any of them so
+  # an absent optional phase series does not hide otherwise valid GC data.
+  GC_SERIES_KEYS = %w[
+    gc_count_bench
+    gc_major_count_bench
+    gc_minor_count_bench
+    gc_marking_time_bench
+    gc_sweeping_time_bench
+    gc_total_time_bench
+  ].freeze
+
   def build_gc_summary_table
-    return nil unless @include_gc && !@other_names.empty?
+    return nil unless @include_gc
 
-    rows = [["bench", *(["comparison"] if include_gc_comparison_name?), "mark/iter ratio", "sweep/iter ratio", "mark/GC ratio", "sweep/GC ratio", "major/iter", "minor/iter", "minor GC %"]]
+    label_columns = ["bench", *@row_layout.extra_header_columns]
 
-    @bench_names.each do |bench_name|
-      next unless has_complete_data?(bench_name)
+    if @other_names.empty?
+      return build_gc_absolute_table(label_columns)
+    end
 
-      marking_times = extract_gc_times(bench_name, 'gc_marking_time_bench')
-      sweeping_times = extract_gc_times(bench_name, 'gc_sweeping_time_bench')
-      major_counts = extract_gc_times(bench_name, 'gc_major_count_bench')
-      minor_counts = extract_gc_times(bench_name, 'gc_minor_count_bench')
-      base_mark, *other_marks = marking_times
-      base_sweep, *other_sweeps = sweeping_times
-      base_major, *other_majors = major_counts
-      base_minor, *other_minors = minor_counts
+    header = label_columns + (include_gc_comparison_name? ? ["comparison"] : [])
+    header += ["gc/iter ratio", "gc/GC ratio"] if include_gc_total_time?
+    header += ["mark/iter ratio", "sweep/iter ratio", "mark/GC ratio", "sweep/GC ratio", "major/iter", "minor/iter", "minor GC %"]
 
+    rows = [header]
+    gc_entries.each do |entry|
+      totals = extract_gc_times(entry.data_key, 'gc_total_time_bench')
+      marks = extract_gc_times(entry.data_key, 'gc_marking_time_bench')
+      sweeps = extract_gc_times(entry.data_key, 'gc_sweeping_time_bench')
+      majors = extract_gc_times(entry.data_key, 'gc_major_count_bench')
+      minors = extract_gc_times(entry.data_key, 'gc_minor_count_bench')
+      series_at = ->(i) { { total: totals[i], mark: marks[i], sweep: sweeps[i], major: majors[i], minor: minors[i] } }
+
+      base = series_at.call(0)
       @other_names.each_with_index do |name, i|
-        next unless gc_activity?(base_mark, other_marks[i], base_sweep, other_sweeps[i], base_major, other_majors[i], base_minor, other_minors[i])
+        other = series_at.call(i + 1)
+        next unless gc_activity?(base[:mark], other[:mark], base[:sweep], other[:sweep], base[:major], other[:major], base[:minor], other[:minor], base[:total], other[:total])
 
-        rows << gc_summary_row(bench_name, name, base_mark, other_marks[i], base_sweep, other_sweeps[i], base_major, other_majors[i], base_minor, other_minors[i])
+        rows << gc_summary_row(gc_label_cells(entry), name, base, other)
       end
     end
 
     rows.size == 1 ? nil : rows
+  end
+
+  # Single-executable table: absolute per-iteration GC means rather than
+  # ratios. All-zero rows are kept so "no activity" is distinguishable from
+  # unavailable data; blobs with no GC series at all are skipped.
+  def build_gc_absolute_table(label_columns)
+    rows = [label_columns + ["GC ms/iter", "mark ms/iter", "sweep ms/iter", "GCs/iter", "major/iter", "minor/iter"]]
+
+    gc_entries.each do |entry|
+      data = bench_data_for(@base_name, entry.data_key)
+      next unless GC_SERIES_KEYS.any? { |key| data.key?(key) }
+
+      rows << gc_label_cells(entry) + [
+        format_gc_series_mean_precise(data['gc_total_time_bench']),
+        format_gc_series_mean_precise(data['gc_marking_time_bench']),
+        format_gc_series_mean_precise(data['gc_sweeping_time_bench']),
+        gc_total_count_cell(data['gc_major_count_bench'], data['gc_minor_count_bench']),
+        format_gc_series_mean(data['gc_major_count_bench']),
+        format_gc_series_mean(data['gc_minor_count_bench']),
+      ]
+    end
+
+    rows.size == 1 ? nil : rows
+  end
+
+  def gc_entries
+    @row_layout.entries(@bench_names).select { |entry| has_complete_data?(entry.data_key) }
+  end
+
+  # Label cells for a GC row: the entry's own labels, but with the benchmark
+  # name repeated on every row instead of only the first of a group. This
+  # avoids blank names when a count is filtered out and keeps NUL-separated
+  # internal data keys out of the output.
+  def gc_label_cells(entry)
+    cells = entry.label_cells.dup
+    cells[0] = @row_layout.base_name(entry.data_key)
+    cells
+  end
+
+  # True when any displayed blob carries the precise total-time series; legacy
+  # blobs without it keep the old comparison columns.
+  def include_gc_total_time?
+    return @include_gc_total_time if defined?(@include_gc_total_time)
+
+    @include_gc_total_time = @bench_data.values.any? do |benchmarks|
+      benchmarks.values.any? { |d| d.is_a?(Hash) && d.key?('gc_total_time_bench') }
+    end
   end
 
   def build_gc_summary_format(gc_table)
@@ -215,17 +280,21 @@ class ResultsTableBuilder
     @other_names.size > 1
   end
 
-  def gc_summary_row(bench_name, name, base_mark, other_mark, base_sweep, other_sweep, base_major, other_major, base_minor, other_minor)
-    row = [bench_name]
+  def gc_summary_row(label_cells, name, base, other)
+    row = label_cells
     row << name if include_gc_comparison_name?
+    if include_gc_total_time?
+      row << gc_ratio(base[:total], other[:total])
+      row << scalar_ratio(gc_time_per_gc(base[:total], base[:major], base[:minor]), gc_time_per_gc(other[:total], other[:major], other[:minor]))
+    end
     row.concat([
-      gc_ratio(base_mark, other_mark),
-      gc_ratio(base_sweep, other_sweep),
-      scalar_ratio(gc_time_per_gc(base_mark, base_major, base_minor), gc_time_per_gc(other_mark, other_major, other_minor)),
-      scalar_ratio(gc_time_per_gc(base_sweep, base_major, base_minor), gc_time_per_gc(other_sweep, other_major, other_minor)),
-      gc_count_cell(base_major, other_major),
-      gc_count_cell(base_minor, other_minor),
-      gc_minor_percent_cell(base_major, base_minor, other_major, other_minor),
+      gc_ratio(base[:mark], other[:mark]),
+      gc_ratio(base[:sweep], other[:sweep]),
+      scalar_ratio(gc_time_per_gc(base[:mark], base[:major], base[:minor]), gc_time_per_gc(other[:mark], other[:major], other[:minor])),
+      scalar_ratio(gc_time_per_gc(base[:sweep], base[:major], base[:minor]), gc_time_per_gc(other[:sweep], other[:major], other[:minor])),
+      gc_count_cell(base[:major], other[:major]),
+      gc_count_cell(base[:minor], other[:minor]),
+      gc_minor_percent_cell(base[:major], base[:minor], other[:major], other[:minor]),
     ])
     row
   end
@@ -276,6 +345,18 @@ class ResultsTableBuilder
     return "N/A" if value.nil?
 
     "%.0f%%" % (100.0 * value)
+  end
+
+  def format_gc_series_mean_precise(values)
+    return "N/A" if values.nil? || values.empty?
+
+    "%.3f" % mean(values)
+  end
+
+  def gc_total_count_cell(major, minor)
+    return "N/A" if major.nil? || major.empty? || minor.nil? || minor.empty?
+
+    "%.1f" % (mean(major) + mean(minor))
   end
 
   def scalar_ratio(base, other)
@@ -398,7 +479,9 @@ class ResultsTableBuilder
   end
 
   def detect_gc_data(bench_data)
-    bench_data.values.any? { |benchmarks| benchmarks.values.any? { |d| d.is_a?(Hash) && d.key?('gc_marking_time_bench') } }
+    bench_data.values.any? do |benchmarks|
+      benchmarks.values.any? { |d| d.is_a?(Hash) && GC_SERIES_KEYS.any? { |key| d.key?(key) } }
+    end
   end
 
   def detect_rss_samples(bench_data)

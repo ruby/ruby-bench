@@ -111,6 +111,10 @@ class ArgumentParser
         ENV["WARMUP_ITRS"] = n
       end
 
+      opts.on("--ractor-gc", "collect Ractor-local GC metrics when using the Ractor harness") do
+        ENV["RUBY_BENCH_RACTOR_GC"] = "1"
+      end
+
       opts.on("--bench=N", "the number of benchmark iterations for the default harness (default: 10). Also defaults MIN_BENCH_TIME to 0.") do |n|
         ENV["MIN_BENCH_ITRS"] = n
         ENV["MIN_BENCH_TIME"] ||= "0"

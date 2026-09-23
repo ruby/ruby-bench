@@ -1,4 +1,5 @@
 require_relative "../harness/harness-common"
+require_relative "../harness/gc-stats"
 
 WARMUP_ITRS = Integer(ENV.fetch('WARMUP_ITRS', 15))
 MIN_BENCH_ITRS = Integer(ENV.fetch('MIN_BENCH_ITRS', 10))
@@ -12,24 +13,6 @@ def realtime
   Process.clock_gettime(Process::CLOCK_MONOTONIC) - r0
 end
 
-def gc_stat_heap_snapshot
-  return {} unless GC.respond_to?(:stat_heap)
-  GC.stat_heap
-end
-
-def gc_stat_heap_delta(before, after)
-  delta = {}
-  after.each do |heap_idx, after_stats|
-    before_stats = before[heap_idx] || {}
-    heap_delta = {}
-    after_stats.each do |key, val|
-      next unless val.is_a?(Numeric) && before_stats.key?(key)
-      heap_delta[key] = val - before_stats[key]
-    end
-    delta[heap_idx] = heap_delta unless heap_delta.empty?
-  end
-  delta
-end
 
 def run_benchmark(_num_itrs_hint, **, &block)
   times = []
@@ -40,11 +23,13 @@ def run_benchmark(_num_itrs_hint, **, &block)
   major_counts = []
   minor_counts = []
   gc_heap_deltas = []
+  gc_total_time_ns = []
   total_time = 0
   num_itrs = 0
 
   has_marking = GC.stat.key?(:marking_time)
   has_sweeping = GC.stat.key?(:sweeping_time)
+  has_total_time = GC.respond_to?(:total_time)
 
   header = "itr:   time"
   header << "   marking" if has_marking
@@ -56,21 +41,19 @@ def run_benchmark(_num_itrs_hint, **, &block)
   puts header
 
   begin
-    gc_before = GC.stat
-    heap_before = gc_stat_heap_snapshot
+    gc_before = GCStats.snapshot
 
     time = realtime(&block)
     num_itrs += 1
 
-    gc_after = GC.stat
-    heap_after = gc_stat_heap_snapshot
+    sample = GCStats.delta(gc_before, GCStats.snapshot)
 
     time_ms = (1000 * time).to_i
-    mark_delta = has_marking ? gc_after[:marking_time] - gc_before[:marking_time] : 0
-    sweep_delta = has_sweeping ? gc_after[:sweeping_time] - gc_before[:sweeping_time] : 0
-    count_delta = gc_after[:count] - gc_before[:count]
-    major_delta = gc_after[:major_gc_count] - gc_before[:major_gc_count]
-    minor_delta = gc_after[:minor_gc_count] - gc_before[:minor_gc_count]
+    mark_delta = has_marking ? sample["gc_marking_time"] : 0
+    sweep_delta = has_sweeping ? sample["gc_sweeping_time"] : 0
+    count_delta = sample["gc_count"]
+    major_delta = sample["gc_major_count"]
+    minor_delta = sample["gc_minor_count"]
     ratio_str = minor_delta > 0 ? "%.2f" % (major_delta.to_f / minor_delta) : "-"
 
     itr_str = "%4s %6s" % ["##{num_itrs}:", "#{time_ms}ms"]
@@ -89,7 +72,8 @@ def run_benchmark(_num_itrs_hint, **, &block)
     gc_counts << count_delta
     major_counts << major_delta
     minor_counts << minor_delta
-    gc_heap_deltas << gc_stat_heap_delta(heap_before, heap_after)
+    gc_heap_deltas << sample["gc_stat_heap_delta"]
+    gc_total_time_ns << sample["gc_total_time_ns"]
     total_time += time
   end until num_itrs >= WARMUP_ITRS + MIN_BENCH_ITRS and total_time >= MIN_BENCH_TIME
 
@@ -110,6 +94,13 @@ def run_benchmark(_num_itrs_hint, **, &block)
   extra["gc_minor_count_warmup"] = minor_counts[warmup_range]
   extra["gc_minor_count_bench"] = minor_counts[bench_range]
   extra["gc_stat_heap_deltas"] = gc_heap_deltas[bench_range]
+  if has_total_time
+    total_ns = gc_total_time_ns
+    if total_ns.all? { |v| v.is_a?(Numeric) }
+      extra["gc_total_time_warmup"] = total_ns[warmup_range].map { |ns| ns / 1_000_000.0 }
+      extra["gc_total_time_bench"] = total_ns[bench_range].map { |ns| ns / 1_000_000.0 }
+    end
+  end
 
   # Snapshot heap utilisation after benchmark
   if GC.respond_to?(:stat_heap)
