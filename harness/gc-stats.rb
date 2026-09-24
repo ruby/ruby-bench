@@ -52,7 +52,7 @@ module GCStats
   # Fresh readings owned by this call; safe to keep without copying.
   def snapshot
     {
-      stat: GC.stat(scope: :process),
+      stat: GC.stat(scope: :ractor),
       heap: heap_snapshot,
       total_time_ns: GC.respond_to?(:total_time) ? GC.total_time : nil,
     }

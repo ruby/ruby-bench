@@ -188,6 +188,36 @@ describe 'Ractor GC harness' do
     end
   end
 
+  it 'excludes collections in another Ractor from a workload sample' do
+    body = <<~'RUBY'
+      Warning[:experimental] = false
+      GC.disable
+      worker = Ractor.new do
+        GC.disable
+        Ractor.receive
+        before = GC.stat(:count, scope: :ractor)
+        10.times { GC.start(full_mark: false, immediate_sweep: true, global: false) }
+        Ractor.main.send(GC.stat(:count, scope: :ractor) - before)
+        Ractor.receive
+      end
+
+      foreign_count = nil
+      sample = GCStats.measure do
+        worker.send(:start)
+        foreign_count = Ractor.receive
+      end
+      puts [foreign_count, sample['gc_count'], sample['gc_major_count'], sample['gc_minor_count']].inspect
+      worker.send(:stop)
+      Ractor.select(worker)
+    RUBY
+    stdout, stderr, status = Open3.capture3(
+      CLEAN_ENV, @ruby, '--disable-gems', '-r', File.join(ROOT, 'harness', 'gc-stats'), '-e', body
+    )
+
+    assert status.success?, "scope probe failed:\n#{stdout}\n#{stderr}"
+    assert_equal [10, 0, 0, 0], JSON.parse(stdout)
+  end
+
   it 'propagates a worker failure without writing partial or dummy results' do
     Dir.mktmpdir do |dir|
       result_path = File.join(dir, 'results.json')
