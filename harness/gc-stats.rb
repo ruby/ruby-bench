@@ -15,6 +15,12 @@ module GCStats
 
   SCALAR_FIELD_NAMES = (SCALAR_FIELDS.map(&:first) + [TOTAL_TIME_FIELD]).freeze
 
+  def stat_available?(key)
+    GC.stat(key).is_a?(Numeric)
+  rescue ArgumentError
+    false
+  end
+
   def heap_snapshot
     return {} unless GC.respond_to?(:stat_heap)
     GC.stat_heap
