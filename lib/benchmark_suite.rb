@@ -212,7 +212,7 @@ class BenchmarkSuite
 
     # Pass benchmark configuration env vars to subprocess.
     # These may be set after bundler loads, so they'd be lost with with_unbundled_env.
-    ["WARMUP_ITRS", "MIN_BENCH_ITRS", "MIN_BENCH_TIME", "YJIT_BENCH_STATS", "ZJIT_BENCH_STATS"].each do |var|
+    ["WARMUP_ITRS", "MIN_BENCH_ITRS", "MIN_BENCH_TIME", "YJIT_BENCH_STATS", "ZJIT_BENCH_STATS", "RUBY_BENCH_RACTOR_GC"].each do |var|
       env[var] = ENV[var] if ENV.key?(var)
     end
 
