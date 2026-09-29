@@ -22,12 +22,15 @@ def run_benchmark(_num_itrs_hint, **, &block)
   gc_counts = []
   major_counts = []
   minor_counts = []
+  global_counts = []
   gc_heap_deltas = []
+  gc_total_time_ns = []
   total_time = 0
   num_itrs = 0
 
   has_marking = GC.stat.key?(:marking_time)
   has_sweeping = GC.stat.key?(:sweeping_time)
+  has_global_gc = GCStats.stat_available?(:global_gc_count)
 
   header = "itr:   time"
   header << "   marking" if has_marking
@@ -35,11 +38,14 @@ def run_benchmark(_num_itrs_hint, **, &block)
   header << "  gc_count"
   header << "     major"
   header << "     minor"
+  header << "   global*" if has_global_gc
   header << "  maj/min"
   puts header
+  puts "(* process/controller-observed; may overlap the other GC counts and is not additive.)" if has_global_gc
 
   begin
     gc_before = GCStats.snapshot
+    global_gc_before = GC.stat(:global_gc_count) if has_global_gc
 
     time = realtime(&block)
     num_itrs += 1
@@ -52,6 +58,7 @@ def run_benchmark(_num_itrs_hint, **, &block)
     count_delta = sample["gc_count"]
     major_delta = sample["gc_major_count"]
     minor_delta = sample["gc_minor_count"]
+    global_delta = has_global_gc ? GC.stat(:global_gc_count) - global_gc_before : nil
     ratio_str = minor_delta > 0 ? "%.2f" % (major_delta.to_f / minor_delta) : "-"
 
     itr_str = "%4s %6s" % ["##{num_itrs}:", "#{time_ms}ms"]
@@ -60,6 +67,7 @@ def run_benchmark(_num_itrs_hint, **, &block)
     itr_str << " %9d" % count_delta
     itr_str << " %9d" % major_delta
     itr_str << " %9d" % minor_delta
+    itr_str << " %9d" % global_delta if has_global_gc
     itr_str << "%9s" % ratio_str
     puts itr_str
 
@@ -70,7 +78,9 @@ def run_benchmark(_num_itrs_hint, **, &block)
     gc_counts << count_delta
     major_counts << major_delta
     minor_counts << minor_delta
+    global_counts << global_delta if has_global_gc
     gc_heap_deltas << sample["gc_stat_heap_delta"]
+    gc_total_time_ns << sample["gc_total_time_ns"]
     total_time += time
   end until num_itrs >= WARMUP_ITRS + MIN_BENCH_ITRS and total_time >= MIN_BENCH_TIME
 
@@ -90,7 +100,16 @@ def run_benchmark(_num_itrs_hint, **, &block)
   extra["gc_major_count_bench"] = major_counts[bench_range]
   extra["gc_minor_count_warmup"] = minor_counts[warmup_range]
   extra["gc_minor_count_bench"] = minor_counts[bench_range]
+  if has_global_gc
+    extra["gc_global_count_warmup"] = global_counts[warmup_range]
+    extra["gc_global_count_bench"] = global_counts[bench_range]
+  end
   extra["gc_stat_heap_deltas"] = gc_heap_deltas[bench_range]
+  if gc_total_time_ns.all?(Numeric)
+    gc_total_time_ms = gc_total_time_ns.map { |ns| ns / 1_000_000.0 }
+    extra["gc_total_time_warmup"] = gc_total_time_ms[warmup_range]
+    extra["gc_total_time_bench"] = gc_total_time_ms[bench_range]
+  end
 
   # Snapshot heap utilisation after benchmark
   if GC.respond_to?(:stat_heap)
