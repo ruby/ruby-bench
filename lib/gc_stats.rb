@@ -21,6 +21,11 @@ module GCStats
     false
   end
 
+  def ractor_local_gc_supported?(version = RUBY_VERSION)
+    major, minor = version.split(".").first(2).map(&:to_i)
+    major > 4 || (major == 4 && minor >= 1)
+  end
+
   def heap_snapshot
     return {} unless GC.respond_to?(:stat_heap)
     GC.stat_heap
@@ -40,16 +45,16 @@ module GCStats
     delta
   end
 
+  def numeric_delta(before, after)
+    after - before if before.is_a?(Numeric) && after.is_a?(Numeric)
+  end
+
   def snapshot
     {
       stat: GC.stat(scope: :ractor),
       heap: heap_snapshot,
       total_time_ns: GC.respond_to?(:total_time) ? GC.total_time : nil,
     }
-  end
-
-  def numeric_delta(before, after)
-    after - before if before.is_a?(Numeric) && after.is_a?(Numeric)
   end
 
   def delta(before, after)
@@ -60,5 +65,37 @@ module GCStats
     sample["gc_stat_heap_delta"] = heap_delta(before[:heap], after[:heap])
     sample["gc_heap_after"] = after[:heap]
     sample
+  end
+
+  def with_measure_total_time
+    has_measure = GC.respond_to?(:measure_total_time) && GC.respond_to?(:measure_total_time=)
+    saved = GC.measure_total_time if has_measure
+    GC.measure_total_time = true if has_measure
+    begin
+      yield
+    ensure
+      GC.measure_total_time = saved if has_measure
+    end
+  end
+
+  def measure(*args)
+    with_measure_total_time do
+      before = snapshot
+      started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      yield(*args)
+      wall_time = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started
+      after = snapshot
+      sample = delta(before, after)
+      sample["wall_time"] = wall_time
+      sample
+    end
+  end
+
+  def aggregate(samples)
+    raise ArgumentError, "Cannot aggregate an empty GC sample set" if samples.empty?
+    SCALAR_FIELD_NAMES.each_with_object({}) do |name, result|
+      values = samples.map { |s| s[name] }
+      result[name] = values.all? { |v| v.is_a?(Numeric) } ? values.sum : nil
+    end
   end
 end
