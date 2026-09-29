@@ -636,11 +636,11 @@ describe ResultsTableBuilder do
       assert_equal ['%s', '%s', '%s', '%.3f', '%s'], format
 
       assert_equal [
-        'bench', 'mark/iter ratio', 'sweep/iter ratio', 'mark/GC ratio', 'sweep/GC ratio', 'major/iter', 'minor/iter', 'minor GC %'
+        'bench', 'mark/iter ratio', 'sweep/iter ratio', 'mark/GC ratio', 'sweep/GC ratio', 'GCs/iter', 'major/iter', 'minor/iter', 'minor GC %'
       ], gc_table[0]
-      assert_equal ['%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s'], gc_format
+      assert_equal ['%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s'], gc_format
       assert_equal [
-        'fib', '1.333', '1.000', '0.667', '0.500', ' 2.0  →   1.0', ' 8.0  →   4.0', ' 80%  →   80%'
+        'fib', '1.333', '1.000', '0.667', '0.500', '10.0  →   5.0', ' 2.0  →   1.0', ' 8.0  →   4.0', ' 80%  →   80%'
       ], gc_table[1]
     end
 
@@ -679,6 +679,40 @@ describe ResultsTableBuilder do
 
       assert_nil gc_table
       assert_nil gc_format
+    end
+
+    it 'builds a non-Ractor absolute GC table without worker-sum suffixes or GC ms/worker' do
+      bench_data = {
+        'ruby' => {
+          'gcbench' => {
+            'warmup' => [],
+            'bench' => [0.1, 0.1],
+            'rss' => 10,
+            'gc_total_time_bench' => [4.0, 6.0],
+            'gc_marking_time_bench' => [1.0, 3.0],
+            'gc_sweeping_time_bench' => [0.5, 1.5],
+            'gc_count_bench' => [10, 10],
+            'gc_major_count_bench' => [2, 2],
+            'gc_minor_count_bench' => [8, 8],
+            'gc_global_count_bench' => [1, 1],
+            'gc_controller_compact_count_bench' => [0, 0]
+          }
+        }
+      }
+
+      builder = ResultsTableBuilder.new(
+        executable_names: ['ruby'],
+        bench_data: bench_data
+      )
+
+      _table, _format, gc_table, gc_format = builder.build
+
+      assert_equal [
+        'bench', 'GC ms/iter', 'mark ms/iter', 'sweep ms/iter', 'GCs/iter', 'major/iter', 'minor/iter',
+        'global GCs/iter*', 'controller compacts/iter*'
+      ], gc_table[0]
+      assert_equal ['%s'] * 9, gc_format
+      assert_equal ['gcbench', '5.000', '2.000', '1.000', '10.0', '2.0', '8.0', '1.0', '0.0'], gc_table[1]
     end
   end
 
@@ -800,6 +834,282 @@ describe ResultsTableBuilder do
 
       _table, format = builder.build
       assert_equal ['%s', '%s', '%.1f'], format
+    end
+  end
+
+  describe 'Ractor GC data' do
+    def gc_group(total:, major:, minor:, mark: nil, sweep: nil, count: nil, global: nil, compacts: nil, workers: nil)
+      count ||= major.zip(minor).map(&:sum)
+      group = {
+        'gc_count_bench' => count,
+        'gc_major_count_bench' => major,
+        'gc_minor_count_bench' => minor,
+        'gc_worker_samples' => workers || count.map { |c| [{ 'gc_count' => c, 'worker_index' => 0 }] }
+      }
+      group['gc_total_time_bench'] = total if total
+      group['gc_marking_time_bench'] = mark if mark
+      group['gc_sweeping_time_bench'] = sweep if sweep
+      group['gc_global_count_bench'] = global if global
+      group['gc_controller_compact_count_bench'] = compacts if compacts
+      group
+    end
+
+    def ractor_gc_blob(groups)
+      {
+        'warmup' => [],
+        'bench' => groups.values.flat_map { |g| g[:bench] },
+        'rss' => 10 * 1024 * 1024,
+        'gc_scope' => 'ractor-local-workload',
+        'bench_by_ractors' => groups.transform_values { |g| g[:bench] },
+        'gc_by_ractors' => groups.transform_values { |g| g[:gc] }
+      }
+    end
+
+    def build_ractor_gc(bench_data)
+      expanded = RactorBreakdown.expand(bench_data)
+      ResultsTableBuilder.new(
+        executable_names: bench_data.keys,
+        bench_data: expanded.bench_data,
+        row_layout: RactorRowLayout.new(groups: expanded.groups)
+      ).build
+    end
+
+    it 'renders per-count comparison rows using only each count\'s own series' do
+      bench_data = {
+        'base' => {
+          'object-new' => ractor_gc_blob(
+            '0' => { bench: [1.0, 1.0], gc: gc_group(total: [4.0, 4.0], major: [1, 1], minor: [3, 3], mark: [1.0, 1.0], sweep: [1.0, 1.0]) },
+            '2' => { bench: [1.0, 1.0], gc: gc_group(total: [12.0, 12.0], major: [2, 2], minor: [6, 6], mark: [2.0, 2.0], sweep: [2.0, 2.0]) }
+          )
+        },
+        'candidate' => {
+          'object-new' => ractor_gc_blob(
+            '0' => { bench: [1.0, 1.0], gc: gc_group(total: [2.0, 2.0], major: [1, 1], minor: [1, 1], mark: [1.0, 1.0], sweep: [1.0, 1.0]) },
+            '2' => { bench: [1.0, 1.0], gc: gc_group(total: [3.0, 3.0], major: [1, 1], minor: [3, 3], mark: [1.0, 1.0], sweep: [1.0, 1.0]) }
+          )
+        }
+      }
+
+      table, _format, gc_table, gc_format = build_ractor_gc(bench_data)
+
+      assert_equal ['bench', 'ractors', 'base (ms)', 'candidate (ms)', 'candidate 1st itr', 'base/candidate'], table[0]
+      assert_equal [
+        'bench', 'ractors', 'gc/iter ratio', 'gc/GC ratio', 'mark/iter ratio', 'sweep/iter ratio',
+        'mark/GC ratio', 'sweep/GC ratio', 'GCs/iter (worker sum)', 'major/iter (worker sum)', 'minor/iter (worker sum)', 'minor GC %'
+      ], gc_table[0]
+      assert_equal ['%s'] * gc_table[0].size, gc_format
+
+      rows = gc_table[1..].to_h { |row| [row[1], row] }
+      assert_equal %w[0 2], gc_table[1..].map { |row| row[1] }
+
+      assert_equal ['object-new', 'object-new'], gc_table[1..].map(&:first)
+
+      assert_equal ['object-new', '0', '2.000', '1.000', '1.000', '1.000', '0.500', '0.500', ' 4.0  →   2.0', ' 1.0  →   1.0', ' 3.0  →   1.0', ' 75%  →   50%'], rows['0']
+      assert_equal ['object-new', '2', '4.000', '2.000', '2.000', '2.000', '1.000', '1.000', ' 8.0  →   4.0', ' 2.0  →   1.0', ' 6.0  →   3.0', ' 75%  →   75%'], rows['2']
+
+      gc_table.flatten.each { |cell| refute_includes cell.to_s, "\x00" }
+    end
+
+    it 'renders N/A for a count missing optional GC data instead of reusing another count' do
+      bench_data = {
+        'base' => {
+          'object-new' => ractor_gc_blob(
+            '0' => { bench: [1.0], gc: gc_group(total: [4.0], major: [1], minor: [3], mark: [1.0], sweep: [1.0]) },
+            '2' => { bench: [1.0], gc: gc_group(total: [12.0], major: [2], minor: [6], mark: [2.0], sweep: [2.0]) }
+          )
+        },
+        'candidate' => {
+          'object-new' => ractor_gc_blob(
+            '0' => { bench: [1.0], gc: gc_group(total: [2.0], major: [1], minor: [1], mark: [1.0], sweep: [1.0]) },
+            '2' => { bench: [1.0], gc: gc_group(total: nil, major: [1], minor: [3], mark: nil, sweep: [1.0]) }
+          )
+        }
+      }
+
+      _table, _format, gc_table, _gc_format = build_ractor_gc(bench_data)
+
+      rows = gc_table[1..].to_h { |row| [row[1], row] }
+      assert_equal '2.000', rows['0'][2], 'count 0 keeps its own gc/iter ratio'
+      assert_equal '1.000', rows['0'][4]
+      assert_equal 'N/A', rows['2'][2], 'missing total-time series must not reuse count 0 data or zero'
+      assert_equal 'N/A', rows['2'][3]
+      assert_equal 'N/A', rows['2'][4], 'missing marking series must not be fabricated'
+      assert_equal '2.000', rows['2'][5], 'present sweeping series still renders'
+    end
+
+    it 'builds an absolute GC table for one executable, keeping supported all-zero rows' do
+      bench_data = {
+        'reference' => {
+          'object-new' => ractor_gc_blob(
+            '0' => { bench: [1.0, 1.0], gc: gc_group(total: [0.0, 0.0], major: [0, 0], minor: [0, 0], mark: [0.0, 0.0]) },
+            '2' => { bench: [1.0, 1.0], gc: gc_group(total: [3.0, 5.0], major: [1, 1], minor: [3, 5], mark: [1.0, 3.0], sweep: [0.5, 1.5]) }
+          )
+        }
+      }
+
+      _table, _format, gc_table, gc_format = build_ractor_gc(bench_data)
+
+      assert_equal ['bench', 'ractors', 'GC ms/iter (worker sum)', 'GC ms/worker', 'mark ms/iter (worker sum)', 'sweep ms/iter (worker sum)', 'GCs/iter (worker sum)', 'major/iter (worker sum)', 'minor/iter (worker sum)'], gc_table[0]
+      assert_equal ['%s'] * 9, gc_format
+      assert_equal ['object-new', '0', '0.000', '0.000', '0.000', 'N/A', '0.0', '0.0', '0.0'], gc_table[1]
+      assert_equal ['object-new', '2', '4.000', '4.000', '2.000', '1.000', '5.0', '1.0', '4.0'], gc_table[2]
+    end
+
+    it 'detects GC data from any recognized series, not just marking time' do
+      bench_data = {
+        'reference' => {
+          'object-new' => ractor_gc_blob(
+            '0' => { bench: [1.0], gc: gc_group(total: nil, major: [2], minor: [4]) }
+          )
+        }
+      }
+
+      _table, _format, gc_table, _gc_format = build_ractor_gc(bench_data)
+
+      refute_nil gc_table, 'a blob with only count series is still GC data'
+      assert_equal ['object-new', '0', 'N/A', 'N/A', 'N/A', 'N/A', '6.0', '2.0', '4.0'], gc_table[1]
+    end
+
+    it 'derives GC ms/worker by dividing each iteration by its sampled worker count' do
+      per_worker_group = gc_group(
+        total: [12.0, 6.0], major: [2, 2], minor: [6, 6],
+        workers: [
+          [{ 'gc_count' => 4, 'worker_index' => 0 }, { 'gc_count' => 4, 'worker_index' => 1 }],
+          [{ 'gc_count' => 8, 'worker_index' => 0 }]
+        ]
+      )
+      mismatched_group = gc_group(
+        total: [12.0, 6.0], major: [2, 2], minor: [6, 6],
+        workers: [[{ 'gc_count' => 8, 'worker_index' => 0 }]]
+      )
+      empty_workers_group = gc_group(total: [12.0, 6.0], major: [2, 2], minor: [6, 6], workers: [[], []])
+      nil_total_group = gc_group(total: [nil, 6.0], major: [2, 2], minor: [6, 6])
+
+      bench_data = {
+        'reference' => {
+          'obj-2w' => ractor_gc_blob('2' => { bench: [1.0, 1.0], gc: per_worker_group }),
+          'obj-mismatch' => ractor_gc_blob('2' => { bench: [1.0, 1.0], gc: mismatched_group }),
+          'obj-empty' => ractor_gc_blob('2' => { bench: [1.0, 1.0], gc: empty_workers_group }),
+          'obj-nil-total' => ractor_gc_blob('2' => { bench: [1.0, 1.0], gc: nil_total_group })
+        }
+      }
+
+      _table, _format, gc_table, _gc_format = build_ractor_gc(bench_data)
+
+      header = gc_table[0]
+      ms_per_worker_idx = header.index('GC ms/worker')
+      refute_nil ms_per_worker_idx
+      rows = gc_table[1..].to_h { |row| [row[0], row] }
+      assert_equal '6.000', rows['obj-2w'][ms_per_worker_idx]
+      assert_equal '9.000', rows['obj-2w'][header.index('GC ms/iter (worker sum)')]
+      assert_equal 'N/A', rows['obj-mismatch'][ms_per_worker_idx], 'mismatched series lengths'
+      assert_equal 'N/A', rows['obj-empty'][ms_per_worker_idx], 'empty worker list'
+      assert_equal 'N/A', rows['obj-nil-total'][ms_per_worker_idx], 'unavailable total'
+    end
+
+    it 'uses the direct count for GCs/iter and per-GC ratios when it differs from major plus minor' do
+      group = ->(total, count, major, minor) do
+        gc_group(
+          total: [total, total], count: [count, count],
+          major: [major, major], minor: [minor, minor],
+          mark: [1.0, 1.0], sweep: [1.0, 1.0]
+        )
+      end
+      bench_data = {
+        'base' => { 'object-new' => ractor_gc_blob('0' => { bench: [1.0, 1.0], gc: group.call(30.0, 10, 1, 1) }) },
+        'candidate' => { 'object-new' => ractor_gc_blob('0' => { bench: [1.0, 1.0], gc: group.call(12.0, 6, 1, 2) }) }
+      }
+
+      _table, _format, gc_table, _gc_format = build_ractor_gc(bench_data)
+
+      header = gc_table[0]
+      row = gc_table[1]
+      assert_equal '2.500', row[header.index('gc/iter ratio')]
+      assert_equal '1.500', row[header.index('gc/GC ratio')]
+      assert_equal '10.0  →   6.0', row[header.index('GCs/iter (worker sum)')]
+    end
+
+    it 'falls back to major plus minor only when the direct-count key is absent' do
+      without_direct = gc_group(total: nil, major: [2, 2], minor: [8, 8]).tap { |group| group.delete('gc_count_bench') }
+      null_direct = gc_group(total: nil, major: [2, 2], minor: [8, 8], count: [nil, nil])
+
+      bench_data = {
+        'reference' => {
+          'legacy' => ractor_gc_blob('0' => { bench: [1.0, 1.0], gc: without_direct }),
+          'null-count' => ractor_gc_blob('0' => { bench: [1.0, 1.0], gc: null_direct })
+        }
+      }
+
+      _table, _format, gc_table, _gc_format = build_ractor_gc(bench_data)
+
+      header = gc_table[0]
+      gcs_idx = header.index('GCs/iter (worker sum)')
+      rows = gc_table[1..].to_h { |row| [row[0], row] }
+      assert_equal '10.0', rows['legacy'][gcs_idx], 'absent direct-count key sums major and minor'
+      assert_equal 'N/A', rows['null-count'][gcs_idx], 'present nulls stay unavailable instead of falling back'
+      assert_equal '2.0', rows['null-count'][header.index('major/iter (worker sum)')], 'neighboring values survive the null series'
+    end
+
+    it 'renders global GC and controller compaction columns in a Ractor comparison' do
+      group = ->(global, compacts) do
+        gc_group(
+          total: [4.0, 4.0], major: [1, 1], minor: [3, 3],
+          mark: [1.0, 1.0], sweep: [1.0, 1.0],
+          global: [global, global], compacts: [compacts, compacts]
+        )
+      end
+      bench_data = {
+        'base' => { 'object-new' => ractor_gc_blob('0' => { bench: [1.0, 1.0], gc: group.call(4, 1) }) },
+        'candidate' => { 'object-new' => ractor_gc_blob('0' => { bench: [1.0, 1.0], gc: group.call(2, 3) }) }
+      }
+
+      _table, _format, gc_table, _gc_format = build_ractor_gc(bench_data)
+
+      header = gc_table[0]
+      assert_equal [
+        'bench', 'ractors', 'gc/iter ratio', 'gc/GC ratio', 'mark/iter ratio', 'sweep/iter ratio',
+        'mark/GC ratio', 'sweep/GC ratio', 'global/iter ratio*',
+        'GCs/iter (worker sum)', 'major/iter (worker sum)', 'minor/iter (worker sum)',
+        'controller compacts/iter*', 'minor GC %'
+      ], header
+      row = gc_table[1]
+      assert_equal '2.000', row[header.index('global/iter ratio*')], 'base mean divided by comparison mean'
+      assert_equal ' 1.0  →   3.0', row[header.index('controller compacts/iter*')]
+    end
+
+    it 'renders N/A for a partially-null series without losing the row or its neighbors' do
+      partial_group = gc_group(total: [4.0, 4.0], major: [1, 1], minor: [3, 3], mark: [nil, 1.0], sweep: [1.0, 1.0])
+      full_group = gc_group(total: [4.0, 4.0], major: [1, 1], minor: [3, 3], mark: [2.0, 2.0], sweep: [1.0, 1.0])
+      bench_data = {
+        'base' => { 'object-new' => ractor_gc_blob('0' => { bench: [1.0, 1.0], gc: partial_group }) },
+        'candidate' => { 'object-new' => ractor_gc_blob('0' => { bench: [1.0, 1.0], gc: full_group }) }
+      }
+
+      _table, _format, gc_table, _gc_format = build_ractor_gc(bench_data)
+
+      refute_nil gc_table, 'the nil entry must not hide a row whose other metrics have activity'
+      header = gc_table[0]
+      row = gc_table[1]
+      assert_equal 'N/A', row[header.index('mark/iter ratio')], 'a null entry makes the whole series unavailable'
+      assert_equal 'N/A', row[header.index('mark/GC ratio')]
+      assert_equal '1.000', row[header.index('sweep/iter ratio')], 'neighboring series keep their values'
+      assert_equal ' 4.0  →   4.0', row[header.index('GCs/iter (worker sum)')]
+    end
+
+    it 'shows global and compaction columns in a single-executable Ractor table' do
+      group = gc_group(total: [4.0, 4.0], major: [1, 1], minor: [3, 3], global: [2, 4], compacts: [1, 1])
+      bench_data = {
+        'reference' => { 'object-new' => ractor_gc_blob('0' => { bench: [1.0, 1.0], gc: group }) }
+      }
+
+      _table, _format, gc_table, _gc_format = build_ractor_gc(bench_data)
+
+      assert_equal [
+        'bench', 'ractors', 'GC ms/iter (worker sum)', 'GC ms/worker', 'mark ms/iter (worker sum)',
+        'sweep ms/iter (worker sum)', 'GCs/iter (worker sum)', 'major/iter (worker sum)',
+        'minor/iter (worker sum)', 'global GCs/iter*', 'controller compacts/iter*'
+      ], gc_table[0]
+      assert_equal ['object-new', '0', '4.000', '4.000', 'N/A', 'N/A', '4.0', '1.0', '3.0', '3.0', '1.0'], gc_table[1]
     end
   end
 end
