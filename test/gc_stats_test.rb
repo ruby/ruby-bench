@@ -97,4 +97,82 @@ describe GCStats do
     end
   end
 
+  describe '.aggregate' do
+    it 'raises ArgumentError for an empty sample set' do
+      error = assert_raises(ArgumentError) { GCStats.aggregate([]) }
+      assert_equal 'Cannot aggregate an empty GC sample set', error.message
+    end
+
+    it 'sums only the whitelisted scalar fields across worker samples' do
+      samples = [
+        { 'gc_count' => 3, 'gc_major_count' => 1, 'gc_minor_count' => 2, 'gc_marking_time' => 4, 'gc_sweeping_time' => 5, 'gc_total_time_ns' => 900_000, 'wall_time' => 0.01, 'worker_index' => 0, 'gc_stat_heap_delta' => { 0 => { heap_eden_slots: 2 } } },
+        { 'gc_count' => 4, 'gc_major_count' => 0, 'gc_minor_count' => 4, 'gc_marking_time' => 6, 'gc_sweeping_time' => 7, 'gc_total_time_ns' => 1_100_000, 'wall_time' => 0.02, 'worker_index' => 1, 'gc_stat_heap_delta' => { 1 => { heap_eden_slots: 5 } } }
+      ]
+
+      total = GCStats.aggregate(samples)
+
+      assert_equal GCStats::SCALAR_FIELD_NAMES.sort, total.keys.sort
+      assert_equal 7, total['gc_count']
+      assert_equal 1, total['gc_major_count']
+      assert_equal 6, total['gc_minor_count']
+      assert_equal 10, total['gc_marking_time']
+      assert_equal 12, total['gc_sweeping_time']
+      assert_equal 2_000_000, total['gc_total_time_ns']
+    end
+
+    it 'makes a field nil when any participating sample lacks a numeric value' do
+      samples = [
+        { 'gc_count' => 3, 'gc_major_count' => 1, 'gc_minor_count' => 2, 'gc_marking_time' => 4, 'gc_sweeping_time' => 5, 'gc_total_time_ns' => 900 },
+        { 'gc_count' => 4, 'gc_major_count' => 0, 'gc_minor_count' => 4, 'gc_marking_time' => nil, 'gc_sweeping_time' => 7, 'gc_total_time_ns' => 100 }
+      ]
+
+      total = GCStats.aggregate(samples)
+
+      assert_equal 7, total['gc_count']
+      assert_nil total['gc_marking_time']
+    end
+
+    it 'keeps a supported all-zero aggregate as numeric zero' do
+      samples = [
+        { 'gc_count' => 0, 'gc_major_count' => 0, 'gc_minor_count' => 0, 'gc_marking_time' => 0, 'gc_sweeping_time' => 0, 'gc_total_time_ns' => 0 },
+        { 'gc_count' => 0, 'gc_major_count' => 0, 'gc_minor_count' => 0, 'gc_marking_time' => 0, 'gc_sweeping_time' => 0, 'gc_total_time_ns' => 0 }
+      ]
+
+      total = GCStats.aggregate(samples)
+
+      assert_equal 0, total['gc_count']
+      refute_nil total['gc_total_time_ns']
+    end
+  end
+
+  describe '.ractor_local_gc_supported?' do
+    it 'rejects Ruby 4.0 builds' do
+      refute GCStats.ractor_local_gc_supported?('4.0.6')
+    end
+
+    it 'accepts Ruby 4.1 and newer, comparing version parts as integers' do
+      assert GCStats.ractor_local_gc_supported?('4.1.0dev')
+      assert GCStats.ractor_local_gc_supported?('4.10.0')
+      assert GCStats.ractor_local_gc_supported?('5.0.0')
+    end
+
+    it 'defaults to the running Ruby version' do
+      assert_equal GCStats.ractor_local_gc_supported?(RUBY_VERSION), GCStats.ractor_local_gc_supported?
+    end
+  end
+
+  describe '.measure' do
+    it 'restores the GC measurement setting when the workload raises' do
+      skip 'target lacks GC.measure_total_time=' unless GC.respond_to?(:measure_total_time) && GC.respond_to?(:measure_total_time=)
+
+      saved = GC.measure_total_time
+      begin
+        GC.measure_total_time = false
+        assert_raises(RuntimeError) { GCStats.measure { raise 'boom' } }
+        assert_equal false, GC.measure_total_time
+      ensure
+        GC.measure_total_time = saved
+      end
+    end
+  end
 end
