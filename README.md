@@ -35,6 +35,28 @@ you should enable it before running `./run_benchmarks.rb`:
 chruby ruby-yjit
 ```
 
+### Benchmarking Spinel
+
+[Spinel](https://github.com/matz/spinel) compiles a whole Ruby program into a native binary ahead of time.
+Its `-E` option compiles a script and runs the binary, like `go run`, so `spinel -E` can be passed to `-e`
+in place of a `ruby` executable:
+
+```
+./run_benchmarks.rb -e "zjit::ruby --zjit;spinel::spinel -E" fib nqueens matmul
+```
+
+Spinel cannot compile [harness/harness.rb](harness/harness.rb), which relies on CRuby-only features,
+so [harness/loader.rb](harness/loader.rb) switches to [harness-spinel/harness.rb](harness-spinel/harness.rb)
+when `RUBY_ENGINE` is `"spinel"`. That harness also runs on CRuby (`ruby -Iharness-spinel benchmarks/fib.rb`).
+Only benchmarks without a Gemfile that are written in the subset of Ruby Spinel supports can be compiled.
+
+If you install Spinel under a chruby directory, e.g. `make install PREFIX=/opt/rubies/spinel`
+in a Spinel checkout, `--chruby` accepts it too:
+
+```
+./run_benchmarks.rb --chruby "zjit::4.0.7 --zjit;spinel" fib
+```
+
 ## Usage
 
 To run all the benchmarks and record the data:
@@ -100,6 +122,8 @@ It's also convenient for profiling, debugging, etc, especially since all benchma
 ```
 ruby benchmarks/some_benchmark.rb
 ```
+
+The same works with Spinel, which compiles the benchmark and runs the binary: `spinel -E benchmarks/some_benchmark.rb`.
 
 ### Benchmark organization
 

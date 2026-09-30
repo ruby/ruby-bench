@@ -200,7 +200,8 @@ class BenchmarkSuite
     env = {}
     ruby_path = `#{ruby.shelljoin} -e 'print RbConfig.ruby' 2> #{File::NULL}`
 
-    if ruby_path != RbConfig.ruby
+    # Implementations without RbConfig (e.g. Spinel) print nothing; leave PATH alone for them.
+    if !ruby_path.empty? && ruby_path != RbConfig.ruby
       env["PATH"] = "#{File.dirname(ruby_path)}:#{ENV["PATH"]}"
 
       # chruby sets GEM_HOME and GEM_PATH in your shell. We have to unset it in the child
@@ -234,8 +235,9 @@ class BenchmarkSuite
       cmd = setarch_prefix
 
       # Pin the process to one given core to improve caching and reduce variance on CRuby
+      # and Spinel, which compiles the benchmark to a single-threaded native binary.
       # Other Rubies need to use multiple cores, e.g., for JIT threads
-      if ruby_description.start_with?('ruby ') && should_pin?(benchmark_name)
+      if (ruby_description.start_with?('ruby ') || ruby_description.start_with?('spinel ')) && should_pin?(benchmark_name)
         # Up to the last two thirds of Intel CPU cores may be slow E-Cores, so avoid using them.
         cpu = [(Etc.nprocessors / 3) - 1, 0].max
         cmd.concat(["taskset", "-c", "#{cpu}"])
