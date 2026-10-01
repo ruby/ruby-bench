@@ -222,6 +222,7 @@ You can find several test harnesses in this repository:
 * harness-stats - count method calls and loop iterations
 * harness-vernier - a harness to profile the benchmark with vernier
 * harness-warmup - a harness which runs as long as needed to find warmed up (peak) performance
+* harness-ractor-mem - a harness for ractor memory pathology benchmarks, measuring retained and peak RSS across ractor counts
 
 To use it, run a benchmark script directly, specifying a harness directory with `-I`:
 
