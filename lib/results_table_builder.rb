@@ -136,7 +136,7 @@ class ResultsTableBuilder
     header = label_columns + (include_gc_comparison_name? ? ["comparison"] : [])
     header += ["gc/iter ratio", "gc/GC ratio"] if include_gc_total_time?
     header += ["mark/iter ratio", "sweep/iter ratio", "mark/GC ratio", "sweep/GC ratio"]
-    header << "global/iter ratio*" if gc_series_present?('gc_global_count_bench')
+    header << "global/iter ratio" if gc_series_present?('gc_global_count_bench')
     header << "GCs/iter#{count_suffix}" << "major/iter#{count_suffix}" << "minor/iter#{count_suffix}"
     header << "controller compacts/iter*" if gc_series_present?('gc_controller_compact_count_bench')
     header << "minor GC %"
@@ -175,7 +175,7 @@ class ResultsTableBuilder
     header = label_columns + ["GC ms/iter#{count_suffix}"]
     header << "GC ms/worker" if ractor
     header += ["mark ms/iter#{count_suffix}", "sweep ms/iter#{count_suffix}", "GCs/iter#{count_suffix}", "major/iter#{count_suffix}", "minor/iter#{count_suffix}"]
-    header << "global GCs/iter*" if gc_series_present?('gc_global_count_bench')
+    header << "global/iter#{count_suffix}" if gc_series_present?('gc_global_count_bench')
     header << "controller compacts/iter*" if gc_series_present?('gc_controller_compact_count_bench')
 
     rows = [header]
@@ -332,7 +332,7 @@ class ResultsTableBuilder
     row << gc_count_cell(base[:major], other[:major])
     row << gc_count_cell(base[:minor], other[:minor])
     row << gc_count_cell(base[:compact], other[:compact]) if gc_series_present?('gc_controller_compact_count_bench')
-    row << gc_minor_percent_cell(base[:major], base[:minor], other[:major], other[:minor])
+    row << gc_minor_percent_cell(base, other)
     row
   end
 
@@ -378,14 +378,17 @@ class ResultsTableBuilder
     "%4s  →  %4s" % [format_gc_series_mean(base), format_gc_series_mean(other)]
   end
 
-  def gc_minor_percent_cell(base_major, base_minor, other_major, other_minor)
-    "%4s  →  %4s" % [format_gc_percent(gc_minor_percent(base_major, base_minor)), format_gc_percent(gc_minor_percent(other_major, other_minor))]
+  def gc_minor_percent_cell(base, other)
+    "%4s  →  %4s" % [
+      format_gc_percent(gc_minor_percent(base[:minor], base[:count])),
+      format_gc_percent(gc_minor_percent(other[:minor], other[:count]))
+    ]
   end
 
-  def gc_minor_percent(major, minor)
-    return nil unless numeric_series?(major) && numeric_series?(minor) && major.length == minor.length
+  def gc_minor_percent(minor, count)
+    return nil unless numeric_series?(minor) && numeric_series?(count) && minor.length == count.length
 
-    total = major.sum + minor.sum
+    total = count.sum
     return nil if total == 0.0
 
     minor.sum.to_f / total

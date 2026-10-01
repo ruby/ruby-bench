@@ -691,7 +691,7 @@ describe ResultsTableBuilder do
             'gc_total_time_bench' => [4.0, 6.0],
             'gc_marking_time_bench' => [1.0, 3.0],
             'gc_sweeping_time_bench' => [0.5, 1.5],
-            'gc_count_bench' => [10, 10],
+            'gc_count_bench' => [11, 11],
             'gc_major_count_bench' => [2, 2],
             'gc_minor_count_bench' => [8, 8],
             'gc_global_count_bench' => [1, 1],
@@ -709,10 +709,10 @@ describe ResultsTableBuilder do
 
       assert_equal [
         'bench', 'GC ms/iter', 'mark ms/iter', 'sweep ms/iter', 'GCs/iter', 'major/iter', 'minor/iter',
-        'global GCs/iter*', 'controller compacts/iter*'
+        'global/iter', 'controller compacts/iter*'
       ], gc_table[0]
       assert_equal ['%s'] * 9, gc_format
-      assert_equal ['gcbench', '5.000', '2.000', '1.000', '10.0', '2.0', '8.0', '1.0', '0.0'], gc_table[1]
+      assert_equal ['gcbench', '5.000', '2.000', '1.000', '11.0', '2.0', '8.0', '1.0', '0.0'], gc_table[1]
     end
   end
 
@@ -839,7 +839,7 @@ describe ResultsTableBuilder do
 
   describe 'Ractor GC data' do
     def gc_group(total:, major:, minor:, mark: nil, sweep: nil, count: nil, global: nil, compacts: nil, workers: nil)
-      count ||= major.zip(minor).map(&:sum)
+      count ||= major.zip(minor, global || [0] * major.length).map(&:sum)
       group = {
         'gc_count_bench' => count,
         'gc_major_count_bench' => major,
@@ -1027,6 +1027,8 @@ describe ResultsTableBuilder do
       assert_equal '2.500', row[header.index('gc/iter ratio')]
       assert_equal '1.500', row[header.index('gc/GC ratio')]
       assert_equal '10.0  →   6.0', row[header.index('GCs/iter (worker sum)')]
+
+      assert_equal ' 10%  →   33%', row[header.index('minor GC %')], 'minor GC % divides by the direct count (1/10, 2/6), not major + minor'
     end
 
     it 'falls back to major plus minor only when the direct-count key is absent' do
@@ -1068,13 +1070,15 @@ describe ResultsTableBuilder do
       header = gc_table[0]
       assert_equal [
         'bench', 'ractors', 'gc/iter ratio', 'gc/GC ratio', 'mark/iter ratio', 'sweep/iter ratio',
-        'mark/GC ratio', 'sweep/GC ratio', 'global/iter ratio*',
+        'mark/GC ratio', 'sweep/GC ratio', 'global/iter ratio',
         'GCs/iter (worker sum)', 'major/iter (worker sum)', 'minor/iter (worker sum)',
         'controller compacts/iter*', 'minor GC %'
       ], header
       row = gc_table[1]
-      assert_equal '2.000', row[header.index('global/iter ratio*')], 'base mean divided by comparison mean'
+      assert_equal '2.000', row[header.index('global/iter ratio')], 'base mean divided by comparison mean'
       assert_equal ' 1.0  →   3.0', row[header.index('controller compacts/iter*')]
+
+      assert_equal ' 38%  →   50%', row[header.index('minor GC %')], 'the minor GC % denominator includes global cycles (3/8, not 3/4)'
     end
 
     it 'renders N/A for a partially-null series without losing the row or its neighbors' do
@@ -1107,9 +1111,9 @@ describe ResultsTableBuilder do
       assert_equal [
         'bench', 'ractors', 'GC ms/iter (worker sum)', 'GC ms/worker', 'mark ms/iter (worker sum)',
         'sweep ms/iter (worker sum)', 'GCs/iter (worker sum)', 'major/iter (worker sum)',
-        'minor/iter (worker sum)', 'global GCs/iter*', 'controller compacts/iter*'
+        'minor/iter (worker sum)', 'global/iter (worker sum)', 'controller compacts/iter*'
       ], gc_table[0]
-      assert_equal ['object-new', '0', '4.000', '4.000', 'N/A', 'N/A', '4.0', '1.0', '3.0', '3.0', '1.0'], gc_table[1]
+      assert_equal ['object-new', '0', '4.000', '4.000', 'N/A', 'N/A', '7.0', '1.0', '3.0', '3.0', '1.0'], gc_table[1]
     end
   end
 end

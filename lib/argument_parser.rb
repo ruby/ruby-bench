@@ -111,7 +111,7 @@ class ArgumentParser
         ENV["WARMUP_ITRS"] = n
       end
 
-      opts.on("--ractor-gc", "collect Ractor-local GC metrics when using the Ractor harness (the target must use Ruby 4.1 or newer)") do
+      opts.on("--ractor-gc", "collect Ractor-local GC metrics when using the Ractor harness (the target must use Ruby 4.1 or newer with per-Ractor global GC attribution)") do
         ENV["RUBY_BENCH_RACTOR_GC"] = "1"
       end
 

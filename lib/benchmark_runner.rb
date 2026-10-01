@@ -91,20 +91,9 @@ module BenchmarkRunner
         end
       end
       gc_headers = sections.filter_map { |section| section[:gc_table]&.first }.flatten
-      global_column = gc_headers.any? { |h| h == 'global GCs/iter*' || h == 'global/iter ratio*' }
-      compact_column = gc_headers.include?('controller compacts/iter*')
-      if global_column || compact_column
+      if gc_headers.include?('controller compacts/iter*')
         output_str << "GC metric notes:\n"
-        if global_column
-          output_str << "- global GCs/iter*: GC.stat(:global_gc_count) deltas per iteration. They count stop-the-world global GC cycles observed by the measuring main Ractor, not the process-wide total of all Ractors' local and global collections. Stop-the-world cycles only exist once a second Ractor has been alive, so count-0 rows read 0.0 unless the workload itself creates Ractors.\n"
-        end
-        if gc_headers.include?('global/iter ratio*')
-          output_str << "- global/iter ratio*: the #{base_name} mean divided by the comparison executable's mean.\n"
-        end
-        if compact_column
-          output_str << "- controller compacts/iter*: the main Ractor's GC.stat(:compact_count) delta per iteration. Every global compacting cycle increments it, but it is not a sum of worker counters.#{other_names.empty? ? '' : " Comparison tables show #{base_name} → comparison values."}\n"
-        end
-        output_str << "- * controller-observed deltas can overlap the (worker sum) columns: a global or compacting cycle triggered by a sampled worker is already included in that worker's counts as a major GC. They can also reflect cycles from Ractors the harness does not sample. Do not add the starred columns to the worker sums.\n"
+        output_str << "- controller compacts/iter*: the main Ractor's GC.stat(:compact_count) delta per iteration. Every global compacting cycle increments compact_count in every object space. Do not sum it across workers.#{other_names.empty? ? '' : " Comparison tables show #{base_name} → comparison values."}\n"
       end
 
       if sections.any? { |section| section[:gc_scope] == 'ractor-local-workload' && section[:gc_table] }
