@@ -7,7 +7,7 @@ describe ArgumentParser do
   before do
     @original_env = {}
     ['WARMUP_ITRS', 'MIN_BENCH_ITRS', 'MIN_BENCH_TIME', 'YJIT_BENCH_STATS',
-     'ZJIT_BENCH_STATS', 'RUBIES_DIR', 'HOME'].each do |key|
+     'ZJIT_BENCH_STATS', 'RUBY_BENCH_RACTOR_GC', 'RUBIES_DIR', 'HOME'].each do |key|
       @original_env[key] = ENV[key]
     end
   end
@@ -361,6 +361,15 @@ describe ArgumentParser do
         parser.parse(['--warmup=20'])
 
         assert_equal '20', ENV['WARMUP_ITRS']
+      end
+    end
+
+    describe '--ractor-gc option' do
+      it 'sets RUBY_BENCH_RACTOR_GC environment variable' do
+        parser = ArgumentParser.new
+        parser.parse(['--ractor-gc'])
+
+        assert_equal '1', ENV['RUBY_BENCH_RACTOR_GC']
       end
     end
 

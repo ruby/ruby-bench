@@ -42,9 +42,15 @@ module RactorBreakdown
   end
 
   def per_count_blob(blob, breakdown, count)
-    per_count = blob.reject { |k, _| k == 'bench_by_ractors' || k == 'bench' }
+    per_count = blob.reject { |k, _| k == 'bench_by_ractors' || k == 'gc_by_ractors' || k == 'bench' }
     per_count['bench'] = breakdown[count.to_s]
     per_count['warmup'] = []
+    gc_by_ractors = blob['gc_by_ractors']
+    if gc_by_ractors.is_a?(Hash) && gc_by_ractors.key?(count.to_s)
+      per_count.merge!(gc_by_ractors[count.to_s])
+    else
+      per_count.delete('gc_scope')
+    end
     per_count
   end
 end
