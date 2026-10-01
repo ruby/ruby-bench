@@ -5,6 +5,7 @@ module GCStats
 
   SCALAR_FIELDS = [
     ["gc_count", :count],
+    ["gc_global_count", :global_gc_count],
     ["gc_major_count", :major_gc_count],
     ["gc_minor_count", :minor_gc_count],
     ["gc_marking_time", :marking_time],
@@ -24,6 +25,27 @@ module GCStats
   def ractor_local_gc_supported?(version = RUBY_VERSION)
     major, minor = version.split(".").first(2).map(&:to_i)
     major > 4 || (major == 4 && minor >= 1)
+  end
+
+  def global_gc_attributed?
+    return false unless Process.respond_to?(:fork)
+
+    pid = fork do
+      Warning[:experimental] = false
+      $stderr.reopen(File::NULL, "w")
+      begin
+        main_before = GC.stat(:global_gc_count)
+        process_before = GC.stat(:global_gc_count, scope: :global)
+        Ractor.new { GC.start(full_mark: true, immediate_mark: true, immediate_sweep: true, global: true) }.join
+        attributed = GC.stat(:global_gc_count) == main_before
+        ran = GC.stat(:global_gc_count, scope: :global) > process_before
+        exit!(attributed && ran ? 0 : 1)
+      rescue StandardError
+        exit!(2)
+      end
+    end
+    _pid, status = Process.wait2(pid)
+    status.success?
   end
 
   def heap_snapshot

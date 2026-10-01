@@ -38,10 +38,9 @@ def run_benchmark(_num_itrs_hint, **, &block)
   header << "  gc_count"
   header << "     major"
   header << "     minor"
-  header << "   global*" if has_global_gc
+  header << "    global" if has_global_gc
   header << "  maj/min"
   puts header
-  puts "(* process/controller-observed; may overlap the other GC counts and is not additive.)" if has_global_gc
 
   begin
     gc_before = GCStats.snapshot

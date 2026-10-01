@@ -105,16 +105,17 @@ describe GCStats do
 
     it 'sums only the whitelisted scalar fields across worker samples' do
       samples = [
-        { 'gc_count' => 3, 'gc_major_count' => 1, 'gc_minor_count' => 2, 'gc_marking_time' => 4, 'gc_sweeping_time' => 5, 'gc_total_time_ns' => 900_000, 'wall_time' => 0.01, 'worker_index' => 0, 'gc_stat_heap_delta' => { 0 => { heap_eden_slots: 2 } } },
-        { 'gc_count' => 4, 'gc_major_count' => 0, 'gc_minor_count' => 4, 'gc_marking_time' => 6, 'gc_sweeping_time' => 7, 'gc_total_time_ns' => 1_100_000, 'wall_time' => 0.02, 'worker_index' => 1, 'gc_stat_heap_delta' => { 1 => { heap_eden_slots: 5 } } }
+        { 'gc_count' => 3, 'gc_global_count' => 1, 'gc_major_count' => 1, 'gc_minor_count' => 1, 'gc_marking_time' => 4, 'gc_sweeping_time' => 5, 'gc_total_time_ns' => 900_000, 'wall_time' => 0.01, 'worker_index' => 0, 'gc_stat_heap_delta' => { 0 => { heap_eden_slots: 2 } } },
+        { 'gc_count' => 4, 'gc_global_count' => 2, 'gc_major_count' => 0, 'gc_minor_count' => 2, 'gc_marking_time' => 6, 'gc_sweeping_time' => 7, 'gc_total_time_ns' => 1_100_000, 'wall_time' => 0.02, 'worker_index' => 1, 'gc_stat_heap_delta' => { 1 => { heap_eden_slots: 5 } } }
       ]
 
       total = GCStats.aggregate(samples)
 
       assert_equal GCStats::SCALAR_FIELD_NAMES.sort, total.keys.sort
       assert_equal 7, total['gc_count']
+      assert_equal 3, total['gc_global_count']
       assert_equal 1, total['gc_major_count']
-      assert_equal 6, total['gc_minor_count']
+      assert_equal 3, total['gc_minor_count']
       assert_equal 10, total['gc_marking_time']
       assert_equal 12, total['gc_sweeping_time']
       assert_equal 2_000_000, total['gc_total_time_ns']
@@ -173,6 +174,13 @@ describe GCStats do
       ensure
         GC.measure_total_time = saved
       end
+    end
+  end
+
+  describe '.global_gc_attributed?' do
+    it 'is false when GC.stat lacks the global_gc_count key' do
+      skip 'this build has the key; attribution depends on ruby/ruby#19147' if GCStats.stat_available?(:global_gc_count)
+      refute GCStats.global_gc_attributed?
     end
   end
 end

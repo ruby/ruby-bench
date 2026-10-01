@@ -9,7 +9,6 @@ require_relative '../lib/gc_stats' if RACTOR_GC_ENABLED
 
 CONTROLLER_GC_SERIES = if RACTOR_GC_ENABLED
   {
-    "gc_global_count_bench" => [:global_gc_count, "global*"],
     "gc_controller_compact_count_bench" => [:compact_count, "compacts*"],
   }.select { |_name, (stat_key, _label)| GCStats.stat_available?(stat_key) }
     .transform_values(&:freeze)
@@ -69,6 +68,9 @@ def check_ractor_gc_support
   unless GC.respond_to?(:total_time) && GC.respond_to?(:measure_total_time) && GC.respond_to?(:measure_total_time=)
     raise NotImplementedError, "Ractor GC metrics require GC.total_time and GC.measure_total_time="
   end
+  unless GCStats.global_gc_attributed?
+    raise NotImplementedError, "Ractor GC metrics require per-Ractor global GC attribution (ruby/ruby#19147)"
+  end
 end
 
 def run_warmup(warmup_itrs, ractor_args, &block)
@@ -110,6 +112,7 @@ end
 
 RACTOR_GC_SERIES = {
   "gc_count_bench" => "gc_count",
+  "gc_global_count_bench" => "gc_global_count",
   "gc_major_count_bench" => "gc_major_count",
   "gc_minor_count_bench" => "gc_minor_count",
   "gc_marking_time_bench" => "gc_marking_time",
@@ -121,10 +124,10 @@ def run_benchmark_gc(bench_itrs, block, ractor_args, gc_config:)
   stats = Hash.new { |h,k| h[k] = [] }
   gc_by_ractors = {}
 
-  header = +"r:   itr:   time   gc_total   marking  sweeping  gc_count     major     minor"
+  header = +"r:   itr:   time   gc_total   marking  sweeping  gc_count     major     minor    global"
   CONTROLLER_GC_SERIES.each_value { |(_stat_key, label)| header << " %9s" % label }
   puts header
-  puts "(* process/controller-observed; may overlap the other GC counts and is not additive.)" if CONTROLLER_GC_SERIES.any?
+  puts "(* controller-observed compacting cycles; may overlap global counts and is not additive.)" if CONTROLLER_GC_SERIES.any?
 
   RACTORS.each do |rs|
     group = { "gc_worker_samples" => [] }
@@ -150,7 +153,7 @@ def run_benchmark_gc(bench_itrs, block, ractor_args, gc_config:)
       itr_str << " %8s" % (total_ms ? "%.1fms" % total_ms : "N/A")
       itr_str << " %8s" % (agg["gc_marking_time"] ? "#{agg["gc_marking_time"]}ms" : "N/A")
       itr_str << " %8s" % (agg["gc_sweeping_time"] ? "#{agg["gc_sweeping_time"]}ms" : "N/A")
-      itr_str << " %9s %9s %9s" % [agg["gc_count"], agg["gc_major_count"], agg["gc_minor_count"]].map { |v| v.nil? ? "N/A" : v.to_s }
+      itr_str << " %9s %9s %9s %9s" % [agg["gc_count"], agg["gc_major_count"], agg["gc_minor_count"], agg["gc_global_count"]].map { |v| v.nil? ? "N/A" : v.to_s }
       CONTROLLER_GC_SERIES.each_key { |series_name| itr_str << " %9s" % (controller_deltas[series_name] || "N/A") }
       puts itr_str
     end

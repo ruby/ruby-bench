@@ -437,7 +437,7 @@ describe BenchmarkRunner do
       refute_includes result, 'mark ruby-base/ruby-exp:'
     end
 
-    it 'explains global GC and controller compaction columns when a GC table shows them' do
+    it 'explains the controller compaction column when a GC table shows it' do
       ruby_descriptions = {
         'ruby-base' => 'ruby 4.1.0dev',
         'ruby-exp' => 'ruby 4.1.0dev experiment'
@@ -448,7 +448,7 @@ describe BenchmarkRunner do
       ]
       format = ['%s', '%s', '%s', '%s']
       gc_table = [
-        ['bench', 'gc/iter ratio', 'global/iter ratio*', 'GCs/iter', 'controller compacts/iter*'],
+        ['bench', 'gc/iter ratio', 'global/iter ratio', 'GCs/iter', 'controller compacts/iter*'],
         ['fib', '2.000', '1.500', '10.0  →   5.0', ' 1.0  →   2.0']
       ]
       gc_format = ['%s', '%s', '%s', '%s', '%s']
@@ -458,17 +458,19 @@ describe BenchmarkRunner do
       )
 
       assert_includes result, "GC metric notes:\n"
-      assert_includes result, 'stop-the-world global GC cycles observed by the measuring main Ractor'
-      assert_includes result, "- global/iter ratio*: the ruby-base mean divided by the comparison executable's mean."
-      assert_includes result, "- * controller-observed deltas can overlap the (worker sum) columns"
+      assert_includes result, "- controller compacts/iter*: the main Ractor's GC.stat(:compact_count) delta per iteration."
+      assert_includes result, 'Every global compacting cycle increments compact_count in every object space.'
+      assert_includes result, 'Do not sum it across workers.'
+      assert_includes result, 'Comparison tables show ruby-base → comparison values.'
+      refute_includes result, 'global GCs/iter'
     end
 
-    it 'explains the columns for a single-executable GC table without a legend' do
+    it 'explains the compaction column for a single-executable GC table without a legend' do
       ruby_descriptions = { 'ruby' => 'ruby 4.1.0dev' }
       table = [['bench', 'ruby (ms)'], ['fib', '100.0']]
       format = ['%s', '%s']
       gc_table = [
-        ['bench', 'GC ms/iter', 'GCs/iter', 'global GCs/iter*', 'controller compacts/iter*'],
+        ['bench', 'GC ms/iter', 'GCs/iter', 'global/iter', 'controller compacts/iter*'],
         ['fib', '4.000', '10.0', '1.0', '0.0']
       ]
       gc_format = ['%s', '%s', '%s', '%s', '%s']
@@ -479,10 +481,9 @@ describe BenchmarkRunner do
 
       refute_includes result, 'Legend:'
       assert_includes result, "GC metric notes:\n"
-      assert_includes result, '- global GCs/iter*: GC.stat(:global_gc_count) deltas per iteration.'
-      refute_includes result, 'global/iter ratio*:'
       assert_includes result, "- controller compacts/iter*: the main Ractor's GC.stat(:compact_count) delta per iteration."
-      assert_includes result, 'Do not add the starred columns to the worker sums.'
+      refute_includes result, 'Comparison tables show'
+      refute_includes result, 'global GCs/iter'
     end
 
     it 'omits the GC metric notes block when no GC table shows those columns' do
@@ -496,7 +497,7 @@ describe BenchmarkRunner do
       ]
       format = ['%s', '%s', '%s', '%s']
       gc_table = [
-        ['bench', 'mark/iter ratio', 'GCs/iter', 'major/iter'],
+        ['bench', 'mark/iter ratio', 'GCs/iter', 'global/iter'],
         ['fib', '2.000', '10.0  →   5.0', ' 2.0  →   1.0']
       ]
       gc_format = ['%s', '%s', '%s', '%s']

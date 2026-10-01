@@ -92,6 +92,17 @@ describe 'Ractor GC harness' do
     puts "workload_ran=#{workload_ran}"
   RUBY
 
+  UNATTRIBUTED_GLOBAL_BODY = <<~'RUBY'
+    def GCStats.global_gc_attributed?(*) = false
+    workload_ran = false
+    begin
+      run_benchmark(2) { |_count| workload_ran = true }
+    rescue NotImplementedError => e
+      puts "raised: #{e.message}"
+    end
+    puts "workload_ran=#{workload_ran}"
+  RUBY
+
   before do
     @explicit_target = !ENV['RACTOR_GC_TEST_RUBY'].nil?
     @ruby = ENV['RACTOR_GC_TEST_RUBY'] || RbConfig.ruby
@@ -111,6 +122,13 @@ describe 'Ractor GC harness' do
     unless GCStats.ractor_local_gc_supported?(out.strip)
       flunk("RACTOR_GC_TEST_RUBY target #{@ruby} is Ruby #{out.strip}; Ractor GC metrics require Ruby 4.1 or newer") if @explicit_target
       skip("test ruby #{@ruby} is Ruby #{out.strip} (< 4.1); set RACTOR_GC_TEST_RUBY to a Ruby 4.1 or newer build")
+    end
+
+    _out, attr_err, attr_status = Open3.capture3(CLEAN_ENV, @ruby, '--disable-gems', '-r', File.join(ROOT, 'lib', 'gc_stats'), '-e', 'exit(GCStats.global_gc_attributed? ? 0 : 1)')
+    unless attr_status.success?
+      detail = "target #{@ruby} lacks per-Ractor global GC attribution (ruby/ruby#19147): #{attr_err.strip}"
+      flunk("RACTOR_GC_TEST_RUBY #{detail}") if @explicit_target
+      skip("test ruby #{detail}")
     end
   end
 
@@ -147,16 +165,13 @@ describe 'Ractor GC harness' do
       assert_equal %w[0 1 2], data['bench_by_ractors'].keys.sort
       assert_equal %w[0 1 2], data['gc_by_ractors'].keys.sort
 
-      controller_series_present = data['gc_by_ractors'].values.any? do |group|
-        group.key?('gc_global_count_bench') || group.key?('gc_controller_compact_count_bench')
-      end
-      if controller_series_present
-        assert_includes stdout, '(* process/controller-observed; may overlap the other GC counts and is not additive.)',
+      if data['gc_by_ractors'].values.any? { |group| group.key?('gc_controller_compact_count_bench') }
+        assert_includes stdout, '(* controller-observed compacting cycles; may overlap global counts and is not additive.)',
           'a starred stdout column must always come with the exact legend line'
       end
 
       expected_worker_keys = %w[
-        gc_count gc_major_count gc_minor_count gc_marking_time gc_sweeping_time
+        gc_count gc_global_count gc_major_count gc_minor_count gc_marking_time gc_sweeping_time
         gc_total_time_ns worker_index wall_time gc_stat_heap_delta gc_heap_after
       ].sort
 
@@ -165,12 +180,12 @@ describe 'Ractor GC harness' do
         assert_equal 2, group['gc_worker_samples'].length, "count #{count} measured iterations"
 
         %w[
-          gc_count_bench gc_major_count_bench gc_minor_count_bench
+          gc_count_bench gc_global_count_bench gc_major_count_bench gc_minor_count_bench
           gc_marking_time_bench gc_sweeping_time_bench gc_total_time_bench
         ].each do |series|
           assert_equal 2, group[series].length, "count #{count} #{series}"
         end
-        %w[gc_global_count_bench gc_controller_compact_count_bench].each do |series|
+        %w[gc_controller_compact_count_bench].each do |series|
           next unless group.key?(series)
           assert_equal 2, group[series].length, "count #{count} #{series}"
           group[series].each do |delta|
@@ -191,7 +206,7 @@ describe 'Ractor GC harness' do
             assert_kind_of Hash, w['gc_heap_after'], 'worker heaps survive worker termination'
             refute_empty w['gc_heap_after']
           end
-          controller_keys = %w[gc_global_count_bench gc_controller_compact_count_bench global_gc_count compact_count]
+          controller_keys = %w[gc_controller_compact_count_bench compact_count]
           workers.each do |w|
             controller_keys.each do |key|
               refute w.key?(key), "worker sample must not carry controller-observed #{key}"
@@ -201,6 +216,13 @@ describe 'Ractor GC harness' do
           assert_equal workers.sum { |w| w['gc_count'] }, group['gc_count_bench'][i]
           assert_equal workers.sum { |w| w['gc_major_count'] }, group['gc_major_count_bench'][i]
           assert_equal workers.sum { |w| w['gc_minor_count'] }, group['gc_minor_count_bench'][i]
+          assert_equal workers.sum { |w| w['gc_global_count'] }, group['gc_global_count_bench'][i]
+          workers.each do |w|
+            assert_equal w['gc_major_count'] + w['gc_minor_count'] + w['gc_global_count'], w['gc_count'],
+              'count == major + minor + global per worker'
+          end
+          assert_equal group['gc_major_count_bench'][i] + group['gc_minor_count_bench'][i] + group['gc_global_count_bench'][i],
+            group['gc_count_bench'][i], 'count == major + minor + global in the aggregate'
           ns_sum = workers.sum { |w| w['gc_total_time_ns'] }
           assert_in_delta ns_sum / 1_000_000.0, group['gc_total_time_bench'][i], 1e-9
         end
@@ -294,6 +316,15 @@ describe 'Ractor GC harness' do
     run_workload(UNSUPPORTED_VERSION_BODY) do |stdout, stderr, status, result_path|
       assert status.success?, "probe script itself failed:\n#{stdout}\n#{stderr}"
       assert_includes stdout, 'raised: Ractor GC metrics require Ruby 4.1 or newer'
+      assert_includes stdout, 'workload_ran=false'
+      refute File.exist?(result_path), 'no results file may be written for an unsupported target'
+    end
+  end
+
+  it 'fails before warmup when the target lacks per-Ractor global GC attribution' do
+    run_workload(UNATTRIBUTED_GLOBAL_BODY) do |stdout, stderr, status, result_path|
+      assert status.success?, "probe script itself failed:\n#{stdout}\n#{stderr}"
+      assert_includes stdout, 'raised: Ractor GC metrics require per-Ractor global GC attribution (ruby/ruby#19147)'
       assert_includes stdout, 'workload_ran=false'
       refute File.exist?(result_path), 'no results file may be written for an unsupported target'
     end

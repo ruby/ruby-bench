@@ -304,7 +304,9 @@ process's lifetime peak from `getrusage`.
 
 The `--ractor-gc` option of `run_benchmarks.rb` collects Ractor-local GC
 metrics for benchmarks that use the Ractor harness (`--category ractor`).
-The target must use Ruby 4.1 or newer; older targets fail before warmup.
+The target must use Ruby 4.1 or newer with per-Ractor global GC attribution
+([ruby/ruby#19147](https://github.com/ruby/ruby/pull/19147)); older targets
+fail before warmup.
 
 ```sh
 ./run_benchmarks.rb --category ractor --chruby=base::ruby-base --ractor-gc
@@ -318,27 +320,17 @@ Ractor's own object space. The JSON output records the scope as
 The summary table adds these columns:
 
 * `(worker sum)` columns add the Ractor-local counters of the sampled
-  workers of each iteration. Single-executable reports also show
-  `GC ms/worker`, which divides each iteration's worker-sum GC time by its
-  sampled worker count, then averages.
-* `global GCs/iter*` shows `GC.stat(:global_gc_count)` deltas observed by the
-  measuring main Ractor. These count stop-the-world global GC cycles, not
-  the process-wide total of all Ractors' local and global collections.
-  Stop-the-world cycles only exist once a second Ractor has been alive, so
-  count-0 rows read 0.0 unless the workload itself creates Ractors. In
-  comparison reports the same metric appears as `global/iter ratio*`, the
-  base executable's mean divided by the comparison executable's mean.
+  workers of each iteration. `GCs/iter` is the sum of `minor/iter`,
+  `major/iter`, and `global/iter`; a global cycle counts under `global` on
+  the Ractor that initiated it, not under `major`. Single-executable reports
+  also show `GC ms/worker`, which divides each iteration's worker-sum GC
+  time by its sampled worker count, then averages.
 * `controller compacts/iter*` shows the main Ractor's
   `GC.stat(:compact_count)` delta. Every global compacting cycle increments
-  it, but it is not a sum of worker counters.
-
-The starred columns are controller-observed deltas, not additive with the
-worker-sum columns: a global or compacting cycle triggered by a sampled
-worker is already included in that worker's counts as a major GC. They can
-also reflect cycles from Ractors the harness does not sample.
+  it in every object space, so it is not summed across workers.
 
 Worker records in the JSON output never contain the controller-observed
-counters, and controller counters are never summed across workers.
+counter, and it is never summed across workers.
 
 ## Rendering a graph
 
