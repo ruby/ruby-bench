@@ -154,6 +154,25 @@ describe BenchmarkSuite do
       assert_equal 'custom-harness', suite.send(:benchmark_harness_for, 'custom_harness_bench')
       assert_equal 'custom-harness', suite.send(:benchmark_harness_for, 'simple')
     end
+
+    it 'keeps a custom default_harness on ractor category runs' do
+      metadata = {
+        'simple' => { 'category' => 'micro' },
+        'ractor_mem_bench' => { 'ractor' => true, 'ractor_only' => true, 'default_harness' => 'harness-ractor-mem' }
+      }
+      File.write('benchmarks.yml', YAML.dump(metadata))
+
+      suite = BenchmarkSuite.new(
+        categories: ['ractor'],
+        name_filters: [],
+        out_path: @out_path,
+        harness: 'harness-ractor',
+        harness_explicit: false
+      )
+
+      assert_equal 'harness-ractor-mem', suite.send(:benchmark_harness_for, 'ractor_mem_bench')
+      assert_equal 'harness-ractor', suite.send(:benchmark_harness_for, 'simple')
+    end
   end
 
   describe '#ractor_category_run?' do
