@@ -138,7 +138,9 @@ There are two Ractor-related categories:
 
 * **`--category ractor`** - Runs both regular benchmarks marked with `ractor:
   true` in `benchmarks.yml` AND all benchmarks from the `benchmarks-ractor`
-  directory. The `harness-ractor` harness is used for both types of benchmark.
+  directory. The `harness-ractor` harness is used unless a benchmark sets
+  `default_harness` in `benchmarks.yml` (the Ractor memory benchmarks set
+  `harness-ractor-mem`).
 
 * **`--category ractor-only`** - Runs ONLY benchmarks from the
   `benchmarks-ractor` directory, ignoring regular benchmarks even if they are
@@ -164,6 +166,30 @@ intended to be used with any harness except `harness-ractor`.
 
 Note: The `harness-ractor` harness is automatically selected when using these
 categories, so there's no need to specify `--harness` manually.
+
+### Ractor Memory Benchmarks
+
+Three benchmarks measure pathological memory behaviour with multiple ractors,
+for GC work that reclaims ractor-local memory. They use the
+`harness-ractor-mem` harness, which measures retained RSS against a pristine
+process baseline after a full GC, plus a sampled peak RSS:
+
+* **`ractor-dead-set`** - Every ractor builds a large live set and terminates.
+  The final live sets of dead ractors cannot be reclaimed by a full GC.
+* **`ractor-idle-garbage`** - Every ractor builds a large set, drops all
+  references, then idles without allocating. The garbage cannot be swept
+  while the ractor idles.
+* **`ractor-msg-backlog`** - Unshareable payloads flood the queues of gated
+  consumer ractors, duplicating the payload data per consumer.
+
+```bash
+ruby -Iharness-ractor-mem benchmarks/ractor-dead-set/benchmark.rb
+```
+
+The harness prints `BENCH_METRIC retained_mib=<worst count median>` and
+`BENCH_METRIC peak_mib=...` lines, plus one pair per ractor count. The ractor
+counts and trials are controlled with `RUBY_BENCH_RACTORS` (default `1,2,4,6,8`)
+and `MIN_BENCH_ITRS` (default 3).
 
 ## Ruby options
 
@@ -222,6 +248,7 @@ You can find several test harnesses in this repository:
 * harness-stats - count method calls and loop iterations
 * harness-vernier - a harness to profile the benchmark with vernier
 * harness-warmup - a harness which runs as long as needed to find warmed up (peak) performance
+* harness-ractor-mem - a harness for ractor memory pathology benchmarks, measuring retained and peak RSS across ractor counts
 
 To use it, run a benchmark script directly, specifying a harness directory with `-I`:
 

@@ -127,6 +127,21 @@ protoboeuf-encode:
   ractor: true
 rack:
   desc: test the performance of the Rack framework with barely any routing.
+ractor-dead-set:
+  desc: multiple ractors each build a large live set and terminate, then memory retention after their death is measured with the ractor memory harness.
+  ractor: true
+  ractor_only: true
+  default_harness: harness-ractor-mem
+ractor-idle-garbage:
+  desc: multiple ractors each build and drop a large garbage set, then idle uncollected while retention is measured with the ractor memory harness.
+  ractor: true
+  ractor_only: true
+  default_harness: harness-ractor-mem
+ractor-msg-backlog:
+  desc: unshareable message payloads flood the queues of gated consumer ractors, duplicating data per consumer and driving peak RSS and retention.
+  ractor: true
+  ractor_only: true
+  default_harness: harness-ractor-mem
 ruby-json:
   desc: an optimized version of the json_pure gem's pure Ruby JSON parser.
   ractor: true
