@@ -171,6 +171,20 @@ describe ArgumentParser do
         end
       end
 
+      it 'runs spinel with -E when a version has bin/spinel instead of bin/ruby' do
+        Dir.mktmpdir do |tmpdir|
+          spinel_path = File.join(tmpdir, 'opt/rubies/spinel/bin/spinel')
+          setup_mock_ruby(spinel_path)
+
+          parser = ArgumentParser.new
+          parser.stub :chruby_search_paths, ->(version, rubies_dir) { [File.join(tmpdir, 'opt/rubies', version, 'bin/ruby')] } do
+            args = parser.parse(['--chruby=spinel::spinel --int-overflow=wrap'])
+
+            assert_equal [spinel_path, '-E', '--int-overflow=wrap'], args.executables['spinel']
+          end
+        end
+      end
+
       it 'aborts when ruby version not found' do
         Dir.mktmpdir do |tmpdir|
           @temp_home = tmpdir

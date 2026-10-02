@@ -62,7 +62,7 @@ class ArgumentParser
           version, *options = version.shellsplit
           executable = find_chruby_ruby(version)
           abort "Cannot find '#{version}' in chruby paths" unless executable
-          args.executables[name] = [executable, *options]
+          args.executables[name] = [*executable, *options]
         end
       end
 
@@ -204,9 +204,23 @@ class ArgumentParser
 
   private
 
+  # Returns the command (an Array) to run a script with the given chruby version, or nil.
   def find_chruby_ruby(version)
     rubies_dir = ENV["RUBIES_DIR"] || "#{ENV["HOME"]}/.rubies"
-    chruby_search_paths(version, rubies_dir).find { |path| File.executable?(path) }
+    search_paths = chruby_search_paths(version, rubies_dir)
+    if (ruby = search_paths.find { |path| File.executable?(path) })
+      return [ruby]
+    end
+
+    # Spinel (https://github.com/matz/spinel) installs `bin/spinel` instead of `bin/ruby`,
+    # e.g. with `make install PREFIX=/opt/rubies/spinel`. Its -E option compiles a script
+    # and runs the binary, like `go run`, so it can take the place of a `ruby` executable.
+    spinel_paths = search_paths.map { |path| File.join(File.dirname(path), "spinel") }
+    if (spinel = spinel_paths.find { |path| File.executable?(path) })
+      return [spinel, "-E"]
+    end
+
+    nil
   end
 
   def chruby_search_paths(version, rubies_dir)

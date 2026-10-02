@@ -180,6 +180,32 @@ describe BenchmarkSuite do
     end
   end
 
+  describe '#base_cmd' do
+    def base_cmd_for(ruby_description)
+      suite = BenchmarkSuite.new(
+        categories: ['micro'],
+        name_filters: [],
+        out_path: @out_path,
+        harness: 'harness'
+      )
+      suite.stub :linux?, true do
+        suite.stub :setarch_prefix, [] do
+          suite.send(:base_cmd, ruby_description, 'simple')
+        end
+      end
+    end
+
+    it 'pins CRuby and Spinel to one core' do
+      assert_includes base_cmd_for('ruby 4.0.7 (2026-09-15 revision 229531a6cf) +ZJIT [x86_64-linux]'), 'taskset'
+      assert_includes base_cmd_for('spinel 2026.09.12+3194 (0949a47fb) [gcc 13.3.0 (cc)]'), 'taskset'
+    end
+
+    it 'does not pin other Rubies, which use multiple cores' do
+      refute_includes base_cmd_for('jruby 10.1.1.0 (3.4.5) 2025-08-27 OpenJDK 64-Bit Server VM [x86_64-linux]'), 'taskset'
+      refute_includes base_cmd_for('truffleruby 34.0.1 [x86_64-linux]'), 'taskset'
+    end
+  end
+
   describe '#run' do
     it 'returns bench_data and bench_failures as a tuple' do
       suite = BenchmarkSuite.new(
