@@ -300,6 +300,38 @@ For reference, the JSON output also keeps `rss`, a single snapshot taken after a
 full GC at the end of the run (the retained set, a lower bound), and `maxrss`, the
 process's lifetime peak from `getrusage`.
 
+## Measuring Ractor GC activity
+
+The `--ractor-gc` option of `run_benchmarks.rb` collects Ractor-local GC
+metrics for benchmarks that use the Ractor harness (`--category ractor`).
+The target must use Ruby 4.1 or newer with per-Ractor global GC attribution
+([ruby/ruby#19147](https://github.com/ruby/ruby/pull/19147)); older targets
+fail before warmup.
+
+```sh
+./run_benchmarks.rb --category ractor --chruby=base::ruby-base --ractor-gc
+```
+
+Each measured iteration samples `GC.stat` and GC total time in every worker
+Ractor's own object space. The JSON output records the scope as
+`gc_scope: "ractor-local-workload"`, `gc_stat_scope: "ractor-local"`, and
+`gc_measure_total_time_scope: "ractor-local"`, plus the target's `gc_config`.
+
+The summary table adds these columns:
+
+* `(worker sum)` columns add the Ractor-local counters of the sampled
+  workers of each iteration. `GCs/iter` is the sum of `minor/iter`,
+  `major/iter`, and `global/iter`; a global cycle counts under `global` on
+  the Ractor that initiated it, not under `major`. Single-executable reports
+  also show `GC ms/worker`, which divides each iteration's worker-sum GC
+  time by its sampled worker count, then averages.
+* `controller compacts/iter*` shows the main Ractor's
+  `GC.stat(:compact_count)` delta. Every global compacting cycle increments
+  it in every object space, so it is not summed across workers.
+
+Worker records in the JSON output never contain the controller-observed
+counter, and it is never summed across workers.
+
 ## Rendering a graph
 
 `--graph` option of `run_benchmarks.rb` allows you to render benchmark results as a graph.
