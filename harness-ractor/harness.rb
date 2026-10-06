@@ -38,7 +38,7 @@ def run_benchmark(num_itrs_hint, ractor_args: [], &block)
   bench_itrs = MAX_ITERS if bench_itrs > MAX_ITERS
 
   if RACTOR_GC_ENABLED
-    check_ractor_gc_support
+    GCStats.check_ractor_gc_support!
     gc_config = GC.config.transform_keys(&:to_s) if GC.respond_to?(:config)
     GCStats.with_measure_total_time do
       run_benchmark_gc(warmup_itrs, bench_itrs, Ractor.make_shareable(block), ractor_args, gc_config: gc_config)
@@ -46,18 +46,6 @@ def run_benchmark(num_itrs_hint, ractor_args: [], &block)
   else
     puts "r:   itr:   time"
     run_benchmark_timing(warmup_itrs, bench_itrs, ractor_args, &block)
-  end
-end
-
-def check_ractor_gc_support
-  unless GCStats.ractor_local_gc_supported?
-    raise NotImplementedError, "Ractor GC metrics require Ruby 4.1 or newer"
-  end
-  unless GC.respond_to?(:total_time) && GC.respond_to?(:measure_total_time) && GC.respond_to?(:measure_total_time=)
-    raise NotImplementedError, "Ractor GC metrics require GC.total_time and GC.measure_total_time="
-  end
-  unless GCStats.global_gc_attributed?
-    raise NotImplementedError, "Ractor GC metrics require per-Ractor global GC attribution (ruby/ruby#19147)"
   end
 end
 
@@ -93,16 +81,6 @@ def run_timing_iteration(rs, ractor_args, &block)
   Process.clock_gettime(Process::CLOCK_MONOTONIC) - before
 end
 
-RACTOR_GC_SERIES = {
-  "gc_count_bench" => "gc_count",
-  "gc_global_count_bench" => "gc_global_count",
-  "gc_major_count_bench" => "gc_major_count",
-  "gc_minor_count_bench" => "gc_minor_count",
-  "gc_marking_time_bench" => "gc_marking_time",
-  "gc_sweeping_time_bench" => "gc_sweeping_time",
-  "gc_total_time_bench" => "gc_total_time_ns",
-}.freeze
-
 def run_benchmark_gc(warmup_itrs, bench_itrs, block, ractor_args, gc_config:)
   warmups = {}
   stats = {}
@@ -125,6 +103,7 @@ def run_benchmark_gc(warmup_itrs, bench_itrs, block, ractor_args, gc_config:)
       agg = GCStats.aggregate(worker_samples)
       total_ms = agg["gc_total_time_ns"]&.fdiv(1_000_000)
 
+
       itr_str = "%-3s %4s %6s" % [rs, "##{i + 1}:", "#{(1000 * elapsed).to_i}ms"]
       itr_str << " %8s" % (total_ms ? "%.1fms" % total_ms : "N/A")
       itr_str << " %8s" % (agg["gc_marking_time"] ? "#{agg["gc_marking_time"]}ms" : "N/A")
@@ -141,7 +120,7 @@ def run_benchmark_gc(warmup_itrs, bench_itrs, block, ractor_args, gc_config:)
       stats[rs] << elapsed
       group["gc_worker_samples"] << worker_samples
       group["gc_controller_samples"] << controller_sample if controller_sample
-      RACTOR_GC_SERIES.each do |series_name, field|
+      GCStats::RACTOR_SERIES.each do |series_name, field|
         series[series_name] << (field == "gc_total_time_ns" ? total_ms : agg[field])
       end
       CONTROLLER_GC_SERIES.each_key { |series_name| series[series_name] << controller_deltas[series_name] }
