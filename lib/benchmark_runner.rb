@@ -65,6 +65,10 @@ module BenchmarkRunner
         output_str << "#{title}:\n" if title
         output_str << TableFormatter.new(section[:table], section[:format], section.fetch(:failures, {})).to_s + "\n"
 
+        if section[:include_gc] && section[:gc_per_ruby_table] && section[:gc_per_ruby_format]
+          output_str << (title ? "GC per ruby (#{title}):\n" : "GC per ruby:\n")
+          output_str << TableFormatter.new(section[:gc_per_ruby_table], section[:gc_per_ruby_format], {}).to_s + "\n"
+        end
         if section[:include_gc] && section[:gc_table] && section[:gc_format]
           output_str << (title ? "GC summary (#{title}):\n" : "GC summary:\n")
           output_str << TableFormatter.new(section[:gc_table], section[:gc_format], {}).to_s + "\n"
@@ -81,25 +85,32 @@ module BenchmarkRunner
           end
         end
         if has_gc_summary
+          if sections.any? { |section| section[:include_gc] && section[:gc_per_ruby_table] }
+            output_str << "- GC per ruby shows the mean GC values per benchmark iteration for each ruby. These values are not ratios. Benchmarks with no GC activity on any ruby are omitted.\n"
+          end
           output_str << "- GC summary compares #{base_name} → comparison. Ratio columns are #{base_name}/comparison; above 1 means the comparison spent less GC time.\n"
           output_str << "- gc/iter, mark/iter, and sweep/iter ratio compare total GC (or phase) time per benchmark iteration, so they include both per-GC cost and GC frequency changes.\n"
           output_str << "- gc/GC, mark/GC, and sweep/GC ratio divide average GC (or phase) time by the same run's GCs/iter count; they are not complete per-cycle attribution of process-wide GC.\n"
-          output_str << "- GCs/iter, major/iter, minor/iter, controller compacts/iter*, and minor GC % show #{base_name} → comparison values, not ratios. Rows with no GC activity are omitted.\n"
+          output_str << "- In GC summary, GCs/iter, major/iter, minor/iter, controller compacts/iter*, and minor GC % show #{base_name} → comparison values, not ratios. A row is omitted when neither #{base_name} nor the comparison has GC activity.\n"
         end
         if include_pvalue
           output_str << "- ***: p < 0.001, **: p < 0.01, *: p < 0.05 (Welch's t-test)\n"
         end
       end
-      gc_headers = sections.filter_map { |section| section[:gc_table]&.first }.flatten
+      gc_headers = sections.flat_map { |section| [section[:gc_table]&.first, section[:gc_per_ruby_table]&.first] }.compact.flatten
+      per_ruby_headers = sections.filter_map { |section| section[:gc_per_ruby_table]&.first }.flatten
       if gc_headers.include?('controller compacts/iter*')
         output_str << "GC metric notes:\n"
-        output_str << "- controller compacts/iter*: the main Ractor's GC.stat(:compact_count) delta per iteration. Every global compacting cycle increments compact_count in every object space. Do not sum it across workers.#{other_names.empty? ? '' : " Comparison tables show #{base_name} → comparison values."}\n"
+        compaction_note = +""
+        compaction_note << " GC summary shows #{base_name} → comparison values." unless other_names.empty?
+        compaction_note << " GC per ruby shows the value for each ruby." if per_ruby_headers.include?('controller compacts/iter*')
+        output_str << "- controller compacts/iter*: the main Ractor's GC.stat(:compact_count) delta per iteration. Every global compacting cycle increments compact_count in every object space. Do not sum it across workers.#{compaction_note}\n"
       end
 
       if sections.any? { |section| section[:gc_scope] == 'ractor-local-workload' && section[:gc_table] }
         output_str << "Ractor GC scope note:\n"
         scope_columns = +"- (worker sum) columns add Ractor-local counters across the sampled workers of each iteration; the main Ractor performs the count-0 workload."
-        scope_columns << " GC ms/worker divides each iteration's worker-sum GC time by its sampled worker count, then averages." if other_names.empty?
+        scope_columns << " GC ms/worker divides each iteration's worker-sum GC time by its sampled worker count, then averages." if gc_headers.include?('GC ms/worker')
         output_str << "#{scope_columns} Controller snapshots and per-worker heap detail are in the JSON output, not this table.\n"
         output_str << "- Ruby's Ractor-retirement GC (after a worker's stack is torn down) and Ractors created by the workload itself are not sampled.\n"
         output_str << "- GC time is CPU-time accounting, not elapsed pause time; summed across Ractors it can exceed wall time.\n"
