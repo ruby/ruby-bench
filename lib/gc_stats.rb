@@ -16,6 +16,16 @@ module GCStats
 
   SCALAR_FIELD_NAMES = (SCALAR_FIELDS.map(&:first) + [TOTAL_TIME_FIELD]).freeze
 
+  RACTOR_SERIES = {
+    "gc_count_bench" => "gc_count",
+    "gc_global_count_bench" => "gc_global_count",
+    "gc_major_count_bench" => "gc_major_count",
+    "gc_minor_count_bench" => "gc_minor_count",
+    "gc_marking_time_bench" => "gc_marking_time",
+    "gc_sweeping_time_bench" => "gc_sweeping_time",
+    "gc_total_time_bench" => TOTAL_TIME_FIELD,
+  }.freeze
+
   def stat_available?(key)
     GC.stat(key).is_a?(Numeric)
   rescue ArgumentError
@@ -46,6 +56,18 @@ module GCStats
     end
     _pid, status = Process.wait2(pid)
     status.success?
+  end
+
+  def check_ractor_gc_support!
+    unless ractor_local_gc_supported?
+      raise NotImplementedError, "Ractor GC metrics require Ruby 4.1 or newer"
+    end
+    unless GC.respond_to?(:total_time) && GC.respond_to?(:measure_total_time) && GC.respond_to?(:measure_total_time=)
+      raise NotImplementedError, "Ractor GC metrics require GC.total_time and GC.measure_total_time="
+    end
+    unless global_gc_attributed?
+      raise NotImplementedError, "Ractor GC metrics require per-Ractor global GC attribution (ruby/ruby#19147)"
+    end
   end
 
   def heap_snapshot
