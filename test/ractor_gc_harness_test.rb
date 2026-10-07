@@ -416,6 +416,38 @@ describe 'Ractor GC harness' do
     end
   end
 
+  it 'reports every worker of each scenario benchmark' do
+    %w[ractor-dead-set ractor-idle-garbage ractor-msg-backlog].each do |bench|
+      Dir.mktmpdir do |dir|
+        result_path = File.join(dir, 'results.json')
+        env = CLEAN_ENV.merge(
+          'RUBY_BENCH_RACTOR_GC' => '1',
+          'RUBY_BENCH_RACTORS' => '1,2',
+          'MIN_BENCH_ITRS' => '1',
+          'MAX_BENCH_ITRS' => '1',
+          'RACTOR_MEM_SETTLE_SLEEP' => '0',
+          'RACTOR_DEAD_SET_ITEMS' => '5000',
+          'RACTOR_IDLE_GARBAGE_ITEMS' => '5000',
+          'RACTOR_BACKLOG_MESSAGES' => '500',
+          'RACTOR_BACKLOG_GATE_SLEEP' => '0.05',
+          'RESULT_JSON_PATH' => result_path
+        )
+        script = File.join(ROOT, 'benchmarks', bench, 'benchmark.rb')
+        stdout, stderr, status = Open3.capture3(env, @ruby, "-I#{File.join(ROOT, 'harness-ractor')}", script, chdir: ROOT)
+        assert status.success?, "#{bench} failed:\n#{stdout}\n#{stderr}"
+
+        data = JSON.parse(File.read(result_path))
+        assert_equal %w[1 2], data['gc_by_ractors'].keys.sort, bench
+        data['gc_by_ractors'].each do |count, group|
+          assert_equal 1, group['gc_controller_samples'].length, "#{bench} count #{count} controller samples"
+          workers = group['gc_worker_samples'].fetch(0)
+          assert_equal (0...count.to_i).to_a, workers.map { |w| w['worker_index'] }, "#{bench} count #{count} workers"
+          workers.each { |w| assert_kind_of Integer, w['gc_count'], "#{bench} count #{count} worker gc_count" }
+        end
+      end
+    end
+  end
+
   it 'propagates a worker failure without writing partial or dummy results' do
     run_workload(FAILING_WORKLOAD_BODY) do |stdout, stderr, status, result_path|
       refute status.success?, "expected worker failure to fail the run:\n#{stdout}\n#{stderr}"

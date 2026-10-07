@@ -296,6 +296,24 @@ json_parse_string:
   ractor: true
   ractor_only: true
   default_harness: harness-ractor
+ractor-dead-set:
+  desc: multiple ractors each build a large live set and terminate, then memory retention after their death is measured.
+  ractor: true
+  ractor_only: true
+  default_harness: harness-ractor
+  ractor_scenario: true
+ractor-idle-garbage:
+  desc: multiple ractors each build and drop a large garbage set, then idle uncollected while retention is measured.
+  ractor: true
+  ractor_only: true
+  default_harness: harness-ractor
+  ractor_scenario: true
+ractor-msg-backlog:
+  desc: unshareable message payloads flood the queues of gated consumer ractors, duplicating data per consumer and driving peak RSS and retention.
+  ractor: true
+  ractor_only: true
+  default_harness: harness-ractor
+  ractor_scenario: true
 symbol-name-ractor:
   desc: repeatedly calls Symbol#name on a static symbol under the ractor harness to stress ID-to-string lookup.
   ractor: true
