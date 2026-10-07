@@ -333,6 +333,69 @@ describe BenchmarkSuite do
       assert_empty bench_failures
     end
 
+    it 'runs each Ractor count in its own process and merges the results' do
+      File.write('benchmarks/per_count.rb', <<~RUBY)
+        require 'json'
+        count = ENV.fetch('RUBY_BENCH_RACTORS')
+        result = {
+          'warmup' => [],
+          'bench' => [count.to_f],
+          'bench_by_ractors' => { count => [count.to_f] },
+          'rss' => (count.to_i + 1) * 1000,
+          'pid' => Process.pid
+        }
+        File.write(ENV['RESULT_JSON_PATH'], JSON.generate(result))
+      RUBY
+      File.write('benchmarks.yml', YAML.dump('per_count' => { 'category' => 'other', 'ractor' => true }))
+
+      custom_json_path = File.join(@out_path, 'nested', 'custom_result.json')
+      ENV['RESULT_JSON_PATH'] = custom_json_path
+      ENV['RUBY_BENCH_RACTORS'] = '0,2,1'
+      suite = BenchmarkSuite.new(categories: ['ractor'], name_filters: [], out_path: @out_path, harness: 'harness', no_pinning: true)
+
+      bench_data, bench_failures = nil
+      capture_io do
+        bench_data, bench_failures = suite.run(ruby: [RbConfig.ruby], ruby_description: 'ruby 3.2.0')
+      end
+
+      assert_empty bench_failures
+      data = bench_data['per_count']
+      assert_equal({ '0' => [0.0], '1' => [1.0], '2' => [2.0] }, data['bench_by_ractors'])
+      pids = data['results_by_ractors'].values.map { |process| process['pid'] }
+      assert_equal 3, pids.uniq.size
+      refute data.key?('rss')
+      assert_equal 1000, data['results_by_ractors']['0']['rss']
+      assert_match(/\ARUBY_BENCH_RACTORS=1 /, data['results_by_ractors']['1']['command_line'])
+      assert_equal data, JSON.parse(File.read(custom_json_path))
+      assert_empty Dir.glob(File.join(@out_path, 'temp*.json'))
+    ensure
+      ENV.delete('RUBY_BENCH_RACTORS')
+    end
+
+    it 'reports a Ractor benchmark as failed when one count fails' do
+      File.write('benchmarks/fails_at_two.rb', <<~RUBY)
+        require 'json'
+        count = ENV.fetch('RUBY_BENCH_RACTORS')
+        exit(3) if count == '2'
+        File.write(ENV['RESULT_JSON_PATH'], JSON.generate('warmup' => [], 'bench' => [1.0], 'rss' => 1))
+      RUBY
+      File.write('benchmarks.yml', YAML.dump('fails_at_two' => { 'category' => 'other', 'ractor' => true }))
+
+      ENV['RUBY_BENCH_RACTORS'] = '0,2,4'
+      suite = BenchmarkSuite.new(categories: ['ractor'], name_filters: [], out_path: @out_path, harness: 'harness', no_pinning: true)
+
+      bench_data, bench_failures = nil
+      capture_io do
+        bench_data, bench_failures = suite.run(ruby: [RbConfig.ruby], ruby_description: 'ruby 3.2.0')
+      end
+
+      assert_empty bench_data
+      assert_equal 3, bench_failures['fails_at_two']
+      assert_empty Dir.glob(File.join(@out_path, 'temp*.json'))
+    ensure
+      ENV.delete('RUBY_BENCH_RACTORS')
+    end
+
     it 'expands pre_init when provided' do
       # Create a pre_init file
       pre_init_file = File.join(@temp_dir, 'pre_init.rb')
