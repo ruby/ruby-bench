@@ -47,7 +47,7 @@ module BenchmarkRunner
 
       # Collect ruby version descriptions for all executables upfront
       args.executables.each do |name, executable|
-        ruby_descriptions[name] = `#{executable.shelljoin} -v`.chomp
+        ruby_descriptions[name] = IO.popen([*executable, "-v"], &:read).chomp
       end
 
       # Warn if two executables look identical (same ruby -v output and same flags)

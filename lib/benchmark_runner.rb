@@ -3,6 +3,7 @@
 require 'csv'
 require 'json'
 require 'rbconfig'
+require 'shellwords'
 require_relative 'table_formatter'
 
 # Extracted helper methods from run_benchmarks.rb for testing
@@ -116,21 +117,23 @@ module BenchmarkRunner
       GraphRenderer.render(json_path, png_path)
     end
 
-    # Checked system - error or return info if the command fails
+    # Checked system - error or return info if the command fails.
+    # An Array command with arguments runs without a shell, so Shellwords escapes never reach the program.
     def check_call(command, env: {}, raise_error: true, quiet: ENV['BENCHMARK_QUIET'] == '1')
-      puts("+ #{command}") unless quiet
+      command_str = command.is_a?(Array) ? command.shelljoin : command
+      puts("+ #{command_str}") unless quiet
 
       result = {}
 
       if quiet
-        result[:success] = system(env, command, out: File::NULL, err: File::NULL)
+        result[:success] = system(env, *command, out: File::NULL, err: File::NULL)
       else
-        result[:success] = system(env, command)
+        result[:success] = system(env, *command)
       end
       result[:status] = $?
 
       unless result[:success]
-        puts "Command #{command.inspect} failed with exit code #{result[:status].exitstatus} in directory #{Dir.pwd}" unless quiet
+        puts "Command #{command_str.inspect} failed with exit code #{result[:status].exitstatus} in directory #{Dir.pwd}" unless quiet
         raise RuntimeError.new if raise_error
       end
 
