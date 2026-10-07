@@ -103,6 +103,60 @@ describe 'Ractor GC harness' do
     puts "workload_ran=#{workload_ran}"
   RUBY
 
+  MEM_WORKLOAD_BODY = <<~'RUBY'
+    run_benchmark(2, scenario: true) do |count|
+      workers = count.times.map do |worker|
+        Ractor.new(worker) do |worker_id|
+          measure_worker_gc do
+            20_000.times { Object.new }
+            GC.start(full_mark: true, immediate_sweep: true)
+            worker_id
+          end
+        end
+      end
+      workers.each_with_index do |worker, worker_id|
+        _, sample = worker.value
+        record_worker_gc(worker_id, sample)
+      end
+      nil
+    end
+  RUBY
+
+  MEM_UNRECORDED_BODY = <<~'RUBY'
+    run_benchmark(2, scenario: true) do |count|
+      count.times.map { Ractor.new { 10_000.times { Object.new } } }.each(&:value)
+      nil
+    end
+  RUBY
+
+  QUICK_SCENARIO_BODY = <<~'RUBY'
+    run_benchmark(1, scenario: true) do |_count|
+      Array.new(1_000) { |i| "item #{i}" }
+      nil
+    end
+  RUBY
+
+  SLEEPING_SCENARIO_BODY = <<~'RUBY'
+    run_benchmark(1, scenario: true) do |_count|
+      sleep 0.01
+      nil
+    end
+  RUBY
+
+  FINISH_SCENARIO_BODY = <<~'RUBY'
+    run_benchmark(2, scenario: true) do |count|
+      proc { puts "finish called for #{count}" }
+    end
+  RUBY
+
+  SCENARIO_NO_GC_ENV = {
+    'RUBY_BENCH_RACTOR_GC' => nil,
+    'RUBY_BENCH_RACTORS' => '1',
+    'MIN_BENCH_ITRS' => '1',
+    'MAX_BENCH_ITRS' => '1',
+    'RACTOR_MEM_SETTLE_SLEEP' => '0',
+  }.freeze
+
   before do
     @explicit_target = !ENV['RACTOR_GC_TEST_RUBY'].nil?
     @ruby = ENV['RACTOR_GC_TEST_RUBY'] || RbConfig.ruby
@@ -132,7 +186,7 @@ describe 'Ractor GC harness' do
     end
   end
 
-  def run_workload(body)
+  def run_workload(body, env: {})
     Dir.mktmpdir do |dir|
       result_path = File.join(dir, 'results.json')
       script = File.join(dir, 'workload.rb')
@@ -145,7 +199,7 @@ describe 'Ractor GC harness' do
         'MAX_BENCH_ITRS' => '2',
         'MIN_BENCH_TIME' => '0',
         'RESULT_JSON_PATH' => result_path
-      )
+      ).merge(env)
       stdout, stderr, status = Open3.capture3(env, @ruby, "-I#{File.join(ROOT, 'harness-ractor')}", script, chdir: ROOT)
       yield stdout, stderr, status, result_path
     end
@@ -291,6 +345,74 @@ describe 'Ractor GC harness' do
           end
         end
       end
+    end
+  end
+
+  it 'collects per-worker GC samples from a scenario benchmark' do
+    run_workload(MEM_WORKLOAD_BODY) do |stdout, stderr, status, result_path|
+      assert status.success?, "workload failed:\n#{stdout}\n#{stderr}"
+
+      data = JSON.parse(File.read(result_path))
+      assert_equal 'ractor-local-workload', data['gc_scope']
+      assert_equal 'scenario', data['ractor_mode']
+      assert_equal 'global', data['ractor_mem_settle']
+      assert_equal %w[1 2], data['bench_by_ractors'].keys.sort, 'scenario mode skips count 0'
+      assert_equal %w[1 2], data['gc_by_ractors'].keys.sort
+      assert_equal %w[1 2], data['ractor_mem_samples'].keys.sort
+      data['ractor_mem_samples'].each do |count, samples|
+        assert_equal 2, samples['retained'].length, "count #{count} retained samples"
+        assert_equal 2, samples['peak'].length, "count #{count} peak samples"
+      end
+
+      data['gc_by_ractors'].each do |count, group|
+        assert_equal 2, data['bench_by_ractors'][count].length, "count #{count} timing samples"
+        assert_equal 2, group['gc_worker_samples'].length, "count #{count} measured iterations"
+        assert_equal 2, group['gc_controller_samples'].length, "count #{count} controller samples"
+        group['gc_worker_samples'].each_with_index do |workers, i|
+          assert_equal (0...count.to_i).to_a, workers.map { |w| w['worker_index'] }, 'spawn-index order'
+          workers.each { |w| assert_operator w['gc_count'], :>, 0, 'every worker records GC activity' }
+          assert_equal workers.sum { |w| w['gc_count'] }, group['gc_count_bench'][i]
+          assert_in_delta workers.sum { |w| w['gc_total_time_ns'] } / 1_000_000.0, group['gc_total_time_bench'][i], 1e-9
+        end
+      end
+    end
+  end
+
+  it 'records a peak RSS for a scenario that returns before the sampler thread runs' do
+    run_workload(QUICK_SCENARIO_BODY, env: SCENARIO_NO_GC_ENV) do |stdout, stderr, status, result_path|
+      assert status.success?, "workload failed:\n#{stdout}\n#{stderr}"
+
+      data = JSON.parse(File.read(result_path))
+      refute data.key?('gc_by_ractors'), 'scenario mode without --ractor-gc writes no GC data'
+      peaks = data.dig('ractor_mem_samples', '1', 'peak')
+      assert_equal 1, peaks.length
+      assert_operator peaks.first, :>=, data['ractor_mem_base_rss'] / 2, 'the peak is a real RSS reading, not the 0 start value'
+    end
+  end
+
+  it 'excludes the peak sampler shutdown from the scenario time' do
+    env = SCENARIO_NO_GC_ENV.merge('RACTOR_MEM_PEAK_SAMPLE_INTERVAL' => '0.5')
+    run_workload(SLEEPING_SCENARIO_BODY, env: env) do |stdout, stderr, status, result_path|
+      assert status.success?, "workload failed:\n#{stdout}\n#{stderr}"
+
+      time = JSON.parse(File.read(result_path)).dig('bench_by_ractors', '1').first
+      assert_operator time, :<, 0.25, 'the time must not wait for the sampler to finish its 0.5 s sleep'
+    end
+  end
+
+  it 'calls the proc that a scenario returns once per trial' do
+    env = SCENARIO_NO_GC_ENV.merge('RUBY_BENCH_RACTORS' => '1,2', 'MIN_BENCH_ITRS' => '2', 'MAX_BENCH_ITRS' => '2')
+    run_workload(FINISH_SCENARIO_BODY, env: env) do |stdout, stderr, status, _result_path|
+      assert status.success?, "workload failed:\n#{stdout}\n#{stderr}"
+      assert_equal ['finish called for 1'] * 2 + ['finish called for 2'] * 2, stdout.scan(/finish called for \d/)
+    end
+  end
+
+  it 'fails a scenario benchmark that does not record its worker GC samples' do
+    run_workload(MEM_UNRECORDED_BODY) do |stdout, stderr, status, result_path|
+      refute status.success?, "expected an unrecorded scenario to fail:\n#{stdout}\n#{stderr}"
+      assert_includes stderr, 'scenario recorded worker GC samples [] for 1 ractors'
+      refute File.exist?(result_path), 'no results file may be written for a failed benchmark'
     end
   end
 

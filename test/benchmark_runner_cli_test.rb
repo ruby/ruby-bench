@@ -195,6 +195,75 @@ describe BenchmarkRunner::CLI do
       assert_equal 'ractor-local-workload', section[:gc_scope],
         'the raw blob scope must tag the section; expansion drops gc_scope from counts without GC data'
     end
+
+    it 'describes scenario sampling and omits per-worker notes for a scenario-only section' do
+      args = create_args
+      cli = BenchmarkRunner::CLI.new(args)
+      gc_group = {
+        'gc_count_bench' => [3],
+        'gc_major_count_bench' => [1],
+        'gc_minor_count_bench' => [2],
+        'gc_marking_time_bench' => [1.0],
+        'gc_sweeping_time_bench' => [1.0],
+        'gc_total_time_bench' => [2.0],
+        'gc_worker_samples' => [[{ 'gc_count' => 3, 'worker_index' => 0 }]]
+      }
+      bench_data = {
+        'ruby' => {
+          'ractor-dead-set' => {
+            'warmup' => [],
+            'bench' => [1.0, 2.0],
+            'rss' => 10 * 1024 * 1024,
+            'gc_scope' => 'ractor-local-workload',
+            'ractor_mode' => 'scenario',
+            'bench_by_ractors' => { '1' => [1.0], '2' => [2.0] },
+            'gc_by_ractors' => { '1' => gc_group, '2' => gc_group }
+          }
+        }
+      }
+
+      sections = cli.send(:build_output_sections, ['ruby'], bench_data, { 'ractor-dead-set' => 'harness-ractor' }, {})
+
+      output = BenchmarkRunner.build_output_text({ 'ruby' => 'ruby 4.1.0dev' }, nil, nil, {}, sections: sections)
+      assert_match(/Scenario benchmarks sample only the worker Ractors whose bodies the scenario wraps in measure_worker_gc/, output)
+      refute_match(/created by the workload of a per-worker benchmark/, output)
+      refute_match(/count-0 workload/, output)
+    end
+
+    it 'prints both per-worker and scenario notes for a section that mixes the two modes' do
+      args = create_args
+      cli = BenchmarkRunner::CLI.new(args)
+      gc_group = {
+        'gc_count_bench' => [3],
+        'gc_major_count_bench' => [1],
+        'gc_minor_count_bench' => [2],
+        'gc_total_time_bench' => [2.0],
+        'gc_worker_samples' => [[{ 'gc_count' => 3, 'worker_index' => 0 }]]
+      }
+      blob = ->(counts, mode) do
+        data = {
+          'warmup' => [],
+          'bench' => counts.map { 1.0 },
+          'rss' => 10 * 1024 * 1024,
+          'gc_scope' => 'ractor-local-workload',
+          'bench_by_ractors' => counts.to_h { |c| [c, [1.0]] },
+          'gc_by_ractors' => counts.to_h { |c| [c, gc_group] }
+        }
+        data['ractor_mode'] = mode if mode
+        data
+      end
+      bench_data = { 'ruby' => { 'object-new' => blob.call(%w[0 2], nil), 'ractor-dead-set' => blob.call(%w[1 2], 'scenario') } }
+      harnesses = { 'object-new' => 'harness-ractor', 'ractor-dead-set' => 'harness-ractor' }
+
+      sections = cli.send(:build_output_sections, ['ruby'], bench_data, harnesses, {})
+
+      assert_equal 1, sections.size
+      assert_equal [:scenario, :worker], sections.first[:ractor_gc_modes].sort
+      output = BenchmarkRunner.build_output_text({ 'ruby' => 'ruby 4.1.0dev' }, nil, nil, {}, sections: sections)
+      assert_match(/count-0 workload of per-worker benchmarks/, output)
+      assert_match(/Ractors created by the workload of a per-worker benchmark are not sampled/, output)
+      assert_match(/Scenario benchmarks sample only the worker Ractors/, output)
+    end
   end
 
   describe '#csv_view' do
