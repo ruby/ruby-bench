@@ -372,6 +372,46 @@ describe BenchmarkSuite do
       ENV.delete('RUBY_BENCH_RACTORS')
     end
 
+    it 'does not run count 0 for a ractor_scenario benchmark' do
+      File.write('benchmarks/scenario.rb', <<~RUBY)
+        require 'json'
+        count = ENV.fetch('RUBY_BENCH_RACTORS')
+        exit(4) if count == '0'
+        File.write(ENV['RESULT_JSON_PATH'], JSON.generate('warmup' => [], 'bench' => [count.to_f], 'rss' => 1))
+      RUBY
+      File.write('benchmarks.yml', YAML.dump('scenario' => { 'category' => 'other', 'ractor' => true, 'ractor_scenario' => true }))
+
+      ENV['RUBY_BENCH_RACTORS'] = '0,1,2'
+      suite = BenchmarkSuite.new(categories: ['ractor'], name_filters: [], out_path: @out_path, harness: 'harness', no_pinning: true)
+
+      bench_data, bench_failures = nil
+      capture_io do
+        bench_data, bench_failures = suite.run(ruby: [RbConfig.ruby], ruby_description: 'ruby 3.2.0')
+      end
+
+      assert_empty bench_failures
+      assert_equal({ '1' => [1.0], '2' => [2.0] }, bench_data['scenario']['bench_by_ractors'])
+    ensure
+      ENV.delete('RUBY_BENCH_RACTORS')
+    end
+
+    it 'runs count 0 for a ractor_scenario benchmark when it is the only count' do
+      File.write('benchmarks/scenario.rb', "exit(4) if ENV.fetch('RUBY_BENCH_RACTORS') == '0'\n")
+      File.write('benchmarks.yml', YAML.dump('scenario' => { 'category' => 'other', 'ractor' => true, 'ractor_scenario' => true }))
+
+      ENV['RUBY_BENCH_RACTORS'] = '0'
+      suite = BenchmarkSuite.new(categories: ['ractor'], name_filters: [], out_path: @out_path, harness: 'harness', no_pinning: true)
+
+      bench_failures = nil
+      capture_io do
+        _bench_data, bench_failures = suite.run(ruby: [RbConfig.ruby], ruby_description: 'ruby 3.2.0')
+      end
+
+      assert_equal 4, bench_failures['scenario']
+    ensure
+      ENV.delete('RUBY_BENCH_RACTORS')
+    end
+
     it 'reports a Ractor benchmark as failed when one count fails' do
       File.write('benchmarks/fails_at_two.rb', <<~RUBY)
         require 'json'

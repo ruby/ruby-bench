@@ -2,8 +2,9 @@
 
 module RactorBreakdown
   KEY_SEP = "\x00"
-  MEASUREMENT_KEYS = %w[warmup bench bench_by_ractors gc_by_ractors].freeze
-  PROCESS_KEYS = %w[rss maxrss yjit_stats zjit_stats zjit_stats_string command_line].freeze
+  COUNT_KEYED_KEYS = %w[gc_by_ractors ractor_mem_medians ractor_mem_samples].freeze
+  MEASUREMENT_KEYS = (%w[warmup bench bench_by_ractors] + COUNT_KEYED_KEYS).freeze
+  PROCESS_KEYS = %w[rss maxrss yjit_stats zjit_stats zjit_stats_string command_line ractor_mem_base_rss].freeze
 
   Result = Struct.new(:bench_data, :groups)
 
@@ -30,11 +31,13 @@ module RactorBreakdown
     merged['warmup'] = []
     merged['bench'] = counts.flat_map { |count| blobs_by_count[count]['bench'] }
     merged['bench_by_ractors'] = counts.to_h { |count| [count.to_s, blobs_by_count[count]['bench']] }
-    gc_by_ractors = counts.filter_map do |count|
-      group = blobs_by_count[count].dig('gc_by_ractors', count.to_s)
-      [count.to_s, group] if group
-    end.to_h
-    merged['gc_by_ractors'] = gc_by_ractors unless gc_by_ractors.empty?
+    COUNT_KEYED_KEYS.each do |key|
+      by_count = counts.filter_map do |count|
+        entry = blobs_by_count[count].dig(key, count.to_s)
+        [count.to_s, entry] if entry
+      end.to_h
+      merged[key] = by_count unless by_count.empty?
+    end
     merged['results_by_ractors'] = process_data.transform_values { |data| data.reject { |k, _| merged.key?(k) } }
     merged
   end
@@ -66,7 +69,7 @@ module RactorBreakdown
   end
 
   def per_count_blob(blob, breakdown, count)
-    per_count = blob.reject { |k, _| k == 'bench_by_ractors' || k == 'gc_by_ractors' || k == 'results_by_ractors' || k == 'bench' }
+    per_count = blob.reject { |k, _| k == 'bench_by_ractors' || k == 'results_by_ractors' || k == 'bench' || COUNT_KEYED_KEYS.include?(k) }
     process_data = blob['results_by_ractors']
     per_count.merge!(process_data[count.to_s]) if process_data.is_a?(Hash) && process_data.key?(count.to_s)
     per_count['bench'] = breakdown[count.to_s]
@@ -76,6 +79,10 @@ module RactorBreakdown
       per_count.merge!(gc_by_ractors[count.to_s])
     else
       per_count.delete('gc_scope')
+    end
+    (COUNT_KEYED_KEYS - ['gc_by_ractors']).each do |key|
+      by_count = blob[key]
+      per_count[key] = { count.to_s => by_count[count.to_s] } if by_count.is_a?(Hash) && by_count.key?(count.to_s)
     end
     per_count
   end

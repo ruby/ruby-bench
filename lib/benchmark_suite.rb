@@ -105,7 +105,7 @@ class BenchmarkSuite
   def run_ractor_benchmark(entry, ruby, cmd_prefix, env, benchmark_harness, caller_json_path, quiet: false)
     blobs_by_count = {}
 
-    RactorCounts.from_env.each do |count|
+    ractor_counts_for(entry.name).each do |count|
       result_json_path = File.join(out_path, "temp#{Process.pid}_r#{count}.json")
       count_env = env.merge(RactorCounts::ENV_VAR => count.to_s)
       result = run_benchmark_process(entry.script_path, result_json_path, ruby, cmd_prefix, count_env, benchmark_harness, quiet: quiet)
@@ -124,6 +124,15 @@ class BenchmarkSuite
       File.write(caller_json_path, JSON.pretty_generate(data))
     end
     { name: entry.name, data: data, harness: benchmark_harness }
+  end
+
+  def ractor_counts_for(benchmark_name)
+    counts = RactorCounts.from_env
+    return counts unless benchmarks_metadata.dig(benchmark_name, 'ractor_scenario')
+
+    # With no nonzero count left, run count 0 so the harness reports the error.
+    nonzero = counts - [0]
+    nonzero.empty? ? counts : nonzero
   end
 
   # Clear project-level Bundler environment so benchmarks run in a clean context.

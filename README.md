@@ -215,6 +215,13 @@ trials are controlled with `RUBY_BENCH_RACTORS` (default `1,2,4,6,8`) and
 `MIN_BENCH_ITRS` (default: the iteration count that the benchmark passes to
 `run_benchmark`).
 
+`run_benchmarks.rb` does not start a count-0 process for a benchmark that sets
+`ractor_scenario: true` in `benchmarks.yml`. Each other count runs in its own
+process, so each `BENCH_METRIC retained_mib` line comes from one count. The
+retained RSS of a count uses the base RSS of its own process. The merged JSON
+keeps `ractor_mem_medians` and `ractor_mem_samples` by count. Each count's
+`ractor_mem_base_rss` is in `results_by_ractors`.
+
 The harness collects with `GC.start(global: true)` when the target Ruby's
 `GC.start` accepts the `global:` keyword. Some Ruby 4.1 builds do not accept it.
 On a target with Ractor-local GC, a plain `GC.start` collects only the main

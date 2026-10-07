@@ -212,5 +212,36 @@ describe RactorBreakdown do
       assert_equal 'RUBY_BENCH_RACTORS=2 ruby bench.rb', r2['command_line']
       refute r0.key?('results_by_ractors')
     end
+
+    it 'merges scenario memory fields by count and keeps each base RSS per process' do
+      scenario_blob = lambda do |count|
+        {
+          'warmup' => [],
+          'bench' => [count.to_f],
+          'bench_by_ractors' => { count.to_s => [count.to_f] },
+          'ractor_mode' => 'scenario',
+          'ractor_mem_base_rss' => 100,
+          'ractor_mem_medians' => { count.to_s => { 'retained' => count * 10, 'peak' => count * 20 } },
+          'ractor_mem_samples' => { count.to_s => { 'retained' => [count * 10], 'peak' => [count * 20] } },
+          'rss' => count * 1000
+        }
+      end
+
+      merged = RactorBreakdown.merge(2 => scenario_blob.call(2), 1 => scenario_blob.call(1))
+
+      assert_equal 'scenario', merged['ractor_mode']
+      assert_equal({ '1' => { 'retained' => 10, 'peak' => 20 }, '2' => { 'retained' => 20, 'peak' => 40 } }, merged['ractor_mem_medians'])
+      assert_equal({ '1' => { 'retained' => [10], 'peak' => [20] }, '2' => { 'retained' => [20], 'peak' => [40] } }, merged['ractor_mem_samples'])
+      refute merged.key?('ractor_mem_base_rss'), 'equal base RSS values must stay per count'
+      assert_equal 100, merged['results_by_ractors']['1']['ractor_mem_base_rss']
+      assert_equal 100, merged['results_by_ractors']['2']['ractor_mem_base_rss']
+      refute merged['results_by_ractors']['1'].key?('ractor_mem_samples')
+
+      exe = RactorBreakdown.expand({ 'ruby' => { 'r' => merged } }).bench_data['ruby']
+      r1 = exe["r\x001"]
+      assert_equal({ '1' => { 'retained' => 10, 'peak' => 20 } }, r1['ractor_mem_medians'])
+      assert_equal({ '2' => { 'retained' => [20], 'peak' => [40] } }, exe["r\x002"]['ractor_mem_samples'])
+      assert_equal 100, r1['ractor_mem_base_rss']
+    end
   end
 end
