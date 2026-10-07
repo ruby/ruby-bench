@@ -165,6 +165,29 @@ intended to be used with any harness except `harness-ractor`.
 Note: The `harness-ractor` harness is automatically selected when using these
 categories, so there's no need to specify `--harness` manually.
 
+### Ractor counts
+
+The Ractor harness measures each benchmark at 0 (the main Ractor only), 1, 2,
+4, 6, and 8 Ractors. Set `RUBY_BENCH_RACTORS` to a comma-separated list to
+change the counts, for example `RUBY_BENCH_RACTORS=0,2,8`.
+
+`run_benchmarks.rb` starts a fresh process for each count. Heap pages, the GC
+page pool, and JIT state therefore cannot carry over from one count to the
+next. Each process runs `WARMUP_ITRS` warmup iterations at its own count
+before the measured iterations.
+
+The JSON output keeps one blob per benchmark. `bench_by_ractors` and
+`gc_by_ractors` hold the measurements for each count. `results_by_ractors`
+holds the process-level data of each count: `rss`, `maxrss`, YJIT or ZJIT
+stats, and `command_line`. The blob has no top-level `rss`, `maxrss`, or JIT
+stats, because no single process ran all counts.
+
+The text summary, the CSV output, and `misc/zjit_diff.rb` show one row for
+each count, with the RSS and JIT stats of that count's process.
+
+When you run a benchmark directly with `-Iharness-ractor`, the harness runs
+all counts in one process, one count after another.
+
 ## Ruby options
 
 By default, ruby-bench benchmarks the Ruby used for `run_benchmarks.rb`.
