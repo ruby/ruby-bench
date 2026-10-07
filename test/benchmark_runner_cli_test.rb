@@ -160,12 +160,14 @@ describe BenchmarkRunner::CLI do
 
       assert_equal ['object-new', '0'], ractor[:table][1][0..1]
       assert_equal ['', '2'], ractor[:table][2][0..1]
-      assert_equal ['object-new', '0'], ractor[:gc_table][1][0..1]
-      assert_equal ['object-new', '2'], ractor[:gc_table][2][0..1]
-      assert_equal ['bench', 'ractors', 'GC ms/iter (worker sum)', 'GC ms/worker', 'mark ms/iter (worker sum)', 'sweep ms/iter (worker sum)', 'GCs/iter (worker sum)', 'major/iter (worker sum)', 'minor/iter (worker sum)'], ractor[:gc_table][0]
-      ractor[:gc_table].flatten.each { |cell| refute_includes cell.to_s, "\x00" }
+      gc_table = ractor[:gc_tables].first
+      assert_equal 'worker sum', gc_table[:scope]
+      assert_equal ['object-new', '0'], gc_table[:rows][1][0..1]
+      assert_equal ['object-new', '2'], gc_table[:rows][2][0..1]
+      assert_equal ['bench', 'ractors', 'GC ms/iter', 'GC ms/worker', 'mark ms/iter', 'sweep ms/iter', 'GCs/iter', 'major/iter', 'minor/iter'], gc_table[:rows][0]
+      gc_table[:rows].flatten.each { |cell| refute_includes cell.to_s, "\x00" }
 
-      assert_nil normal[:gc_table]
+      assert_nil normal[:gc_tables]
 
       output = BenchmarkRunner.build_output_text({ 'ruby' => 'ruby 4.1.0dev' }, nil, nil, {}, sections: sections)
       assert_match(/Ractor GC scope note:/, output)
