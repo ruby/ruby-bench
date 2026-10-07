@@ -396,6 +396,36 @@ describe BenchmarkSuite do
       ENV.delete('RUBY_BENCH_RACTORS')
     end
 
+    it 'skips count 0 for a scenario benchmark unless it is the only count' do
+      File.write('benchmarks/scenario.rb', <<~RUBY)
+        require 'json'
+        count = ENV.fetch('RUBY_BENCH_RACTORS')
+        exit(3) if count == '0'
+        File.write(ENV['RESULT_JSON_PATH'], JSON.generate('warmup' => [], 'bench' => [count.to_f], 'rss' => 1))
+      RUBY
+      File.write('benchmarks.yml', YAML.dump('scenario' => { 'category' => 'other', 'ractor' => true, 'ractor_scenario' => true }))
+      suite = BenchmarkSuite.new(categories: ['ractor'], name_filters: [], out_path: @out_path, harness: 'harness', no_pinning: true)
+
+      ENV['RUBY_BENCH_RACTORS'] = '0,1,2'
+      bench_data, bench_failures = nil
+      capture_io do
+        bench_data, bench_failures = suite.run(ruby: [RbConfig.ruby], ruby_description: 'ruby 3.2.0')
+      end
+
+      assert_empty bench_failures
+      assert_equal({ '1' => [1.0], '2' => [2.0] }, bench_data['scenario']['bench_by_ractors'])
+
+      ENV['RUBY_BENCH_RACTORS'] = '0'
+      capture_io do
+        bench_data, bench_failures = suite.run(ruby: [RbConfig.ruby], ruby_description: 'ruby 3.2.0')
+      end
+
+      assert_empty bench_data
+      assert_equal 3, bench_failures['scenario']
+    ensure
+      ENV.delete('RUBY_BENCH_RACTORS')
+    end
+
     it 'expands pre_init when provided' do
       # Create a pre_init file
       pre_init_file = File.join(@temp_dir, 'pre_init.rb')

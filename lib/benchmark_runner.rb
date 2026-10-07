@@ -108,12 +108,21 @@ module BenchmarkRunner
         output_str << "- controller compacts/iter*: the main Ractor's GC.stat(:compact_count) delta per iteration. Every global compacting cycle increments compact_count in every object space. Do not sum it across workers.#{other_names.empty? ? '' : " Comparison tables show #{base_name} → comparison values."}\n"
       end
 
-      if sections.any? { |section| section[:gc_scope] == 'ractor-local-workload' && section[:gc_table] }
+      ractor_gc_sections = sections.select { |section| section[:gc_scope] == 'ractor-local-workload' && section[:gc_table] }
+      unless ractor_gc_sections.empty?
+        modes = ractor_gc_sections.flat_map { |section| section.fetch(:ractor_gc_modes, []) }
+        worker_mode = modes.include?(:worker)
         output_str << "Ractor GC scope note:\n"
-        scope_columns = +"- (worker sum) columns add Ractor-local counters across the sampled workers of each iteration; the main Ractor performs the count-0 workload."
+        scope_columns = +"- (worker sum) columns add Ractor-local counters across the sampled workers of each iteration"
+        scope_columns << (worker_mode ? "; the main Ractor performs the count-0 workload of per-worker benchmarks." : ".")
         scope_columns << " GC ms/worker divides each iteration's worker-sum GC time by its sampled worker count, then averages." if other_names.empty?
         output_str << "#{scope_columns} Controller snapshots and per-worker heap detail are in the JSON output, not this table.\n"
-        output_str << "- Ruby's Ractor-retirement GC (after a worker's stack is torn down) and Ractors created by the workload itself are not sampled.\n"
+        output_str << "- Ruby's Ractor-retirement GC (after a worker's stack is torn down) is not sampled."
+        output_str << " Ractors created by the workload of a per-worker benchmark are not sampled." if worker_mode
+        output_str << "\n"
+        if modes.include?(:scenario)
+          output_str << "- Scenario benchmarks sample only the worker Ractors whose bodies the scenario wraps in measure_worker_gc; other Ractors that a scenario spawns are not sampled. Main-Ractor allocation during the scenario and the retention-measurement GCs are not in the worker sums; gc_controller_samples in the JSON output cover the main Ractor during the scenario.\n"
+        end
         output_str << "- GC time is CPU-time accounting, not elapsed pause time; summed across Ractors it can exceed wall time.\n"
         output_str << "- Per-GC ratios divide by recorded GC counts, not complete process-wide GC cycles. Phase times are integer milliseconds; total GC time is kept at nanosecond resolution in the raw worker samples.\n"
       end

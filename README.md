@@ -191,6 +191,58 @@ each count, with the RSS and JIT stats of that count's process.
 When you run a benchmark directly with `-Iharness-ractor`, the harness runs
 all counts in one process, one count after another.
 
+### Ractor Scenario Benchmarks
+
+By default, `harness-ractor` spawns the worker Ractors and runs the benchmark
+block inside each of them. A benchmark that calls
+`run_benchmark(n, scenario: true)` uses scenario mode instead. The harness
+calls the block one time per trial in the main Ractor, with the Ractor count as
+its argument. The block spawns and coordinates its own Ractors. When the block
+returns a proc, the harness calls the proc after the retention measurement.
+
+Scenario mode skips Ractor count 0 and runs no warmup. For each trial, the
+harness records:
+
+* the time of the block call, which includes all work in the block;
+* the retained RSS: the RSS after a full GC, minus the RSS of the process
+  before the first trial;
+* the peak RSS: the highest RSS that the harness reads just before the block
+  call, every 5 ms during it (`RACTOR_MEM_PEAK_SAMPLE_INTERVAL`), and just
+  after it.
+
+`run_benchmarks.rb` runs a scenario benchmark in one process per count, like
+other Ractor benchmarks. It starts no count-0 process when the benchmark's
+`benchmarks.yml` entry sets `ractor_scenario: true`; without that key, the
+count-0 process fails. Each process measures retained RSS against its own
+base RSS, so the JSON output keeps `ractor_mem_base_rss` in
+`results_by_ractors`.
+
+The harness prints `BENCH_METRIC retained_mib=<worst count median>` and
+`BENCH_METRIC peak_mib=...` lines, plus one pair per ractor count. The JSON
+fields `ractor_mem_medians` and `ractor_mem_samples` hold the same data. The
+summary table of `run_benchmarks.rb` does not show it. The ractor counts and
+trials are controlled with `RUBY_BENCH_RACTORS` (default `1,2,4,6,8`) and
+`MIN_BENCH_ITRS` (default: the iteration count that the benchmark passes to
+`run_benchmark`).
+
+The harness collects with `GC.start(global: true)` when the target Ruby's
+`GC.start` accepts the `global:` keyword. Some Ruby 4.1 builds do not accept it.
+On a target with Ractor-local GC, a plain `GC.start` collects only the main
+Ractor's object space. The JSON field `ractor_mem_settle` records `global` or
+`default`.
+
+With `--ractor-gc` (`RUBY_BENCH_RACTOR_GC=1`), the harness cannot see which
+Ractors are workers. A scenario wraps each worker body in
+`measure_worker_gc { ... }`, which returns `[result, sample]`. The main Ractor
+passes each sample to `record_worker_gc(worker_index, sample)`. A trial fails
+when its recorded worker indexes are not `0...count`.
+
+Worker samples cover only the workers' own object spaces during the scenario.
+They do not include allocation by the main Ractor, such as the messages that
+the main Ractor sends to the workers. They also do not include the GCs that
+the harness runs to measure retention. The JSON field `gc_controller_samples`
+covers the main Ractor during the scenario.
+
 ## Ruby options
 
 By default, ruby-bench benchmarks the Ruby used for `run_benchmarks.rb`.
@@ -329,7 +381,8 @@ process's lifetime peak from `getrusage`.
 ## Measuring Ractor GC activity
 
 The `--ractor-gc` option of `run_benchmarks.rb` collects Ractor-local GC
-metrics for benchmarks that use the Ractor harness (`--category ractor`).
+metrics for benchmarks that use the Ractor harness (`--category ractor`),
+in both the per-worker mode and scenario mode.
 The target must use Ruby 4.1 or newer with per-Ractor global GC attribution
 ([ruby/ruby#19147](https://github.com/ruby/ruby/pull/19147)); older targets
 fail before warmup.
