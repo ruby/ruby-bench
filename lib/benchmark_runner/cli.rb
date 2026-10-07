@@ -116,12 +116,14 @@ module BenchmarkRunner
       puts
 
       # Build the results table
+      csv_data, csv_layout = csv_view(bench_data)
       builder = ResultsTableBuilder.new(
         executable_names: ruby_descriptions.keys,
-        bench_data: bench_data,
+        bench_data: csv_data,
         include_rss: args.rss,
         include_pvalue: args.pvalue,
-        zjit_stats: args.zjit_stats
+        zjit_stats: args.zjit_stats,
+        row_layout: csv_layout
       )
       table, format, gc_table, gc_format = builder.build
 
@@ -163,6 +165,13 @@ module BenchmarkRunner
     end
 
     private
+
+    def csv_view(bench_data)
+      breakdown = RactorBreakdown.expand(bench_data)
+      return [bench_data, FlatRowLayout.new] if breakdown.groups.empty?
+
+      [breakdown.bench_data, RactorRowLayout.new(groups: breakdown.groups)]
+    end
 
     def build_output_sections(executable_names, bench_data, bench_harnesses, bench_failures)
       ordered_names = sorted_benchmark_names(executable_names, bench_data)
