@@ -1,6 +1,6 @@
 source "https://rubygems.org"
 gem "sequel", "~> 5.63"
-gem "sqlite3", "~> 1.4", platform: :ruby
+gem "sqlite3", "~> 1.4", platforms: [:ruby, :windows]
 gem "jdbc-sqlite3", "~> 3.32.3", platform: :jruby
 
 gem "bigdecimal"
