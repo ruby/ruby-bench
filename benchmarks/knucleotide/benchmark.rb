@@ -37,6 +37,13 @@ end
 
 class Worker
   def initialize(&block)
+    # Platforms without fork (Windows) compute the result sequentially in this process,
+    # so their timings are not comparable with the parallel ones.
+    unless Process.respond_to?(:fork)
+      @result = yield
+      return
+    end
+
     @r, @w = IO.pipe
     @p = Process.fork do
       @r.close
@@ -47,6 +54,8 @@ class Worker
   end
 
   def result
+    return @result unless @p
+
     ret = @r.read
     @r.close
     Process.wait(@p)
