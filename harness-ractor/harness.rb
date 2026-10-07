@@ -17,18 +17,8 @@ else
   {}.freeze
 end
 
-default_ractors = [
-  0, # without ractor
-  1, 2, 4, 6, 8#, 12, 16, 32
-]
-if rs = ENV["RUBY_BENCH_RACTORS"]
-  rs = rs.split(",").map(&:to_i) # If you want to include 0, you have to specify
-  rs = rs.sort.uniq
-  if rs.any?
-    ractors = rs
-  end
-end
-RACTORS = (ractors || default_ractors).freeze
+require_relative '../lib/ractor_counts'
+RACTORS = RactorCounts.from_env
 
 unless Ractor.method_defined?(:join)
   class Ractor
