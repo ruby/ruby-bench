@@ -197,6 +197,25 @@ describe BenchmarkRunner::CLI do
     end
   end
 
+  describe '#csv_view' do
+    it 'gives each Ractor count its own CSV row with that process RSS' do
+      cli = BenchmarkRunner::CLI.new(create_args)
+      mib = 1024 * 1024
+      merged = RactorBreakdown.merge(
+        0 => { 'warmup' => [], 'bench' => [1.0], 'rss' => 10 * mib },
+        2 => { 'warmup' => [], 'bench' => [2.0], 'rss' => 30 * mib }
+      )
+      bench_data = { 'ruby' => { 'fib' => { 'warmup' => [], 'bench' => [0.1], 'rss' => 5 * mib }, 'gvl' => merged } }
+
+      data, layout = cli.send(:csv_view, bench_data)
+      table, = ResultsTableBuilder.new(executable_names: ['ruby'], bench_data: data, include_rss: true, row_layout: layout).build
+
+      assert_equal ['bench', 'ractors', 'ruby (ms)', 'RSS (MiB)'], table[0]
+      rows = table.drop(1).to_h { |row| [row[0..1], row[3]] }
+      assert_equal({ ['fib', ''] => 5.0, ['gvl', '0'] => 10.0, ['', '2'] => 30.0 }, rows)
+    end
+  end
+
   describe '#run integration test' do
     it 'runs a simple benchmark end-to-end and produces all output files' do
       Dir.mktmpdir do |tmpdir|
