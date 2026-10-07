@@ -1,12 +1,11 @@
 # Use harness/default.rb by default. You can change it with:
 # 1. HARNESS environment variable (preferred, keeps harness close to code)
-# 2. --harness option in run_once.rb
-# 3. -r option when calling Ruby directly
+# 2. -r option when calling Ruby directly
 #
 # Examples:
-#   HARNESS=perf ruby benchmarks/railsbench/benchmark.rb              # uses harness/perf.rb
-#   HARNESS=once ruby benchmarks/railsbench/benchmark.rb              # uses harness/once.rb
-#   ./run_once.rb --harness=ractor benchmarks/railsbench/benchmark.rb # uses harness/ractor.rb
+#   HARNESS=perf ruby benchmarks/railsbench/benchmark.rb             # uses harness/perf.rb
+#   HARNESS=once ruby benchmarks/railsbench/benchmark.rb             # uses harness/once.rb
+#   ruby -r./harness/ractor benchmarks/railsbench/benchmark.rb       # uses harness/ractor.rb
 
 if RUBY_ENGINE == "spinel"
   require_relative "../../harness/spinel"
