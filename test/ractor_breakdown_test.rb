@@ -165,4 +165,52 @@ describe RactorBreakdown do
       assert_equal({ 'implementation' => 'default' }, per_count['gc_config'])
     end
   end
+
+  describe '.merge' do
+    def child_blob(count, bench:, rss:, zjit_calls:)
+      {
+        'RUBY_DESCRIPTION' => 'ruby 4.1.0',
+        'warmup' => [],
+        'bench' => bench,
+        'bench_by_ractors' => { count.to_s => bench },
+        'gc_scope' => 'ractor-local-workload',
+        'gc_by_ractors' => { count.to_s => { 'gc_count_bench' => [count * 10] } },
+        'rss' => rss,
+        'maxrss' => 500,
+        'zjit_stats' => { 'calls' => zjit_calls },
+        'command_line' => "RUBY_BENCH_RACTORS=#{count} ruby bench.rb"
+      }
+    end
+
+    it 'keeps process-level data per count so each expanded row shows its own process' do
+      merged = RactorBreakdown.merge(
+        2 => child_blob(2, bench: [2.0, 2.1], rss: 300, zjit_calls: 7),
+        0 => child_blob(0, bench: [1.0, 1.1], rss: 100, zjit_calls: 5)
+      )
+
+      assert_equal({ '0' => [1.0, 1.1], '2' => [2.0, 2.1] }, merged['bench_by_ractors'])
+      assert_equal [1.0, 1.1, 2.0, 2.1], merged['bench']
+      refute merged.key?('rss')
+      refute merged.key?('maxrss'), 'equal process-level values must stay per count'
+      assert_equal 'ruby 4.1.0', merged['RUBY_DESCRIPTION']
+      assert_equal 'ractor-local-workload', merged['gc_scope']
+      refute merged.key?('zjit_stats')
+      refute merged.key?('command_line')
+      assert_equal %w[rss maxrss zjit_stats command_line], merged['results_by_ractors']['0'].keys
+
+      exe = RactorBreakdown.expand({ 'ruby' => { 'r' => merged } }).bench_data['ruby']
+      r0 = exe["r\x000"]
+      r2 = exe["r\x002"]
+
+      assert_equal [1.0, 1.1], r0['bench']
+      assert_equal 100, r0['rss']
+      assert_equal 300, r2['rss']
+      assert_equal({ 'calls' => 5 }, r0['zjit_stats'])
+      assert_equal({ 'calls' => 7 }, r2['zjit_stats'])
+      assert_equal [0], r0['gc_count_bench']
+      assert_equal [20], r2['gc_count_bench']
+      assert_equal 'RUBY_BENCH_RACTORS=2 ruby bench.rb', r2['command_line']
+      refute r0.key?('results_by_ractors')
+    end
+  end
 end
