@@ -41,13 +41,11 @@ def run_benchmark(num_itrs_hint, ractor_args: [], &block)
     check_ractor_gc_support
     gc_config = GC.config.transform_keys(&:to_s) if GC.respond_to?(:config)
     GCStats.with_measure_total_time do
-      run_warmup(warmup_itrs, ractor_args, &block)
-      run_benchmark_gc(bench_itrs, Ractor.make_shareable(block), ractor_args, gc_config: gc_config)
+      run_benchmark_gc(warmup_itrs, bench_itrs, Ractor.make_shareable(block), ractor_args, gc_config: gc_config)
     end
   else
     puts "r:   itr:   time"
-    run_warmup(warmup_itrs, ractor_args, &block)
-    run_benchmark_timing(bench_itrs, ractor_args, &block)
+    run_benchmark_timing(warmup_itrs, bench_itrs, ractor_args, &block)
   end
 end
 
@@ -63,41 +61,35 @@ def check_ractor_gc_support
   end
 end
 
-def run_warmup(warmup_itrs, ractor_args, &block)
-  warmup_itrs.times do
-    args = ractor_args.empty? ? [] : ractor_deep_dup(ractor_args)
-    block.call(*([0] + args))
-  end
-end
-
-def run_benchmark_timing(bench_itrs, ractor_args, &block)
+def run_benchmark_timing(warmup_itrs, bench_itrs, ractor_args, &block)
   stats = Hash.new { |h,k| h[k] = [] }
 
   RACTORS.each do |rs|
-    num_itrs = 0
-    while num_itrs < bench_itrs
-      before = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-      if rs.zero?
-        block.call *([rs] + ractor_deep_dup(ractor_args))
-      else
-        rs_list = []
-        rs.times do
-          rs_list << Ractor.new(*([rs] + ractor_args), &block) # ractor_args are copied
-        end
-        while rs_list.any?
-          r, _obj = Ractor.select(*rs_list)
-          rs_list.delete(r)
-        end
-      end
-      num_itrs += 1
-      time = Process.clock_gettime(Process::CLOCK_MONOTONIC) - before
-      time_ms = (1000 * time).to_i
-      itr_str = "%-3s %4s %6s" % ["#{rs}", "##{num_itrs}:", "#{time_ms}ms"]
+    warmup_itrs.times { run_timing_iteration(rs, ractor_args, &block) }
+    bench_itrs.times do |i|
+      time = run_timing_iteration(rs, ractor_args, &block)
       stats[rs] << time
-      puts itr_str
+      puts "%-3s %4s %6s" % ["#{rs}", "##{i + 1}:", "#{(1000 * time).to_i}ms"]
     end
   end
   return_results([], stats.values.flatten, bench_by_ractors: stats)
+end
+
+def run_timing_iteration(rs, ractor_args, &block)
+  before = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+  if rs.zero?
+    block.call *([rs] + ractor_deep_dup(ractor_args))
+  else
+    rs_list = []
+    rs.times do
+      rs_list << Ractor.new(*([rs] + ractor_args), &block) # ractor_args are copied
+    end
+    while rs_list.any?
+      r, _obj = Ractor.select(*rs_list)
+      rs_list.delete(r)
+    end
+  end
+  Process.clock_gettime(Process::CLOCK_MONOTONIC) - before
 end
 
 RACTOR_GC_SERIES = {
@@ -110,7 +102,7 @@ RACTOR_GC_SERIES = {
   "gc_total_time_bench" => "gc_total_time_ns",
 }.freeze
 
-def run_benchmark_gc(bench_itrs, block, ractor_args, gc_config:)
+def run_benchmark_gc(warmup_itrs, bench_itrs, block, ractor_args, gc_config:)
   stats = Hash.new { |h,k| h[k] = [] }
   gc_by_ractors = {}
 
@@ -123,6 +115,8 @@ def run_benchmark_gc(bench_itrs, block, ractor_args, gc_config:)
     group = { "gc_worker_samples" => [] }
     group["gc_controller_samples"] = [] if rs > 0
     series = Hash.new { |h,k| h[k] = [] }
+
+    warmup_itrs.times { run_ractor_gc_iteration(rs, ractor_args, &block) }
 
     num_itrs = 0
     while num_itrs < bench_itrs
