@@ -8,6 +8,7 @@
 # Pass --help to see options.
 
 require 'json'
+require_relative '../lib/ractor_breakdown'
 
 class ZjitDiff
   DEFAULT_THRESHOLD_PCT = 5.0   # Percentage change to highlight
@@ -83,7 +84,8 @@ class ZjitDiff
   def initialize(path, threshold_pct: DEFAULT_THRESHOLD_PCT, minimum_diff: DEFAULT_MINIMUM_DIFF, limit: DEFAULT_LIMIT, benchmarks: nil)
     @data = JSON.parse(File.read(path))
     @metadata = @data['metadata']
-    @raw_data = @data['raw_data']
+    @base_names = {}
+    @raw_data = expand_ractor_counts(@data['raw_data'])
     @ruby_names = @raw_data.keys
     @threshold_pct = threshold_pct
     @minimum_diff = minimum_diff
@@ -170,7 +172,29 @@ class ZjitDiff
   def benchmarks
     @benchmarks ||= begin
       all = @raw_data.values.first.keys
-      @benchmark_filter ? all & @benchmark_filter : all
+      if @benchmark_filter
+        all.select { |name| @benchmark_filter.include?(name) || @benchmark_filter.include?(@base_names[name]) }
+      else
+        all
+      end
+    end
+  end
+
+  def expand_ractor_counts(raw_data)
+    raw_data.transform_values do |benchmarks|
+      benchmarks.each_with_object({}) do |(name, blob), expanded|
+        unless blob.is_a?(Hash) && blob['results_by_ractors'].is_a?(Hash)
+          expanded[name] = blob
+          next
+        end
+
+        breakdown = blob['bench_by_ractors']
+        breakdown.keys.map { |count| Integer(count) }.sort.each do |count|
+          label = "#{name} (r=#{count})"
+          @base_names[label] = name
+          expanded[label] = RactorBreakdown.per_count_blob(blob, breakdown, count)
+        end
+      end
     end
   end
 
