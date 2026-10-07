@@ -59,7 +59,7 @@ module BenchmarkRunner
     end
 
     # Build output text string with metadata, table, and legend
-    def build_output_text(ruby_descriptions, table, format, bench_failures, include_rss: false, include_gc: false, include_pvalue: false, gc_table: nil, gc_format: nil, sections: nil, ruby_bench_revision: nil)
+    def build_output_text(ruby_descriptions, table, format, bench_failures, include_rss: false, include_gc: false, include_pvalue: false, gc_tables: nil, sections: nil, ruby_bench_revision: nil)
       base_name, *other_names = ruby_descriptions.keys
 
       output_str = +""
@@ -70,16 +70,23 @@ module BenchmarkRunner
       output_str << "ruby-bench: #{ruby_bench_revision}\n" if ruby_bench_revision
 
       output_str << "\n"
-      sections ||= [{ table: table, format: format, failures: bench_failures, include_gc: include_gc, gc_table: gc_table, gc_format: gc_format }]
-      has_gc_summary = sections.any? { |section| section[:include_gc] && section[:gc_table] }
+      sections ||= [{ table: table, format: format, failures: bench_failures, include_gc: include_gc, gc_tables: gc_tables }]
+      has_gc_summary = sections.any? { |section| section[:include_gc] && section[:gc_tables] }
       sections.each do |section|
         title = section[:title]
         output_str << "#{title}:\n" if title
         output_str << TableFormatter.new(section[:table], section[:format], section.fetch(:failures, {})).to_s + "\n"
 
-        if section[:include_gc] && section[:gc_table] && section[:gc_format]
-          output_str << (title ? "GC summary (#{title}):\n" : "GC summary:\n")
-          output_str << TableFormatter.new(section[:gc_table], section[:gc_format], {}).to_s + "\n"
+        next unless section[:include_gc] && section[:gc_tables]
+
+        section[:gc_tables].each do |gc_table|
+          qualifiers = [gc_table[:scope], title].compact
+          output_str << gc_table[:name]
+          output_str << " (#{qualifiers.join(', ')})" unless qualifiers.empty?
+          output_str << ":\n"
+          output_str << TableFormatter.new(gc_table[:rows], Array.new(gc_table[:rows].first.size, "%s"), {}).to_s
+          output_str << "Hidden columns (zero or N/A in every row): #{gc_table[:hidden].join(', ')}\n" unless gc_table[:hidden].empty?
+          output_str << "\n"
         end
       end
 
@@ -93,30 +100,30 @@ module BenchmarkRunner
           end
         end
         if has_gc_summary
-          output_str << "- GC summary compares #{base_name} → comparison. Ratio columns are #{base_name}/comparison; above 1 means the comparison spent less GC time.\n"
-          output_str << "- gc/iter, mark/iter, and sweep/iter ratio compare total GC (or phase) time per benchmark iteration, so they include both per-GC cost and GC frequency changes.\n"
-          output_str << "- gc/GC, mark/GC, and sweep/GC ratio divide average GC (or phase) time by the same run's GCs/iter count; they are not complete per-cycle attribution of process-wide GC.\n"
-          output_str << "- GCs/iter, major/iter, minor/iter, controller compacts/iter*, and minor GC % show #{base_name} → comparison values, not ratios. Rows with no GC activity are omitted.\n"
+          output_str << "- GC time ratios are #{base_name}/comparison; above 1 means the comparison spent less GC time.\n"
+          output_str << "- gc/iter, mark/iter, and sweep/iter compare total GC (or phase) time per benchmark iteration, so they include both per-GC cost and GC frequency changes.\n"
+          output_str << "- gc/GC, mark/GC, and sweep/GC divide average GC (or phase) time by the same run's GCs/iter count; they are not complete per-cycle attribution of process-wide GC.\n"
+          output_str << "- GC counts show #{base_name} → comparison values, not ratios. Rows with no GC activity are omitted.\n"
         end
         if include_pvalue
           output_str << "- ***: p < 0.001, **: p < 0.01, *: p < 0.05 (Welch's t-test)\n"
         end
       end
-      gc_headers = sections.filter_map { |section| section[:gc_table]&.first }.flatten
-      if gc_headers.include?('controller compacts/iter*')
+      gc_headers = sections.flat_map { |section| Array(section[:gc_tables]).flat_map { |gc_table| gc_table[:rows].first } }
+      if gc_headers.include?('compacts*')
         output_str << "GC metric notes:\n"
-        output_str << "- controller compacts/iter*: the main Ractor's GC.stat(:compact_count) delta per iteration. Every global compacting cycle increments compact_count in every object space. Do not sum it across workers.#{other_names.empty? ? '' : " Comparison tables show #{base_name} → comparison values."}\n"
+        output_str << "- compacts*: the main Ractor's GC.stat(:compact_count) delta per iteration. Every global compacting cycle increments compact_count in every object space. Do not sum it across workers.#{other_names.empty? ? '' : " Comparison tables show #{base_name} → comparison values."}\n"
       end
 
-      ractor_gc_sections = sections.select { |section| section[:gc_scope] == 'ractor-local-workload' && section[:gc_table] }
+      ractor_gc_sections = sections.select { |section| section[:gc_scope] == 'ractor-local-workload' && section[:gc_tables] }
       unless ractor_gc_sections.empty?
         modes = ractor_gc_sections.flat_map { |section| section.fetch(:ractor_gc_modes, []) }
         worker_mode = modes.include?(:worker)
         output_str << "Ractor GC scope note:\n"
-        scope_columns = +"- (worker sum) columns add Ractor-local counters across the sampled workers of each iteration"
+        scope_columns = +"- Tables marked worker sum add Ractor-local counters and GC times across the sampled workers of each iteration"
         scope_columns << (worker_mode ? "; the main Ractor performs the count-0 workload of per-worker benchmarks." : ".")
         scope_columns << " GC ms/worker divides each iteration's worker-sum GC time by its sampled worker count, then averages." if other_names.empty?
-        output_str << "#{scope_columns} Controller snapshots and per-worker heap detail are in the JSON output, not this table.\n"
+        output_str << "#{scope_columns} Controller snapshots and per-worker heap detail are in the JSON output, not these tables.\n"
         output_str << "- Ruby's Ractor-retirement GC (after a worker's stack is torn down) is not sampled."
         output_str << " Ractors created by the workload of a per-worker benchmark are not sampled." if worker_mode
         output_str << "\n"

@@ -436,7 +436,7 @@ describe BenchmarkRunner do
       assert_includes result, "- ***: p < 0.001, **: p < 0.01, *: p < 0.05 (Welch's t-test)"
     end
 
-    it 'prints compact GC comparison table and legend when include_gc is true' do
+    it 'prints the GC ratio and count tables and their legend when include_gc is true' do
       ruby_descriptions = {
         'ruby-base' => 'ruby 3.3.0',
         'ruby-exp' => 'ruby 3.3.0 experiment'
@@ -446,22 +446,57 @@ describe BenchmarkRunner do
         ['fib', '100.0', '50.0', '2.000']
       ]
       format = ['%s', '%s', '%s', '%s']
-      gc_table = [
-        ['bench', 'mark/iter ratio', 'sweep/iter ratio', 'mark/GC ratio', 'sweep/GC ratio', 'major/iter', 'minor/iter', 'minor GC %'],
-        ['fib', '2.000', '1.250', '1.000', '0.625', ' 2.0  →   1.0', ' 8.0  →   4.0', ' 80%  →   80%']
+      gc_tables = [
+        { name: 'GC time ratios', scope: nil, hidden: [], rows: [
+          ['bench', 'mark/iter', 'sweep/iter', 'mark/GC', 'sweep/GC'],
+          ['fib', '2.000', '1.250', '1.000', '0.625']
+        ] },
+        { name: 'GC counts', scope: nil, hidden: [], rows: [
+          ['bench', 'major/iter', 'minor/iter', 'minor GC %'],
+          ['fib', ' 2.0  →   1.0', ' 8.0  →   4.0', ' 80%  →   80%']
+        ] }
       ]
-      gc_format = ['%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s']
-      bench_failures = {}
 
       result = BenchmarkRunner.build_output_text(
-        ruby_descriptions, table, format, bench_failures, include_gc: true, gc_table: gc_table, gc_format: gc_format
+        ruby_descriptions, table, format, {}, include_gc: true, gc_tables: gc_tables
       )
 
-      assert_includes result, "GC summary:\n"
-      assert_includes result, 'mark/GC ratio'
+      assert_includes result, "GC time ratios:\n"
+      assert_includes result, "GC counts:\n"
+      assert_operator result.index("GC time ratios:\n"), :<, result.index("GC counts:\n")
+      assert_includes result, 'mark/GC'
       assert_includes result, ' 2.0  →   1.0'
-      assert_includes result, '- GC summary compares ruby-base → comparison. Ratio columns are ruby-base/comparison; above 1 means the comparison spent less GC time.'
-      refute_includes result, 'mark ruby-base/ruby-exp:'
+      assert_includes result, '- GC time ratios are ruby-base/comparison; above 1 means the comparison spent less GC time.'
+      refute_includes result, 'Hidden columns'
+    end
+
+    it 'titles a worker-sum GC table with its scope and the section title, and lists hidden columns' do
+      ruby_descriptions = { 'ruby' => 'ruby 4.1.0dev' }
+      sections = [
+        {
+          title: 'harness-ractor',
+          table: [['bench', 'ractors', 'ruby (ms)'], ['object-new', '1', '200.0']],
+          format: ['%s', '%s', '%.1f'],
+          failures: {},
+          include_gc: true,
+          gc_tables: [
+            { name: 'GC summary', scope: 'worker sum', hidden: ['global/iter', 'compacts*'], rows: [
+              ['bench', 'ractors', 'GC ms/iter'], ['object-new', '1', '4.000']
+            ] }
+          ],
+          gc_scope: 'ractor-local-workload',
+          ractor_gc_modes: [:worker],
+        }
+      ]
+
+      result = BenchmarkRunner.build_output_text(
+        ruby_descriptions, sections.first[:table], sections.first[:format], {}, sections: sections
+      )
+
+      assert_includes result, "GC summary (worker sum, harness-ractor):\n"
+      assert_includes result, "Hidden columns (zero or N/A in every row): global/iter, compacts*\n"
+      refute_includes result, 'GC metric notes:', 'a hidden compaction column needs no note'
+      assert_includes result, '- Tables marked worker sum add Ractor-local counters'
     end
 
     it 'explains the controller compaction column when a GC table shows it' do
@@ -474,18 +509,19 @@ describe BenchmarkRunner do
         ['fib', '100.0', '50.0', '2.000']
       ]
       format = ['%s', '%s', '%s', '%s']
-      gc_table = [
-        ['bench', 'gc/iter ratio', 'global/iter ratio', 'GCs/iter', 'controller compacts/iter*'],
-        ['fib', '2.000', '1.500', '10.0  →   5.0', ' 1.0  →   2.0']
+      gc_tables = [
+        { name: 'GC counts', scope: nil, hidden: [], rows: [
+          ['bench', 'GCs/iter', 'compacts*'],
+          ['fib', '10.0  →   5.0', ' 1.0  →   2.0']
+        ] }
       ]
-      gc_format = ['%s', '%s', '%s', '%s', '%s']
 
       result = BenchmarkRunner.build_output_text(
-        ruby_descriptions, table, format, {}, include_gc: true, gc_table: gc_table, gc_format: gc_format
+        ruby_descriptions, table, format, {}, include_gc: true, gc_tables: gc_tables
       )
 
       assert_includes result, "GC metric notes:\n"
-      assert_includes result, "- controller compacts/iter*: the main Ractor's GC.stat(:compact_count) delta per iteration."
+      assert_includes result, "- compacts*: the main Ractor's GC.stat(:compact_count) delta per iteration."
       assert_includes result, 'Every global compacting cycle increments compact_count in every object space.'
       assert_includes result, 'Do not sum it across workers.'
       assert_includes result, 'Comparison tables show ruby-base → comparison values.'
@@ -496,19 +532,20 @@ describe BenchmarkRunner do
       ruby_descriptions = { 'ruby' => 'ruby 4.1.0dev' }
       table = [['bench', 'ruby (ms)'], ['fib', '100.0']]
       format = ['%s', '%s']
-      gc_table = [
-        ['bench', 'GC ms/iter', 'GCs/iter', 'global/iter', 'controller compacts/iter*'],
-        ['fib', '4.000', '10.0', '1.0', '0.0']
+      gc_tables = [
+        { name: 'GC summary', scope: nil, hidden: [], rows: [
+          ['bench', 'GC ms/iter', 'GCs/iter', 'global/iter', 'compacts*'],
+          ['fib', '4.000', '10.0', '1.0', '0.0']
+        ] }
       ]
-      gc_format = ['%s', '%s', '%s', '%s', '%s']
 
       result = BenchmarkRunner.build_output_text(
-        ruby_descriptions, table, format, {}, include_gc: true, gc_table: gc_table, gc_format: gc_format
+        ruby_descriptions, table, format, {}, include_gc: true, gc_tables: gc_tables
       )
 
       refute_includes result, 'Legend:'
       assert_includes result, "GC metric notes:\n"
-      assert_includes result, "- controller compacts/iter*: the main Ractor's GC.stat(:compact_count) delta per iteration."
+      assert_includes result, "- compacts*: the main Ractor's GC.stat(:compact_count) delta per iteration."
       refute_includes result, 'Comparison tables show'
       refute_includes result, 'global GCs/iter'
     end
@@ -523,19 +560,20 @@ describe BenchmarkRunner do
         ['fib', '100.0', '50.0', '2.000']
       ]
       format = ['%s', '%s', '%s', '%s']
-      gc_table = [
-        ['bench', 'mark/iter ratio', 'GCs/iter', 'global/iter'],
-        ['fib', '2.000', '10.0  →   5.0', ' 2.0  →   1.0']
+      gc_tables = [
+        { name: 'GC counts', scope: nil, hidden: [], rows: [
+          ['bench', 'GCs/iter', 'major/iter'],
+          ['fib', '10.0  →   5.0', ' 2.0  →   1.0']
+        ] }
       ]
-      gc_format = ['%s', '%s', '%s', '%s']
 
       result = BenchmarkRunner.build_output_text(
-        ruby_descriptions, table, format, {}, include_gc: true, gc_table: gc_table, gc_format: gc_format
+        ruby_descriptions, table, format, {}, include_gc: true, gc_tables: gc_tables
       )
 
       refute_includes result, 'GC metric notes:'
       assert_includes result, "the same run's GCs/iter count"
-      assert_includes result, 'show ruby-base → comparison values, not ratios'
+      assert_includes result, 'GC counts show ruby-base → comparison values, not ratios'
     end
 
     it 'omits the Ractor scope note when the section rendered no GC table' do
@@ -547,7 +585,7 @@ describe BenchmarkRunner do
           format: ['%s', '%s', '%.1f'],
           failures: {},
           include_gc: true,
-          gc_table: nil,
+          gc_tables: nil,
           gc_scope: 'ractor-local-workload',
         }
       ]
@@ -656,8 +694,7 @@ describe BenchmarkRunner do
           format: ['%s', '%.1f', '%.1f'],
           failures: {},
           include_gc: true,
-          gc_table: [['bench', 'mark/iter ratio'], ['gcbench', '1.100']],
-          gc_format: ['%s', '%s'],
+          gc_tables: [{ name: 'GC time ratios', scope: nil, hidden: [], rows: [['bench', 'mark/iter'], ['gcbench', '1.100']] }],
         }
       ]
 
@@ -665,8 +702,8 @@ describe BenchmarkRunner do
         ruby_descriptions, sections.first[:table], sections.first[:format], {}, sections: sections
       )
 
-      assert_includes result, "GC summary (harness-gc):\n"
-      assert_includes result, '- GC summary compares ruby → comparison.'
+      assert_includes result, "GC time ratios (harness-gc):\n"
+      assert_includes result, '- GC time ratios are ruby/comparison;'
     end
 
     it 'omits legend when no other executables' do
