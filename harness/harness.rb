@@ -14,7 +14,7 @@ OUT_CSV_PATH = File.expand_path(ENV.fetch('OUT_CSV_PATH', default_path))
 
 RSS_CSV_PATH = ENV['RSS_CSV_PATH'] ? File.expand_path(ENV['RSS_CSV_PATH']) : nil
 
-system('mkdir', '-p', File.dirname(OUT_CSV_PATH))
+FileUtils.mkdir_p(File.dirname(OUT_CSV_PATH))
 
 # We could include other values in this result if more become relevant
 # but for now all we want to know is if YJIT was enabled at runtime.
