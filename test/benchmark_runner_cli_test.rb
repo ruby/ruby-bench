@@ -9,7 +9,7 @@ require 'csv'
 describe BenchmarkRunner::CLI do
   before do
     @original_env = {}
-    ['WARMUP_ITRS', 'MIN_BENCH_ITRS', 'MIN_BENCH_TIME', 'BENCHMARK_QUIET', 'RUBY_BENCH_RACTOR_GC'].each do |key|
+    ['WARMUP_ITRS', 'MIN_BENCH_ITRS', 'MIN_BENCH_TIME', 'BENCHMARK_QUIET', 'RUBY_BENCH_RACTOR_GC', 'RUBY_YJIT_ENABLE', 'RUBY_ZJIT_ENABLE'].each do |key|
       @original_env[key] = ENV[key]
     end
 
@@ -19,6 +19,8 @@ describe BenchmarkRunner::CLI do
     ENV['MIN_BENCH_TIME'] = '0'
     # Suppress benchmark output during tests
     ENV['BENCHMARK_QUIET'] = '1'
+    ENV.delete('RUBY_YJIT_ENABLE')
+    ENV.delete('RUBY_ZJIT_ENABLE')
   end
 
   after do
@@ -324,6 +326,26 @@ describe BenchmarkRunner::CLI do
         # Both should have raw data
         assert json_data['raw_data'].key?('test1')
         assert json_data['raw_data'].key?('test2')
+      end
+    end
+
+    ['RUBY_YJIT_ENABLE', 'RUBY_ZJIT_ENABLE'].each do |var|
+      it "does not let #{var} enable a JIT for an executable without JIT flags" do
+        Dir.mktmpdir do |tmpdir|
+          ENV[var] = '1'
+          args = create_args(
+            executables: { 'interp' => [RbConfig.ruby] },
+            name_filters: ['fib'],
+            out_path: tmpdir
+          )
+
+          cli = BenchmarkRunner::CLI.new(args)
+          capture_io { cli.run }
+
+          json_files = Dir.glob(File.join(tmpdir, "*.json"))
+          json_data = JSON.parse(File.read(json_files.first))
+          refute_match(/\+[YZ]JIT/, json_data['metadata']['interp'])
+        end
       end
     end
 
