@@ -372,6 +372,7 @@ DEPENDENCIES
   sqlite3
   stackprof
   svg-graph
+  tzinfo-data
   vcr
   webmock
 
