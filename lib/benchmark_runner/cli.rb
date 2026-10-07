@@ -219,8 +219,19 @@ module BenchmarkRunner
         gc_table: gc_table,
         gc_format: gc_format,
       }
-      section[:gc_scope] = 'ractor-local-workload' if ResultsTableBuilder.ractor_gc_data?(section_data)
+      if ResultsTableBuilder.ractor_gc_data?(section_data)
+        section[:gc_scope] = 'ractor-local-workload'
+        section[:ractor_gc_modes] = ractor_gc_modes(section_data)
+      end
       section
+    end
+
+    def ractor_gc_modes(section_data)
+      blobs = section_data.values.flat_map(&:values)
+      blobs.filter_map do |blob|
+        next unless blob.is_a?(Hash) && blob['gc_scope'] == 'ractor-local-workload'
+        blob['ractor_mode'] == 'scenario' ? :scenario : :worker
+      end.uniq
     end
 
     def sorted_benchmark_names(executable_names, bench_data)
