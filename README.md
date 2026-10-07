@@ -217,13 +217,28 @@ count-0 process fails. Each process measures retained RSS against its own
 base RSS, so the JSON output keeps `ractor_mem_base_rss` in
 `results_by_ractors`.
 
+Three benchmarks use scenario mode to measure pathological memory behaviour
+with multiple ractors, for GC work that reclaims ractor-local memory:
+
+* **`ractor-dead-set`** - Every ractor builds a large live set and terminates.
+  Retention shows how much of the dead ractors' final live sets a full GC
+  leaves resident.
+* **`ractor-idle-garbage`** - Every ractor builds a large set, drops all
+  references, then idles without allocating. The garbage cannot be swept
+  while the ractor idles.
+* **`ractor-msg-backlog`** - Unshareable payloads flood the queues of gated
+  consumer ractors, duplicating the payload data per consumer. Its time
+  includes the gate sleep (`RACTOR_BACKLOG_GATE_SLEEP`, default 1 second).
+
+```bash
+ruby -Iharness-ractor benchmarks/ractor-dead-set/benchmark.rb
+```
 The harness prints `BENCH_METRIC retained_mib=<worst count median>` and
 `BENCH_METRIC peak_mib=...` lines, plus one pair per ractor count. The JSON
 fields `ractor_mem_medians` and `ractor_mem_samples` hold the same data. The
 summary table of `run_benchmarks.rb` does not show it. The ractor counts and
 trials are controlled with `RUBY_BENCH_RACTORS` (default `1,2,4,6,8`) and
-`MIN_BENCH_ITRS` (default: the iteration count that the benchmark passes to
-`run_benchmark`).
+`MIN_BENCH_ITRS` (default 3 for these benchmarks).
 
 The harness collects with `GC.start(global: true)` when the target Ruby's
 `GC.start` accepts the `global:` keyword. Some Ruby 4.1 builds do not accept it.
@@ -238,10 +253,10 @@ passes each sample to `record_worker_gc(worker_index, sample)`. A trial fails
 when its recorded worker indexes are not `0...count`.
 
 Worker samples cover only the workers' own object spaces during the scenario.
-They do not include allocation by the main Ractor, such as the messages that
-the main Ractor sends to the workers. They also do not include the GCs that
-the harness runs to measure retention. The JSON field `gc_controller_samples`
-covers the main Ractor during the scenario.
+They do not include allocation by the main Ractor, such as the payloads that
+`ractor-msg-backlog` sends. They also do not include the GCs that the harness
+runs to measure retention. The JSON field `gc_controller_samples` covers the
+main Ractor during the scenario.
 
 ## Ruby options
 
