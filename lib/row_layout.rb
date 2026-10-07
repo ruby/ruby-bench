@@ -32,7 +32,7 @@ class RactorRowLayout
 
       seen[base_name] = true
       members = @groups_by_base_name[base_name]
-      next [] unless members
+      next [Entry.new(data_key: data_key, label_cells: [data_key, ''])] unless members
 
       members.each_with_index.map do |(member_key, count), i|
         name_cell = i.zero? ? base_name : ''
