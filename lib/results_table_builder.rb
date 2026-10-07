@@ -42,9 +42,7 @@ class ResultsTableBuilder
       table << (entry.label_cells + build_stat_cells(entry.data_key))
     end
 
-    gc_table = build_gc_summary_table
-
-    [table, format, gc_table, build_gc_summary_format(gc_table)]
+    [table, format, build_gc_tables]
   end
 
   private
@@ -122,26 +120,18 @@ class ResultsTableBuilder
     gc_controller_compact_count_bench
   ].freeze
 
-  def build_gc_summary_table
+  def build_gc_tables
     return nil unless @include_gc
 
-    label_columns = ["bench", *@row_layout.extra_header_columns]
+    label_header = ["bench", *@row_layout.extra_header_columns]
+    tables = @other_names.empty? ? [build_gc_absolute_table(label_header)] : build_gc_comparison_tables(label_header)
+    tables.compact!
+    tables.empty? ? nil : tables
+  end
 
-    if @other_names.empty?
-      return build_gc_absolute_table(label_columns)
-    end
-
-    count_suffix = ractor_gc_table? ? " (worker sum)" : ""
-
-    header = label_columns + (include_gc_comparison_name? ? ["comparison"] : [])
-    header += ["gc/iter ratio", "gc/GC ratio"] if include_gc_total_time?
-    header += ["mark/iter ratio", "sweep/iter ratio", "mark/GC ratio", "sweep/GC ratio"]
-    header << "global/iter ratio" if gc_series_present?('gc_global_count_bench')
-    header << "GCs/iter#{count_suffix}" << "major/iter#{count_suffix}" << "minor/iter#{count_suffix}"
-    header << "controller compacts/iter*" if gc_series_present?('gc_controller_compact_count_bench')
-    header << "minor GC %"
-
-    rows = [header]
+  def build_gc_comparison_tables(label_header)
+    label_header += ["comparison"] if include_gc_comparison_name?
+    rows = []
     gc_entries.each do |entry|
       series_by_exe = @executable_names.map do |name|
         data = bench_data_for(name, entry.data_key)
@@ -161,44 +151,118 @@ class ResultsTableBuilder
       others.each_with_index do |other, i|
         next unless gc_activity?(*base.values, *other.values)
 
-        rows << gc_summary_row(gc_label_cells(entry), @other_names[i], base, other)
+        labels = gc_label_cells(entry)
+        labels << @other_names[i] if include_gc_comparison_name?
+        rows << [labels, [base, other]]
       end
     end
 
-    rows.size == 1 ? nil : rows
+    [
+      assemble_gc_table("GC time ratios", label_header, rows, gc_ratio_columns),
+      assemble_gc_table("GC counts", label_header, rows, gc_count_columns),
+    ]
   end
 
-  def build_gc_absolute_table(label_columns)
-    ractor = ractor_gc_table?
-    count_suffix = ractor ? " (worker sum)" : ""
-
-    header = label_columns + ["GC ms/iter#{count_suffix}"]
-    header << "GC ms/worker" if ractor
-    header += ["mark ms/iter#{count_suffix}", "sweep ms/iter#{count_suffix}", "GCs/iter#{count_suffix}", "major/iter#{count_suffix}", "minor/iter#{count_suffix}"]
-    header << "global/iter#{count_suffix}" if gc_series_present?('gc_global_count_bench')
-    header << "controller compacts/iter*" if gc_series_present?('gc_controller_compact_count_bench')
-
-    rows = [header]
-
-    gc_entries.each do |entry|
-      data = bench_data_for(@base_name, entry.data_key)
-      next unless GC_SERIES_KEYS.any? { |key| data.key?(key) }
-
-      cells = [format_gc_series_mean_precise(data['gc_total_time_bench'])]
-      cells << gc_ms_per_worker_cell(data['gc_total_time_bench'], data['gc_worker_samples']) if ractor
-      cells += [
-        format_gc_series_mean_precise(data['gc_marking_time_bench']),
-        format_gc_series_mean_precise(data['gc_sweeping_time_bench']),
-        format_gc_series_mean(gc_count_series(data)),
-        format_gc_series_mean(data['gc_major_count_bench']),
-        format_gc_series_mean(data['gc_minor_count_bench']),
-      ]
-      cells << format_gc_series_mean(data['gc_global_count_bench']) if gc_series_present?('gc_global_count_bench')
-      cells << format_gc_series_mean(data['gc_controller_compact_count_bench']) if gc_series_present?('gc_controller_compact_count_bench')
-      rows << gc_label_cells(entry) + cells
+  def gc_ratio_columns
+    columns = []
+    if include_gc_total_time?
+      columns << ["gc/iter", ->(base, other) { ratio_cell(gc_ratio(base[:total], other[:total])) }]
+      columns << ["gc/GC", ->(base, other) { ratio_cell(per_gc_ratio(base, other, :total)) }]
     end
+    columns << ["mark/iter", ->(base, other) { ratio_cell(gc_ratio(base[:mark], other[:mark])) }]
+    columns << ["sweep/iter", ->(base, other) { ratio_cell(gc_ratio(base[:sweep], other[:sweep])) }]
+    columns << ["mark/GC", ->(base, other) { ratio_cell(per_gc_ratio(base, other, :mark)) }]
+    columns << ["sweep/GC", ->(base, other) { ratio_cell(per_gc_ratio(base, other, :sweep)) }]
+    columns
+  end
 
-    rows.size == 1 ? nil : rows
+  def gc_count_columns
+    columns = [
+      ["GCs/iter", ->(base, other) { count_cell(base[:count], other[:count]) }],
+      ["major/iter", ->(base, other) { count_cell(base[:major], other[:major]) }],
+      ["minor/iter", ->(base, other) { count_cell(base[:minor], other[:minor]) }],
+    ]
+    if gc_series_present?('gc_global_count_bench')
+      columns << ["global/iter", ->(base, other) { count_cell(base[:global], other[:global]) }]
+    end
+    if gc_series_present?('gc_controller_compact_count_bench')
+      columns << ["compacts*", ->(base, other) { count_cell(base[:compact], other[:compact]) }]
+    end
+    columns << ["minor GC %", ->(base, other) { minor_percent_cell(base, other) }]
+    columns
+  end
+
+  def build_gc_absolute_table(label_header)
+    rows = gc_entries.filter_map do |entry|
+      data = bench_data_for(@base_name, entry.data_key)
+      [gc_label_cells(entry), [data]] if GC_SERIES_KEYS.any? { |key| data.key?(key) }
+    end
+    assemble_gc_table("GC summary", label_header, rows, gc_absolute_columns)
+  end
+
+  def gc_absolute_columns
+    columns = [["GC ms/iter", ->(data) { mean_cell(data['gc_total_time_bench'], precise: true) }]]
+    columns << ["GC ms/worker", ->(data) { ms_per_worker_cell(data) }] if ractor_gc_table?
+    columns += [
+      ["mark ms/iter", ->(data) { mean_cell(data['gc_marking_time_bench'], precise: true) }],
+      ["sweep ms/iter", ->(data) { mean_cell(data['gc_sweeping_time_bench'], precise: true) }],
+      ["GCs/iter", ->(data) { mean_cell(gc_count_series(data)) }],
+      ["major/iter", ->(data) { mean_cell(data['gc_major_count_bench']) }],
+      ["minor/iter", ->(data) { mean_cell(data['gc_minor_count_bench']) }],
+    ]
+    if gc_series_present?('gc_global_count_bench')
+      columns << ["global/iter", ->(data) { mean_cell(data['gc_global_count_bench']) }]
+    end
+    if gc_series_present?('gc_controller_compact_count_bench')
+      columns << ["compacts*", ->(data) { mean_cell(data['gc_controller_compact_count_bench']) }]
+    end
+    columns
+  end
+
+  def assemble_gc_table(name, label_header, rows, columns)
+    return nil if rows.empty?
+
+    cells = rows.map { |(_labels, args)| columns.map { |(_header, cell)| cell.call(*args) } }
+    shown = columns.each_index.select { |i| cells.any? { |row_cells| row_cells[i][1] } }
+
+    body = rows.each_with_index.map { |(labels, _args), r| labels + shown.map { |i| cells[r][i][0] } }
+    {
+      name: name,
+      scope: ractor_gc_table? ? "worker sum" : nil,
+      rows: [label_header + shown.map { |i| columns[i][0] }] + body,
+      hidden: (columns.each_index.to_a - shown).map { |i| columns[i][0] },
+    }
+  end
+
+  def ratio_cell(text)
+    [text, text != "N/A"]
+  end
+
+  def count_cell(base, other)
+    [gc_count_cell(base, other), mean_positive?(base) || mean_positive?(other)]
+  end
+
+  def minor_percent_cell(base, other)
+    data = [gc_minor_percent(base[:minor], base[:count]), gc_minor_percent(other[:minor], other[:count])].any? { |pct| pct&.positive? }
+    [gc_minor_percent_cell(base, other), data]
+  end
+
+  def mean_cell(values, precise: false)
+    text = precise ? format_gc_series_mean_precise(values) : format_gc_series_mean(values)
+    [text, mean_positive?(values)]
+  end
+
+  def ms_per_worker_cell(data)
+    text = gc_ms_per_worker_cell(data['gc_total_time_bench'], data['gc_worker_samples'])
+    [text, text != "N/A" && mean_positive?(data['gc_total_time_bench'])]
+  end
+
+  def mean_positive?(values)
+    numeric_series?(values) && mean(values) > 0.0
+  end
+
+  def per_gc_ratio(base, other, key)
+    scalar_ratio(gc_time_per_gc(base[key], base[:count]), gc_time_per_gc(other[key], other[:count]))
   end
 
   def gc_series_present?(key)
@@ -231,12 +295,6 @@ class ResultsTableBuilder
     @include_gc_total_time = @bench_data.values.any? do |benchmarks|
       benchmarks.values.any? { |d| d.is_a?(Hash) && d.key?('gc_total_time_bench') }
     end
-  end
-
-  def build_gc_summary_format(gc_table)
-    return nil unless gc_table
-
-    Array.new(gc_table.first.size, "%s")
   end
 
   def build_stat_cells(bench_name)
@@ -314,26 +372,6 @@ class ResultsTableBuilder
 
   def include_gc_comparison_name?
     @other_names.size > 1
-  end
-
-  def gc_summary_row(label_cells, name, base, other)
-    row = label_cells
-    row << name if include_gc_comparison_name?
-    if include_gc_total_time?
-      row << gc_ratio(base[:total], other[:total])
-      row << scalar_ratio(gc_time_per_gc(base[:total], base[:count]), gc_time_per_gc(other[:total], other[:count]))
-    end
-    row << gc_ratio(base[:mark], other[:mark])
-    row << gc_ratio(base[:sweep], other[:sweep])
-    row << scalar_ratio(gc_time_per_gc(base[:mark], base[:count]), gc_time_per_gc(other[:mark], other[:count]))
-    row << scalar_ratio(gc_time_per_gc(base[:sweep], base[:count]), gc_time_per_gc(other[:sweep], other[:count]))
-    row << gc_ratio(base[:global], other[:global]) if gc_series_present?('gc_global_count_bench')
-    row << gc_count_cell(base[:count], other[:count])
-    row << gc_count_cell(base[:major], other[:major])
-    row << gc_count_cell(base[:minor], other[:minor])
-    row << gc_count_cell(base[:compact], other[:compact]) if gc_series_present?('gc_controller_compact_count_bench')
-    row << gc_minor_percent_cell(base, other)
-    row
   end
 
   def numeric_series?(values)
