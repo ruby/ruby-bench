@@ -45,6 +45,11 @@ module BenchmarkRunner
         force_pinning: args.force_pinning
       )
 
+      # Leave JIT selection to each executable's flags. Ruby reads these only when
+      # no JIT flag is given, so RUBY_YJIT_ENABLE=1 would turn "interp" into YJIT.
+      ENV.delete("RUBY_YJIT_ENABLE")
+      ENV.delete("RUBY_ZJIT_ENABLE")
+
       # Collect ruby version descriptions for all executables upfront
       args.executables.each do |name, executable|
         ruby_descriptions[name] = `#{executable.shelljoin} -v`.chomp
