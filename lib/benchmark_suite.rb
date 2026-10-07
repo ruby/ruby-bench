@@ -10,6 +10,8 @@ require 'rbconfig'
 require_relative 'benchmark_filter'
 require_relative 'benchmark_runner'
 require_relative 'benchmark_discovery'
+require_relative 'ractor_breakdown'
+require_relative 'ractor_counts'
 
 # BenchmarkSuite runs a collection of benchmarks and collects their results
 class BenchmarkSuite
@@ -48,21 +50,15 @@ class BenchmarkSuite
     env = benchmark_env(ruby)
     caller_json_path = ENV["RESULT_JSON_PATH"]
     quiet = ENV['BENCHMARK_QUIET'] == '1'
-
-    result_json_path = caller_json_path || File.join(out_path, "temp#{Process.pid}.json")
     cmd_prefix = base_cmd(ruby_description, entry.name)
-
-    # Clear project-level Bundler environment so benchmarks run in a clean context.
-    # Benchmarks that need Bundler (e.g., railsbench) set up their own via use_gemfile.
     benchmark_harness = benchmark_harness_for(entry.name)
 
-    result = if defined?(Bundler)
-      Bundler.with_unbundled_env do
-        run_single_benchmark(entry.script_path, result_json_path, ruby, cmd_prefix, env, benchmark_harness, quiet: quiet)
-      end
-    else
-      run_single_benchmark(entry.script_path, result_json_path, ruby, cmd_prefix, env, benchmark_harness, quiet: quiet)
+    if benchmark_harness == RACTOR_HARNESS
+      return run_ractor_benchmark(entry, ruby, cmd_prefix, env, benchmark_harness, caller_json_path, quiet: quiet)
     end
+
+    result_json_path = caller_json_path || File.join(out_path, "temp#{Process.pid}.json")
+    result = run_benchmark_process(entry.script_path, result_json_path, ruby, cmd_prefix, env, benchmark_harness, quiet: quiet)
 
     if result[:success]
       { name: entry.name, data: process_benchmark_result(result_json_path, result[:command], delete_file: !caller_json_path), harness: benchmark_harness }
@@ -103,6 +99,42 @@ class BenchmarkSuite
     else
       @bench_dir = BENCHMARKS_DIR
       @ractor_bench_dir = RACTOR_BENCHMARKS_DIR
+    end
+  end
+
+  def run_ractor_benchmark(entry, ruby, cmd_prefix, env, benchmark_harness, caller_json_path, quiet: false)
+    blobs_by_count = {}
+
+    RactorCounts.from_env.each do |count|
+      result_json_path = File.join(out_path, "temp#{Process.pid}_r#{count}.json")
+      count_env = env.merge(RactorCounts::ENV_VAR => count.to_s)
+      result = run_benchmark_process(entry.script_path, result_json_path, ruby, cmd_prefix, count_env, benchmark_harness, quiet: quiet)
+
+      unless result[:success]
+        FileUtils.rm_f(result_json_path)
+        return { name: entry.name, failure: result[:status].exitstatus, harness: benchmark_harness }
+      end
+      command = "#{RactorCounts::ENV_VAR}=#{count} #{result[:command]}"
+      blobs_by_count[count] = process_benchmark_result(result_json_path, command)
+    end
+
+    data = RactorBreakdown.merge(blobs_by_count)
+    if caller_json_path
+      FileUtils.mkdir_p(File.dirname(caller_json_path))
+      File.write(caller_json_path, JSON.pretty_generate(data))
+    end
+    { name: entry.name, data: data, harness: benchmark_harness }
+  end
+
+  # Clear project-level Bundler environment so benchmarks run in a clean context.
+  # Benchmarks that need Bundler (e.g., railsbench) set up their own via use_gemfile.
+  def run_benchmark_process(script_path, result_json_path, ruby, cmd_prefix, env, benchmark_harness, quiet: false)
+    if defined?(Bundler)
+      Bundler.with_unbundled_env do
+        run_single_benchmark(script_path, result_json_path, ruby, cmd_prefix, env, benchmark_harness, quiet: quiet)
+      end
+    else
+      run_single_benchmark(script_path, result_json_path, ruby, cmd_prefix, env, benchmark_harness, quiet: quiet)
     end
   end
 
