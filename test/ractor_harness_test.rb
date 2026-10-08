@@ -30,7 +30,10 @@ describe 'Ractor harness' do
       stdout, stderr, status = Open3.capture3(env, RbConfig.ruby, "-I#{File.join(root, 'harness-ractor')}", script)
 
       assert status.success?, "workload failed:\n#{stdout}\n#{stderr}"
-      assert_equal ['2'], JSON.parse(File.read(result_path))['bench_by_ractors'].keys
+      data = JSON.parse(File.read(result_path))
+      assert_equal({ '2' => 2 }, data['warmup_by_ractors'].transform_values(&:size))
+      assert_equal({ '2' => 1 }, data['bench_by_ractors'].transform_values(&:size))
+      assert_equal data['warmup_by_ractors']['2'], data['warmup']
       assert_equal ['2'] * 6, File.readlines(calls_path, chomp: true), '(2 warmup + 1 measured) iterations x 2 Ractors'
     end
   end

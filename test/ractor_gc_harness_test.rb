@@ -163,6 +163,8 @@ describe 'Ractor GC harness' do
       assert_equal 'ractor-local', data['gc_measure_total_time_scope']
       assert_kind_of Hash, data['gc_config']
       assert_equal %w[0 1 2], data['bench_by_ractors'].keys.sort
+      assert_equal({ '0' => 1, '1' => 1, '2' => 1 }, data['warmup_by_ractors'].transform_values(&:size))
+      assert_equal data['warmup_by_ractors'].values_at('0', '1', '2').flatten, data['warmup']
       assert_equal %w[0 1 2], data['gc_by_ractors'].keys.sort
 
       if data['gc_by_ractors'].values.any? { |group| group.key?('gc_controller_compact_count_bench') }

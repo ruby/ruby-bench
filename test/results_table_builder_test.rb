@@ -85,16 +85,18 @@ describe ResultsTableBuilder do
       raw = {
         'master' => {
           'symbol-name-ractor' => {
-            'warmup' => [],
+            'warmup' => [3.0, 8.0],
             'bench' => [1.0, 2.0],
+            'warmup_by_ractors' => { '0' => [3.0], '2' => [8.0] },
             'bench_by_ractors' => { '0' => [1.0, 1.0], '2' => [2.0, 2.0] },
             'rss' => 10 * 1024 * 1024
           }
         },
         'exp' => {
           'symbol-name-ractor' => {
-            'warmup' => [],
+            'warmup' => [1.0, 2.0],
             'bench' => [0.5, 1.0],
+            'warmup_by_ractors' => { '0' => [1.0], '2' => [2.0] },
             'bench_by_ractors' => { '0' => [0.5, 0.5], '2' => [1.0, 1.0] },
             'rss' => 10 * 1024 * 1024
           }
@@ -118,6 +120,10 @@ describe ResultsTableBuilder do
       assert_equal '0', table[1][1]
       assert_equal '', table[2][0]
       assert_equal '2', table[2][1]
+
+      # 1st itr uses each count's first warmup: r=0 3000ms vs 1000ms, r=2 8000ms vs 2000ms
+      assert_in_delta 3.0, table[1][4], 0.01
+      assert_in_delta 4.0, table[2][4], 0.01
 
       # count=0 row: master 1000ms vs exp 500ms => ratio 2.0
       assert_in_delta 2.0, table[1][5].to_f, 0.01
@@ -860,6 +866,7 @@ describe ResultsTableBuilder do
         'bench' => groups.values.flat_map { |g| g[:bench] },
         'rss' => 10 * 1024 * 1024,
         'gc_scope' => 'ractor-local-workload',
+        'warmup_by_ractors' => groups.transform_values { [] },
         'bench_by_ractors' => groups.transform_values { |g| g[:bench] },
         'gc_by_ractors' => groups.transform_values { |g| g[:gc] }
       }

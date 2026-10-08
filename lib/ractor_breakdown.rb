@@ -2,7 +2,7 @@
 
 module RactorBreakdown
   KEY_SEP = "\x00"
-  MEASUREMENT_KEYS = %w[warmup bench bench_by_ractors gc_by_ractors].freeze
+  MEASUREMENT_KEYS = %w[warmup bench warmup_by_ractors bench_by_ractors gc_by_ractors].freeze
   PROCESS_KEYS = %w[rss maxrss yjit_stats zjit_stats zjit_stats_string command_line].freeze
 
   Result = Struct.new(:bench_data, :groups)
@@ -27,8 +27,9 @@ module RactorBreakdown
       !PROCESS_KEYS.include?(k) && rest.all? { |data| data.key?(k) && data[k] == v }
     end
 
-    merged['warmup'] = []
+    merged['warmup'] = counts.flat_map { |count| blobs_by_count[count]['warmup'] }
     merged['bench'] = counts.flat_map { |count| blobs_by_count[count]['bench'] }
+    merged['warmup_by_ractors'] = counts.to_h { |count| [count.to_s, blobs_by_count[count]['warmup']] }
     merged['bench_by_ractors'] = counts.to_h { |count| [count.to_s, blobs_by_count[count]['bench']] }
     gc_by_ractors = counts.filter_map do |count|
       group = blobs_by_count[count].dig('gc_by_ractors', count.to_s)
@@ -66,11 +67,11 @@ module RactorBreakdown
   end
 
   def per_count_blob(blob, breakdown, count)
-    per_count = blob.reject { |k, _| k == 'bench_by_ractors' || k == 'gc_by_ractors' || k == 'results_by_ractors' || k == 'bench' }
+    per_count = blob.reject { |k, _| %w[warmup_by_ractors bench_by_ractors gc_by_ractors results_by_ractors bench].include?(k) }
     process_data = blob['results_by_ractors']
     per_count.merge!(process_data[count.to_s]) if process_data.is_a?(Hash) && process_data.key?(count.to_s)
     per_count['bench'] = breakdown[count.to_s]
-    per_count['warmup'] = []
+    per_count['warmup'] = blob.fetch('warmup_by_ractors').fetch(count.to_s)
     gc_by_ractors = blob['gc_by_ractors']
     if gc_by_ractors.is_a?(Hash) && gc_by_ractors.key?(count.to_s)
       per_count.merge!(gc_by_ractors[count.to_s])
