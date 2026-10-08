@@ -86,7 +86,7 @@ module BenchmarkRunner
       unless other_names.empty?
         output_str << "Legend:\n"
         other_names.each do |name|
-          output_str << "- #{name} 1st itr: ratio of #{base_name}/#{name} time for the first benchmarking iteration.\n"
+          output_str << "- #{name} 1st itr: ratio of #{base_name}/#{name} time for the first iteration.\n"
           output_str << "- #{base_name}/#{name}: ratio of #{base_name}/#{name} time. Higher is better for #{name}. Above 1 represents a speedup.\n"
           if include_rss
             output_str << "- RSS #{base_name}/#{name}: ratio of #{base_name}/#{name} RSS. Higher is better for #{name}. Above 1 means lower memory usage.\n"

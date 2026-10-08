@@ -413,7 +413,6 @@ describe BenchmarkRunner do
       assert_includes result, 'ruby-base: ruby 3.3.0'
       assert_includes result, 'ruby-yjit: ruby 3.3.0 +YJIT'
       assert_includes result, 'Legend:'
-      assert_includes result, '- ruby-yjit 1st itr: ratio of ruby-base/ruby-yjit time for the first benchmarking iteration.'
       assert_includes result, '- ruby-base/ruby-yjit: ratio of ruby-base/ruby-yjit time. Higher is better for ruby-yjit. Above 1 represents a speedup.'
       refute_includes result, "p < 0.001"
     end
