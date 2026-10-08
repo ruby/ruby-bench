@@ -100,6 +100,7 @@ describe BenchmarkRunner::CLI do
           'symbol-name-ractor' => {
             'warmup' => [],
             'bench' => [1.0, 2.0],
+            'warmup_by_ractors' => { '0' => [], '2' => [] },
             'bench_by_ractors' => { '0' => [1.0], '2' => [2.0] },
             'rss' => 10 * 1024 * 1024
           }
@@ -146,6 +147,7 @@ describe BenchmarkRunner::CLI do
             'bench' => [1.0, 2.0],
             'rss' => 10 * 1024 * 1024,
             'gc_scope' => 'ractor-local-workload',
+            'warmup_by_ractors' => { '0' => [], '2' => [] },
             'bench_by_ractors' => { '0' => [1.0], '2' => [2.0] },
             'gc_by_ractors' => { '0' => gc_group.call(4.0, 1, 3), '2' => gc_group.call(12.0, 2, 6) }
           }
@@ -185,6 +187,7 @@ describe BenchmarkRunner::CLI do
             'bench' => [1.0, 2.0],
             'rss' => 10 * 1024 * 1024,
             'gc_scope' => 'ractor-local-workload',
+            'warmup_by_ractors' => { '0' => [], '2' => [] },
             'bench_by_ractors' => { '0' => [1.0], '2' => [2.0] }
           }
         }

@@ -21,12 +21,16 @@ describe RactorBreakdown do
         'ruby' => {
           'symbol-name-ractor' => {
             'bench' => [1.0, 2.0, 3.0, 4.0],
+            'warmup_by_ractors' => {
+              '0' => [5.0],
+              '2' => [6.0]
+            },
             'bench_by_ractors' => {
               '0' => [1.0, 1.1],
               '2' => [2.0, 2.2]
             },
             'rss' => 555,
-            'warmup' => []
+            'warmup' => [5.0, 6.0]
           }
         }
       }
@@ -39,6 +43,9 @@ describe RactorBreakdown do
 
       assert_equal [1.0, 1.1], exe[key0]['bench']
       assert_equal [2.0, 2.2], exe[key2]['bench']
+      assert_equal [5.0], exe[key0]['warmup']
+      assert_equal [6.0], exe[key2]['warmup']
+      refute exe[key0].key?('warmup_by_ractors')
       # process-wide fields are shared
       assert_equal 555, exe[key0]['rss']
       assert_equal 555, exe[key2]['rss']
@@ -51,6 +58,7 @@ describe RactorBreakdown do
         'ruby' => {
           'symbol-name-ractor' => {
             'bench' => [],
+            'warmup_by_ractors' => { '8' => [], '0' => [], '2' => [] },
             'bench_by_ractors' => { '8' => [1.0], '0' => [1.0], '2' => [1.0] }
           }
         }
@@ -72,6 +80,7 @@ describe RactorBreakdown do
       blob = lambda do
         {
           'bench' => [],
+          'warmup_by_ractors' => { '0' => [], '1' => [] },
           'bench_by_ractors' => { '0' => [1.0], '1' => [2.0] }
         }
       end
@@ -91,6 +100,7 @@ describe RactorBreakdown do
     it 'merges only the matching count\'s gc_by_ractors entry into each synthetic blob' do
       blob = {
         'bench' => [3.0],
+        'warmup_by_ractors' => { '0' => [], '2' => [] },
         'bench_by_ractors' => { '0' => [1.0], '2' => [2.0] },
         'gc_scope' => 'ractor-local-workload',
         'gc_by_ractors' => {
@@ -144,6 +154,7 @@ describe RactorBreakdown do
         'ruby' => {
           'r' => {
             'bench' => [1.0],
+            'warmup_by_ractors' => { '0' => [] },
             'bench_by_ractors' => { '0' => [1.0] },
             'gc_scope' => 'ractor-local-workload',
             'gc_stat_scope' => 'ractor-local',
@@ -167,11 +178,12 @@ describe RactorBreakdown do
   end
 
   describe '.merge' do
-    def child_blob(count, bench:, rss:, zjit_calls:)
+    def child_blob(count, warmup:, bench:, rss:, zjit_calls:)
       {
         'RUBY_DESCRIPTION' => 'ruby 4.1.0',
-        'warmup' => [],
+        'warmup' => warmup,
         'bench' => bench,
+        'warmup_by_ractors' => { count.to_s => warmup },
         'bench_by_ractors' => { count.to_s => bench },
         'gc_scope' => 'ractor-local-workload',
         'gc_by_ractors' => { count.to_s => { 'gc_count_bench' => [count * 10] } },
@@ -184,10 +196,12 @@ describe RactorBreakdown do
 
     it 'keeps process-level data per count so each expanded row shows its own process' do
       merged = RactorBreakdown.merge(
-        2 => child_blob(2, bench: [2.0, 2.1], rss: 300, zjit_calls: 7),
-        0 => child_blob(0, bench: [1.0, 1.1], rss: 100, zjit_calls: 5)
+        2 => child_blob(2, warmup: [9.0], bench: [2.0, 2.1], rss: 300, zjit_calls: 7),
+        0 => child_blob(0, warmup: [8.0], bench: [1.0, 1.1], rss: 100, zjit_calls: 5)
       )
 
+      assert_equal({ '0' => [8.0], '2' => [9.0] }, merged['warmup_by_ractors'])
+      assert_equal [8.0, 9.0], merged['warmup']
       assert_equal({ '0' => [1.0, 1.1], '2' => [2.0, 2.1] }, merged['bench_by_ractors'])
       assert_equal [1.0, 1.1, 2.0, 2.1], merged['bench']
       refute merged.key?('rss')
@@ -203,6 +217,8 @@ describe RactorBreakdown do
       r2 = exe["r\x002"]
 
       assert_equal [1.0, 1.1], r0['bench']
+      assert_equal [8.0], r0['warmup']
+      assert_equal [9.0], r2['warmup']
       assert_equal 100, r0['rss']
       assert_equal 300, r2['rss']
       assert_equal({ 'calls' => 5 }, r0['zjit_stats'])

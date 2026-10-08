@@ -174,13 +174,16 @@ change the counts, for example `RUBY_BENCH_RACTORS=0,2,8`.
 `run_benchmarks.rb` starts a fresh process for each count. Heap pages, the GC
 page pool, and JIT state therefore cannot carry over from one count to the
 next. Each process runs `WARMUP_ITRS` warmup iterations at its own count
-before the measured iterations.
+before the measured iterations. As in the default harness, the harness prints
+each warmup iteration and records its time.
 
-The JSON output keeps one blob per benchmark. `bench_by_ractors` and
-`gc_by_ractors` hold the measurements for each count. `results_by_ractors`
-holds the process-level data of each count: `rss`, `maxrss`, YJIT or ZJIT
-stats, and `command_line`. The blob has no top-level `rss`, `maxrss`, or JIT
-stats, because no single process ran all counts.
+The JSON output keeps one blob per benchmark. `warmup_by_ractors`,
+`bench_by_ractors`, and `gc_by_ractors` hold the measurements for each count.
+`warmup_by_ractors` holds wall times only. The `--ractor-gc` mode does not
+keep GC samples for warmup iterations. `results_by_ractors` holds the
+process-level data of each count: `rss`, `maxrss`, YJIT or ZJIT stats, and
+`command_line`. The blob has no top-level `rss`, `maxrss`, or JIT stats,
+because no single process ran all counts.
 
 The text summary, the CSV output, and `misc/zjit_diff.rb` show one row for
 each count, with the RSS and JIT stats of that count's process.

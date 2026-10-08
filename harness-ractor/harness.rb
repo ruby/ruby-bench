@@ -62,17 +62,18 @@ def check_ractor_gc_support
 end
 
 def run_benchmark_timing(warmup_itrs, bench_itrs, ractor_args, &block)
-  stats = Hash.new { |h,k| h[k] = [] }
+  warmups = {}
+  stats = {}
 
   RACTORS.each do |rs|
-    warmup_itrs.times { run_timing_iteration(rs, ractor_args, &block) }
-    bench_itrs.times do |i|
+    times = Array.new(warmup_itrs + bench_itrs) do |i|
       time = run_timing_iteration(rs, ractor_args, &block)
-      stats[rs] << time
       puts "%-3s %4s %6s" % ["#{rs}", "##{i + 1}:", "#{(1000 * time).to_i}ms"]
+      time
     end
+    warmups[rs], stats[rs] = times[0...warmup_itrs], times[warmup_itrs..]
   end
-  return_results([], stats.values.flatten, bench_by_ractors: stats)
+  return_results(warmups.values.flatten, stats.values.flatten, warmup_by_ractors: warmups, bench_by_ractors: stats)
 end
 
 def run_timing_iteration(rs, ractor_args, &block)
@@ -103,7 +104,8 @@ RACTOR_GC_SERIES = {
 }.freeze
 
 def run_benchmark_gc(warmup_itrs, bench_itrs, block, ractor_args, gc_config:)
-  stats = Hash.new { |h,k| h[k] = [] }
+  warmups = {}
+  stats = {}
   gc_by_ractors = {}
 
   header = +"r:   itr:   time   gc_total   marking  sweeping  gc_count     major     minor    global"
@@ -112,34 +114,37 @@ def run_benchmark_gc(warmup_itrs, bench_itrs, block, ractor_args, gc_config:)
   puts "(* controller-observed compacting cycles; may overlap global counts and is not additive.)" if CONTROLLER_GC_SERIES.any?
 
   RACTORS.each do |rs|
+    warmups[rs] = []
+    stats[rs] = []
     group = { "gc_worker_samples" => [] }
     group["gc_controller_samples"] = [] if rs > 0
     series = Hash.new { |h,k| h[k] = [] }
 
-    warmup_itrs.times { run_ractor_gc_iteration(rs, ractor_args, &block) }
-
-    num_itrs = 0
-    while num_itrs < bench_itrs
-      num_itrs += 1
+    (warmup_itrs + bench_itrs).times do |i|
       elapsed, worker_samples, controller_sample, controller_deltas = run_ractor_gc_iteration(rs, ractor_args, &block)
-      stats[rs] << elapsed
-      group["gc_worker_samples"] << worker_samples
-      group["gc_controller_samples"] << controller_sample if controller_sample
-
       agg = GCStats.aggregate(worker_samples)
       total_ms = agg["gc_total_time_ns"]&.fdiv(1_000_000)
-      RACTOR_GC_SERIES.each do |series_name, field|
-        series[series_name] << (field == "gc_total_time_ns" ? total_ms : agg[field])
-      end
-      CONTROLLER_GC_SERIES.each_key { |series_name| series[series_name] << controller_deltas[series_name] }
 
-      itr_str = "%-3s %4s %6s" % [rs, "##{num_itrs}:", "#{(1000 * elapsed).to_i}ms"]
+      itr_str = "%-3s %4s %6s" % [rs, "##{i + 1}:", "#{(1000 * elapsed).to_i}ms"]
       itr_str << " %8s" % (total_ms ? "%.1fms" % total_ms : "N/A")
       itr_str << " %8s" % (agg["gc_marking_time"] ? "#{agg["gc_marking_time"]}ms" : "N/A")
       itr_str << " %8s" % (agg["gc_sweeping_time"] ? "#{agg["gc_sweeping_time"]}ms" : "N/A")
       itr_str << " %9s %9s %9s %9s" % [agg["gc_count"], agg["gc_major_count"], agg["gc_minor_count"], agg["gc_global_count"]].map { |v| v.nil? ? "N/A" : v.to_s }
       CONTROLLER_GC_SERIES.each_key { |series_name| itr_str << " %9s" % (controller_deltas[series_name] || "N/A") }
       puts itr_str
+
+      if i < warmup_itrs
+        warmups[rs] << elapsed
+        next
+      end
+
+      stats[rs] << elapsed
+      group["gc_worker_samples"] << worker_samples
+      group["gc_controller_samples"] << controller_sample if controller_sample
+      RACTOR_GC_SERIES.each do |series_name, field|
+        series[series_name] << (field == "gc_total_time_ns" ? total_ms : agg[field])
+      end
+      CONTROLLER_GC_SERIES.each_key { |series_name| series[series_name] << controller_deltas[series_name] }
     end
 
     series.each do |name, values|
@@ -149,6 +154,7 @@ def run_benchmark_gc(warmup_itrs, bench_itrs, block, ractor_args, gc_config:)
   end
 
   extra = {
+    warmup_by_ractors: warmups,
     bench_by_ractors: stats,
     gc_scope: "ractor-local-workload",
     gc_stat_scope: "ractor-local",
@@ -156,7 +162,7 @@ def run_benchmark_gc(warmup_itrs, bench_itrs, block, ractor_args, gc_config:)
     gc_by_ractors: gc_by_ractors,
   }
   extra[:gc_config] = gc_config if gc_config
-  return_results([], stats.values.flatten, **extra)
+  return_results(warmups.values.flatten, stats.values.flatten, **extra)
 end
 
 def controller_gc_snapshot
