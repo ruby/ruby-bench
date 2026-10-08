@@ -4,12 +4,13 @@
 # we don't run "bundle install" above.
 
 require_relative 'lib/lee'
+require 'tmpdir'
 
 #board_filename, output_filename, expansions_dir, *rest = ARGV
 #raise 'no input filename' unless board_filename
 #raise 'too many arguments' unless rest.empty?
 board_filename = File.dirname(__FILE__) + "/inputs/testBoard.txt"
-output_filename = "/tmp/testBoard.svg"
+output_filename = File.join(Dir.tmpdir, "testBoard.svg")
 expansions_dir = nil
 
 if expansions_dir

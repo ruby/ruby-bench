@@ -9,6 +9,7 @@ use_gemfile
 
 require "hexapdf"
 require "fileutils"
+require "tmpdir"
 
 IN_FILENAME = "odyssey.txt"
 WIDTH = 50
@@ -16,7 +17,8 @@ HEIGHT = 1000
 
 EXPECTED_SIZE = 569797
 
-Dir["/tmp/hexapdf-result*.pdf"].each { |file| FileUtils.rm file }
+OUT_DIR = Dir.tmpdir.freeze
+Dir.glob("hexapdf-result*.pdf", base: OUT_DIR).each { |file| FileUtils.rm File.join(OUT_DIR, file) }
 
 if ENV["RUBY_BENCH_RACTOR_HARNESS"]
   make_shareable(HexaPDF::DefaultDocumentConfiguration)
@@ -36,7 +38,7 @@ run_benchmark(10) do
 
   # Non-TTF benchmark
   iter += 1
-  out_filename = "/tmp/hexapdf-result-#{ "%03d" % iter }.pdf"
+  out_filename = File.join(OUT_DIR, "hexapdf-result-#{ "%03d" % iter }.pdf")
 
 
   composer = HexaPDF::Composer.new(page_size: [0, 0, WIDTH, HEIGHT], margin: 0)
@@ -47,7 +49,8 @@ run_benchmark(10) do
   composer.write(out_filename, update_fields: false)
 end
 
-Dir["/tmp/hexapdf-result*.pdf"].each do |file|
+Dir.glob("hexapdf-result*.pdf", base: OUT_DIR).each do |name|
+  file = File.join(OUT_DIR, name)
   sz = File.stat(file).size
   raise "Incorrect size #{sz} for file #{file} (expected #{EXPECTED_SIZE})!" unless sz == EXPECTED_SIZE
   FileUtils.rm file
