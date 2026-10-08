@@ -13,6 +13,16 @@ require 'rubyboy/emulator_headless'
 # The rom is included in the gem in a sibling directory to the rubyboy code.
 ROM_PATH = File.expand_path("../../roms/tobu.gb", $".detect { |x| x.end_with?("/rubyboy/emulator_headless.rb") }).freeze
 
+# Rubyboy opens the ROM with mode "r", which converts CRLF to LF on Windows.
+if Gem.win_platform?
+  File.singleton_class.prepend(Module.new do
+    def open(path, *args, **kwargs, &block)
+      args[0] = "rb" if path == ROM_PATH && args[0] == "r"
+      super(path, *args, **kwargs, &block)
+    end
+  end)
+end
+
 # A count of 500 produces results similar to our optcarrot benchmark.
 # It's possible there is a number that produces a consistent benchmark without
 # needing to re-initialize but not sure how to determine that.
