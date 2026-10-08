@@ -9,6 +9,34 @@ require 'csv'
 require 'yaml'
 
 describe BenchmarkRunner do
+  describe '.ruby_bench_revision' do
+    def git(dir, *args)
+      system('git', '-C', dir, '-c', 'user.name=t', '-c', 'user.email=t@t', *args, out: File::NULL, err: File::NULL) or raise "git #{args.join(' ')} failed"
+    end
+
+    it 'returns the HEAD commit, with -dirty only when tracked files change' do
+      Dir.mktmpdir do |dir|
+        git(dir, 'init', '-q')
+        File.write(File.join(dir, 'a.rb'), "1\n")
+        git(dir, 'add', 'a.rb')
+        git(dir, 'commit', '-q', '-m', 'init')
+        head = IO.popen(['git', '-C', dir, 'rev-parse', 'HEAD'], &:read).strip
+
+        File.write(File.join(dir, 'untracked.txt'), "x\n")
+        assert_equal head, BenchmarkRunner.ruby_bench_revision(dir)
+
+        File.write(File.join(dir, 'a.rb'), "2\n")
+        assert_equal "#{head}-dirty", BenchmarkRunner.ruby_bench_revision(dir)
+      end
+    end
+
+    it 'returns unknown outside a git checkout' do
+      Dir.mktmpdir do |dir|
+        assert_equal 'unknown', BenchmarkRunner.ruby_bench_revision(dir)
+      end
+    end
+  end
+
   describe '.check_call' do
     it 'runs a successful command and returns success status' do
       result = nil

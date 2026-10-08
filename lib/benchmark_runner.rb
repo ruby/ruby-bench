@@ -9,6 +9,16 @@ require_relative 'table_formatter'
 # Extracted helper methods from run_benchmarks.rb for testing
 module BenchmarkRunner
   class << self
+    def ruby_bench_revision(dir = File.expand_path('..', __dir__))
+      revision = IO.popen(['git', '-C', dir, 'rev-parse', 'HEAD'], err: File::NULL, &:read).strip
+      return 'unknown' unless $?.success? && !revision.empty?
+
+      clean = system('git', '-C', dir, 'diff', '--quiet', 'HEAD', out: File::NULL, err: File::NULL)
+      clean ? revision : "#{revision}-dirty"
+    rescue SystemCallError
+      'unknown'
+    end
+
     # Determine output path - either use the override or find a free file number
     def output_path(out_path_dir, out_override: nil)
       if out_override
@@ -49,7 +59,7 @@ module BenchmarkRunner
     end
 
     # Build output text string with metadata, table, and legend
-    def build_output_text(ruby_descriptions, table, format, bench_failures, include_rss: false, include_gc: false, include_pvalue: false, gc_table: nil, gc_format: nil, sections: nil)
+    def build_output_text(ruby_descriptions, table, format, bench_failures, include_rss: false, include_gc: false, include_pvalue: false, gc_table: nil, gc_format: nil, sections: nil, ruby_bench_revision: nil)
       base_name, *other_names = ruby_descriptions.keys
 
       output_str = +""
@@ -57,6 +67,7 @@ module BenchmarkRunner
       ruby_descriptions.each do |key, value|
         output_str << "#{key}: #{value}\n"
       end
+      output_str << "ruby-bench: #{ruby_bench_revision}\n" if ruby_bench_revision
 
       output_str << "\n"
       sections ||= [{ table: table, format: format, failures: bench_failures, include_gc: include_gc, gc_table: gc_table, gc_format: gc_format }]

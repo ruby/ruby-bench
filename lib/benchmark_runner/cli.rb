@@ -31,6 +31,7 @@ module BenchmarkRunner
       # Create the output directory
       FileUtils.mkdir_p(args.out_path)
 
+      ruby_bench_revision = BenchmarkRunner.ruby_bench_revision
       ruby_descriptions = {}
 
       suite = BenchmarkSuite.new(
@@ -136,7 +137,7 @@ module BenchmarkRunner
 
       # Save the output in a text file that we can easily refer to
       output_sections = build_output_sections(ruby_descriptions.keys, bench_data, bench_harnesses, bench_failures)
-      output_str = BenchmarkRunner.build_output_text(ruby_descriptions, table, format, bench_failures, include_rss: args.rss, include_gc: builder.include_gc?, include_pvalue: args.pvalue, gc_table: gc_table, gc_format: gc_format, sections: output_sections)
+      output_str = BenchmarkRunner.build_output_text(ruby_descriptions, table, format, bench_failures, include_rss: args.rss, include_gc: builder.include_gc?, include_pvalue: args.pvalue, gc_table: gc_table, gc_format: gc_format, sections: output_sections, ruby_bench_revision: ruby_bench_revision)
       out_txt_path = output_path + ".txt"
       File.open(out_txt_path, "w") { |f| f.write output_str }
 
