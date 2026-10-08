@@ -161,15 +161,15 @@ class BenchmarkSuite
     ENV["RESULT_JSON_PATH"] = result_json_path
 
     # Set up the benchmarking command
-    cmd = cmd_prefix + [
+    cmd = (cmd_prefix + [
       *ruby,
       "-I", benchmark_harness,
       *pre_init,
       script_path,
-    ].compact
+    ].compact).map(&:to_s)
 
     # Do the benchmarking
-    result = BenchmarkRunner.check_call(cmd.shelljoin, env: env, raise_error: false, quiet: quiet)
+    result = BenchmarkRunner.check_call(cmd, env: env, raise_error: false, quiet: quiet)
     result[:command] = cmd.shelljoin
     result
   ensure
@@ -198,10 +198,10 @@ class BenchmarkSuite
     # like `bundle install` in a child process will not use the Ruby being benchmarked.
     # It overrides PATH to guarantee the commands of the benchmarked Ruby will be used.
     env = {}
-    ruby_path = `#{ruby.shelljoin} -e 'print RbConfig.ruby' 2> #{File::NULL}`
+    ruby_path = IO.popen([*ruby, "-e", "print RbConfig.ruby"], err: File::NULL, &:read)
 
     if ruby_path != RbConfig.ruby
-      env["PATH"] = "#{File.dirname(ruby_path)}:#{ENV["PATH"]}"
+      env["PATH"] = "#{File.dirname(ruby_path)}#{File::PATH_SEPARATOR}#{ENV["PATH"]}"
 
       # chruby sets GEM_HOME and GEM_PATH in your shell. We have to unset it in the child
       # process to avoid installing gems to the version that is running run_benchmarks.rb.

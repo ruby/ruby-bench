@@ -1,10 +1,11 @@
 require 'rbconfig'
+require 'fileutils'
 require_relative '../misc/stats'
 
 # Ensure the ruby in PATH is the ruby running this, so we can safely shell out to other commands
 ruby_in_path = `ruby -e 'print RbConfig.ruby'`
 unless ruby_in_path == RbConfig.ruby
-  ENV["PATH"] = "#{File.dirname(RbConfig.ruby)}:#{ENV["PATH"]}"
+  ENV["PATH"] = "#{File.dirname(RbConfig.ruby)}#{File::PATH_SEPARATOR}#{ENV["PATH"]}"
   ENV.merge!("GEM_HOME" => nil, "GEM_PATH" => nil) # avoid installing gems to chruby-ed Ruby
 end
 
@@ -52,7 +53,7 @@ end
 def use_gemfile(extra_setup_cmd: nil)
   # Benchmarks should normally set their current directory and then call this method.
 
-  setup_cmds(["bundle check 2> /dev/null || bundle install", extra_setup_cmd].compact)
+  setup_cmds(["bundle check 2> #{File::NULL} || bundle install", extra_setup_cmd].compact)
 
   # Need to be in the appropriate directory for this...
   require "bundler"
@@ -236,7 +237,7 @@ def write_json_file(ruby_bench_results)
   require "json"
 
   out_path = YB_OUTPUT_FILE
-  system('mkdir', '-p', File.dirname(out_path))
+  FileUtils.mkdir_p(File.dirname(out_path))
 
   # Using default path? Print where we put it.
   puts "Writing file #{out_path}" unless ENV["RESULT_JSON_PATH"]
