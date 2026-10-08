@@ -11,6 +11,9 @@ use_gemfile
 require 'securerandom'
 ENV['SECRET_KEY_BASE'] = SecureRandom.hex(128)
 
+# shipit-engine requires pty, which Windows lacks, only to run deploy commands that the benchmark never starts.
+$LOADED_FEATURES << File.join(RbConfig::CONFIG["archdir"], "pty.so") if Gem.win_platform?
+
 require_relative 'config/environment'
 require_relative "route_generator"
 
