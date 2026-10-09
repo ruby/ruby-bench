@@ -12,8 +12,9 @@ BACKLOG_MESSAGES = Integer(ENV.fetch("RACTOR_BACKLOG_MESSAGES", 20_000))
 BACKLOG_GATE_SLEEP = Float(ENV.fetch("RACTOR_BACKLOG_GATE_SLEEP", 1.0))
 
 run_benchmark(3, scenario: true) do |num_ractors|
-  consumers = num_ractors.times.map do |consumer|
-    Ractor.new(consumer, BACKLOG_GATE_SLEEP) do |consumer_id, gate|
+  consumer_ids = {}
+  num_ractors.times do |consumer_id0|
+    ractor = Ractor.new(consumer_id0, BACKLOG_GATE_SLEEP) do |consumer_id, gate|
       measure_worker_gc do
         sleep gate
         taken = 0
@@ -25,9 +26,10 @@ run_benchmark(3, scenario: true) do |num_ractors|
         taken
       end
     end
+    consumer_ids[ractor] = consumer_id0
   end
 
-  consumers.each_with_index do |consumer, consumer_id|
+  consumer_ids.each do |consumer, consumer_id|
     i = 0
     while i < BACKLOG_MESSAGES
       consumer.send "consumer #{consumer_id} message #{i} " + ("x" * 200)
@@ -36,10 +38,14 @@ run_benchmark(3, scenario: true) do |num_ractors|
     consumer.send :done
   end
 
+  # Harvest in completion order, so a consumer that drains early is not held
+  # alive waiting on a slower consumer ahead of it.
   total = 0
-  consumers.each_with_index do |consumer, consumer_id|
-    taken, sample = consumer.value
-    record_worker_gc(consumer_id, sample)
+  pending = consumer_ids.keys
+  until pending.empty?
+    consumer, (taken, sample) = Ractor.select(*pending)
+    pending.delete(consumer)
+    record_worker_gc(consumer_ids.fetch(consumer), sample)
     total += taken
   end
   raise "unexpected backlog drain" unless total == num_ractors * BACKLOG_MESSAGES

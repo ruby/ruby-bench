@@ -38,9 +38,15 @@ run_benchmark(3, scenario: true) do |num_ractors|
   drained_workers.each { |worker_id, sample| record_worker_gc(worker_id, sample) }
 
   proc do
-    workers.each do |worker|
-      worker.send :stop
-      raise "unexpected worker result" unless worker.value == :worker_done
+    workers.each { |worker| worker.send :stop }
+
+    # Harvest in completion order, so a worker that stops early is not held
+    # alive waiting on a slower worker ahead of it.
+    pending = workers.dup
+    until pending.empty?
+      worker, result = Ractor.select(*pending)
+      pending.delete(worker)
+      raise "unexpected worker result" unless result == :worker_done
     end
   end
 end

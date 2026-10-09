@@ -9,8 +9,9 @@ require_relative "../../harness/loader"
 DEAD_SET_ITEMS = Integer(ENV.fetch("RACTOR_DEAD_SET_ITEMS", 100_000))
 
 run_benchmark(3, scenario: true) do |num_ractors|
-  workers = num_ractors.times.map do |worker|
-    Ractor.new(worker, DEAD_SET_ITEMS) do |worker_id, items|
+  worker_ids = {}
+  num_ractors.times do |worker_id0|
+    ractor = Ractor.new(worker_id0, DEAD_SET_ITEMS) do |worker_id, items|
       measure_worker_gc do
         keep = []
         i = 0
@@ -21,12 +22,17 @@ run_benchmark(3, scenario: true) do |num_ractors|
         keep.size
       end
     end
+    worker_ids[ractor] = worker_id0
   end
 
+  # Harvest in completion order, so a worker that finishes early is not held
+  # alive waiting on a slower worker ahead of it.
   total = 0
-  workers.each_with_index do |worker, worker_id|
-    size, sample = worker.value
-    record_worker_gc(worker_id, sample)
+  pending = worker_ids.keys
+  until pending.empty?
+    worker, (size, sample) = Ractor.select(*pending)
+    pending.delete(worker)
+    record_worker_gc(worker_ids.fetch(worker), sample)
     total += size
   end
   raise "unexpected dead-set size" unless total == num_ractors * DEAD_SET_ITEMS
