@@ -361,6 +361,7 @@ module MallocTrim
 end
 
 def gc_settle
+  return if ENV["RUBY_BENCH_PROFILING"] == "1"
   2.times do
     if GLOBAL_GC_START
       GC.start(full_mark: true, immediate_sweep: true, global: true)
