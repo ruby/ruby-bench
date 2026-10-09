@@ -249,6 +249,11 @@ On a target with Ractor-local GC, a plain `GC.start` collects only the main
 Ractor's object space. The JSON field `ractor_mem_settle` records `global` or
 `default`.
 
+After collecting, the harness calls glibc's `malloc_trim(0)` so that memory Ruby
+has freed is returned to the OS rather than counted as retained. Where libc has
+no `malloc_trim` (macOS, musl), it prints why and skips the trim. The JSON field
+`ractor_mem_malloc_trim` records whether libc has `malloc_trim`.
+
 With `--ractor-gc` (`RUBY_BENCH_RACTOR_GC=1`), the harness cannot see which
 Ractors are workers. A scenario wraps each worker body in
 `measure_worker_gc { ... }`, which returns `[result, sample]`. The main Ractor

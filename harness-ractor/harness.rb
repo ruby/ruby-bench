@@ -241,6 +241,7 @@ def run_scenario_benchmark(bench_itrs, gc_config:, &scenario)
   gc_settle
   base_rss = get_rss
   puts "base RSS: #{format_mib(base_rss)}"
+  puts "malloc_trim unavailable, retained RSS includes allocator caching: #{MallocTrim.error}" if MallocTrim.error
   header = "r:   itr:   time" + " %9s %9s" % ["retained", "peak"]
   RACTOR_GC_ENABLED ? print_gc_header(header) : puts(header)
 
@@ -284,6 +285,7 @@ def run_scenario_benchmark(bench_itrs, gc_config:, &scenario)
     bench_by_ractors: times,
     ractor_mode: "scenario",
     ractor_mem_settle: GLOBAL_GC_START ? "global" : "default",
+    ractor_mem_malloc_trim: MallocTrim.available?,
     ractor_mem_base_rss: base_rss,
     ractor_mem_medians: medians,
     ractor_mem_samples: memory,
@@ -321,6 +323,43 @@ def scenario_worker_samples(count)
   workers
 end
 
+# glibc's free() only returns memory to the OS by shrinking the top of the heap,
+# so memory a scenario malloc'd and Ruby has since freed (Ractor message copies,
+# for example) stays resident whenever a live chunk sits above it. Ruby's GC does
+# not trim, so without this retained RSS measures glibc's caching, not Ruby.
+# Memoized on a module, not on main: the Ractor harness freezes main.
+module MallocTrim
+  @resolved = false
+
+  # The malloc_trim function, or nil when libc does not have one (macOS, musl,
+  # or a Ruby built against another allocator that leaves glibc's unused).
+  def self.fn
+    return @fn if @resolved
+
+    @resolved = true
+    @fn = begin
+      load_fiddle
+      Fiddle::Function.new(Fiddle.dlopen(nil)['malloc_trim'], [Fiddle::TYPE_SIZE_T], Fiddle::TYPE_INT)
+    rescue LoadError, Fiddle::DLError, NameError => e
+      @error = "#{e.class}: #{e.message}"
+      nil
+    end
+  end
+
+  # Why the lookup failed, or nil when it succeeded or has not run yet.
+  def self.error
+    @error
+  end
+
+  def self.available?
+    !fn.nil?
+  end
+
+  def self.call
+    fn&.call(0)
+  end
+end
+
 def gc_settle
   2.times do
     if GLOBAL_GC_START
@@ -329,6 +368,7 @@ def gc_settle
       GC.start(full_mark: true, immediate_sweep: true)
     end
   end
+  MallocTrim.call
   sleep SETTLE_SLEEP
 end
 
