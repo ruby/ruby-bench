@@ -5,6 +5,8 @@ require_relative '../lib/row_layout'
 require 'yaml'
 require 'tmpdir'
 
+MIB = 1024 * 1024
+
 describe ResultsTableBuilder do
   before do
     @original_dir = Dir.pwd
@@ -604,6 +606,113 @@ describe ResultsTableBuilder do
     end
   end
 
+  describe 'scenario memory table' do
+    # The mean and the max are offset from the median so the columns cannot be
+    # confused for each other.
+    def scenario_blob(count, retained_mib, peak_mib, means: true)
+      summary = { 'retained' => retained_mib * MIB, 'peak' => peak_mib * MIB }
+      if means
+        summary['retained_mean'] = (retained_mib + 1) * MIB
+        summary['peak_mean'] = (peak_mib + 1) * MIB
+        summary['peak_max'] = (peak_mib + 2) * MIB
+      end
+      {
+        'warmup' => [],
+        'bench' => [0.1, 0.1],
+        'rss' => 10 * MIB,
+        'ractor_mode' => 'scenario',
+        'ractor_mem_medians' => { count.to_s => summary },
+      }
+    end
+
+    def scenario_layout(name, counts)
+      groups = [[name, counts.map { |c| [RactorBreakdown.data_key(name, c), c] }]]
+      RactorRowLayout.new(groups: groups)
+    end
+
+    it 'builds one row per Ractor count with base → comparison MiB values' do
+      counts = [1, 2]
+      name = 'ractor-dead-set'
+      bench_data = {
+        'ctl' => counts.to_h { |c| [RactorBreakdown.data_key(name, c), scenario_blob(c, 4 * c, 30 * c)] },
+        'exp' => counts.to_h { |c| [RactorBreakdown.data_key(name, c), scenario_blob(c, 5 * c, 32 * c)] },
+      }
+
+      builder = ResultsTableBuilder.new(
+        executable_names: ['ctl', 'exp'],
+        bench_data: bench_data,
+        row_layout: scenario_layout(name, counts)
+      )
+      _table, _format, _gc_tables, memory_tables = builder.build
+
+      assert_equal 1, memory_tables.size
+      memory = memory_tables.first
+      assert_equal 'Scenario memory', memory[:name]
+      assert_equal 'process RSS, MiB', memory[:scope]
+      assert_equal [
+        ['bench', 'ractors', 'retained med', 'retained mean', 'peak'],
+        [name, '1', '   4.0  →     5.0', '   5.0  →     6.0', '  32.0  →    34.0'],
+        [name, '2', '   8.0  →    10.0', '   9.0  →    11.0', '  62.0  →    66.0'],
+      ], memory[:rows]
+      assert_equal [], memory[:hidden]
+    end
+
+    it 'reads the medians of the process that ran each count' do
+      name = 'ractor-dead-set'
+      counts = [1, 2]
+      # Each count runs in its own process, so a blob holds only its own count.
+      bench_data = {
+        'ctl' => counts.to_h { |c| [RactorBreakdown.data_key(name, c), scenario_blob(c, 7 * c, 40 * c)] },
+      }
+
+      builder = ResultsTableBuilder.new(
+        executable_names: ['ctl'],
+        bench_data: bench_data,
+        row_layout: scenario_layout(name, counts)
+      )
+      _table, _format, _gc_tables, memory_tables = builder.build
+
+      assert_equal [
+        ['bench', 'ractors', 'retained med', 'retained mean', 'peak'],
+        [name, '1', '7.0', '8.0', '42.0'],
+        [name, '2', '14.0', '15.0', '82.0'],
+      ], memory_tables.first[:rows]
+    end
+
+    it 'hides the columns that data recorded before the harness kept them cannot fill' do
+      name = 'ractor-dead-set'
+      counts = [1, 2]
+      bench_data = {
+        'ctl' => counts.to_h { |c| [RactorBreakdown.data_key(name, c), scenario_blob(c, 7 * c, 40 * c, means: false)] },
+      }
+
+      builder = ResultsTableBuilder.new(
+        executable_names: ['ctl'],
+        bench_data: bench_data,
+        row_layout: scenario_layout(name, counts)
+      )
+      memory = builder.build[3].first
+
+      assert_equal [
+        ['bench', 'ractors', 'retained med'],
+        [name, '1', '7.0'],
+        [name, '2', '14.0'],
+      ], memory[:rows]
+      assert_equal ['retained mean', 'peak'], memory[:hidden]
+    end
+
+    it 'builds no memory table for benchmarks without scenario memory data' do
+      bench_data = {
+        'ruby' => { 'fib' => { 'warmup' => [0.1], 'bench' => [0.1], 'rss' => 10 * MIB } },
+      }
+
+      builder = ResultsTableBuilder.new(executable_names: ['ruby'], bench_data: bench_data)
+      _table, _format, _gc_tables, memory_tables = builder.build
+
+      assert_nil memory_tables
+    end
+  end
+
   describe 'GC summary data' do
     it 'keeps GC columns out of the main table and splits the comparison into ratio and count tables' do
       bench_data = {
@@ -782,8 +891,6 @@ describe ResultsTableBuilder do
   end
 
   describe 'RSS sampling (rss_samples)' do
-    MIB = 1024 * 1024
-
     it 'shows mean ± stddev% and uses %s format when samples are present' do
       bench_data = {
         'ruby' => {

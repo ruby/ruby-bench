@@ -276,9 +276,7 @@ def run_scenario_benchmark(bench_itrs, gc_config:, &scenario)
     gc_by_ractors[count] = group.merge(series)
   end
 
-  medians = counts.to_h do |count|
-    [count, { retained: Stats.new(memory[count][:retained]).median, peak: Stats.new(memory[count][:peak]).median }]
-  end
+  medians = counts.to_h { |count| [count, memory_summary(memory[count])] }
   print_memory_metrics(medians)
 
   extra = {
@@ -368,6 +366,22 @@ end
 
 def format_mib(bytes)
   "%.1fMiB" % (bytes / 2**20.0)
+end
+
+# Summarizes one count's per-trial samples. The median keys stay at their
+# original names so existing readers keep working, with the mean and the
+# largest of the same samples next to them; the peak table column reports the
+# largest. No dispersion measure: retained RSS drifts upward across a count's
+# trials by construction, so spread here is not noise.
+def memory_summary(samples)
+  samples.each_with_object({}) do |(metric, values), summary|
+    stats = Stats.new(values)
+    # Bytes. An even-trial median and every mean come back Float; round them,
+    # since a fraction of a byte is not a measurement.
+    summary[metric] = stats.median.round
+    summary[:"#{metric}_mean"] = stats.mean.round
+    summary[:"#{metric}_max"] = values.max
+  end
 end
 
 def print_memory_metrics(medians)

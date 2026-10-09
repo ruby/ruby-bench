@@ -238,6 +238,58 @@ describe BenchmarkRunner::CLI do
       refute_match(/count-0 workload/, output)
     end
 
+    it 'renders a scenario memory table per Ractor count, with its notes' do
+      args = create_args
+      cli = BenchmarkRunner::CLI.new(args)
+      mib = 1024 * 1024
+      bench_data = {
+        'ruby' => {
+          'ractor-dead-set' => {
+            'warmup' => [],
+            'bench' => [1.0, 2.0],
+            'ractor_mode' => 'scenario',
+            'warmup_by_ractors' => { '1' => [], '2' => [] },
+            'bench_by_ractors' => { '1' => [1.0], '2' => [2.0] },
+            'ractor_mem_medians' => {
+              '1' => { 'retained' => 4 * mib, 'retained_mean' => 5 * mib, 'peak' => 30 * mib, 'peak_max' => 32 * mib },
+              '2' => { 'retained' => 9 * mib, 'retained_mean' => 10 * mib, 'peak' => 55 * mib, 'peak_max' => 57 * mib },
+            },
+            'results_by_ractors' => { '1' => { 'rss' => 10 * mib }, '2' => { 'rss' => 10 * mib } },
+          }
+        }
+      }
+
+      sections = cli.send(:build_output_sections, ['ruby'], bench_data, { 'ractor-dead-set' => 'harness-ractor' }, {})
+      memory = sections.first[:memory_tables]
+
+      assert_equal 1, memory.size
+      assert_equal [
+        ['bench', 'ractors', 'retained med', 'retained mean', 'peak'],
+        ['ractor-dead-set', '1', '4.0', '5.0', '32.0'],
+        ['ractor-dead-set', '2', '9.0', '10.0', '57.0'],
+      ], memory.first[:rows]
+
+      output = BenchmarkRunner.build_output_text({ 'ruby' => 'ruby 4.1.0dev' }, nil, nil, {}, sections: sections)
+      assert_match(/Scenario memory \(process RSS, MiB\):/, output)
+      assert_match(/Scenario memory note:/, output)
+      assert_match(/retained med and retained mean are the median and the mean over trials/, output)
+      assert_match(/peak: the highest RSS any trial reached/, output)
+    end
+
+    it 'renders no scenario memory table when the run recorded none' do
+      args = create_args
+      cli = BenchmarkRunner::CLI.new(args)
+      bench_data = {
+        'ruby' => { 'fib' => { 'warmup' => [0.1], 'bench' => [0.1], 'rss' => 10 * 1024 * 1024 } }
+      }
+
+      sections = cli.send(:build_output_sections, ['ruby'], bench_data, { 'fib' => 'harness' }, {})
+
+      assert_nil sections.first[:memory_tables]
+      output = BenchmarkRunner.build_output_text({ 'ruby' => 'ruby 4.1.0dev' }, nil, nil, {}, sections: sections)
+      refute_match(/Scenario memory/, output)
+    end
+
     it 'prints both per-worker and scenario notes for a section that mixes the two modes' do
       args = create_args
       cli = BenchmarkRunner::CLI.new(args)

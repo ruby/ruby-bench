@@ -393,6 +393,31 @@ describe 'Ractor GC harness' do
     end
   end
 
+  it 'records the mean and the largest of the memory samples next to the median' do
+    env = SCENARIO_NO_GC_ENV.merge('MIN_BENCH_ITRS' => '3', 'MAX_BENCH_ITRS' => '3')
+    run_workload(SLEEPING_SCENARIO_BODY, env: env) do |stdout, stderr, status, result_path|
+      assert status.success?, "workload failed:\n#{stdout}\n#{stderr}"
+
+      data = JSON.parse(File.read(result_path))
+      summary = data.dig('ractor_mem_medians', '1')
+      samples = data.dig('ractor_mem_samples', '1')
+
+      %w[retained peak].each do |metric|
+        values = samples.fetch(metric)
+        assert_equal 3, values.length
+
+        sorted = values.sort
+        mean = values.sum(0.0) / values.length
+
+        assert_equal sorted[1], summary.fetch(metric), "#{metric} stays the median"
+        assert_equal mean.round, summary.fetch("#{metric}_mean")
+        assert_equal sorted.last, summary.fetch("#{metric}_max")
+        summary.each_value { |v| assert_kind_of Integer, v, "#{metric} is whole bytes" }
+        refute summary.key?("#{metric}_stddev"), "#{metric} dispersion is not recorded"
+      end
+    end
+  end
+
   it 'excludes the peak sampler shutdown from the scenario time' do
     env = SCENARIO_NO_GC_ENV.merge('RACTOR_MEM_PEAK_SAMPLE_INTERVAL' => '0.5')
     run_workload(SLEEPING_SCENARIO_BODY, env: env) do |stdout, stderr, status, result_path|
