@@ -254,6 +254,10 @@ has freed is returned to the OS rather than counted as retained. Where libc has
 no `malloc_trim` (macOS, musl), it prints why and skips the trim. The JSON field
 `ractor_mem_malloc_trim` records whether libc has `malloc_trim`.
 
+Set `RUBY_BENCH_PROFILING=1` to skip these collections, the trim and the settle
+sleep, so a profile of a scenario benchmark shows only the scenario. The
+retained RSS then includes uncollected garbage.
+
 With `--ractor-gc` (`RUBY_BENCH_RACTOR_GC=1`), the harness cannot see which
 Ractors are workers. A scenario wraps each worker body in
 `measure_worker_gc { ... }`, which returns `[result, sample]`. The main Ractor
