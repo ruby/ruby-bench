@@ -77,6 +77,12 @@ binarytrees:
 blurhash:
   desc: blurhash (blurred preview image) calculation
   ractor: true
+gc_balloon:
+  desc: Each Ractor inflates a large retained object graph spanning most size pools, ages it into the old generation, drops it and collects at the low-water mark, to exercise major GC over old-generation garbage, sweeping and heap shrinkage.
+  category: gc
+  single_file: true
+  default_harness: harness-gc
+  no_pinning: true
 gcbench:
   desc: Ellis-Kovac-Boehm GCBench builds binary trees of various depths to exercise GC marking, sweeping, and write barriers.
   category: gc
