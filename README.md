@@ -322,9 +322,10 @@ The summary table adds these columns:
 * `(worker sum)` columns add the Ractor-local counters of the sampled
   workers of each iteration. `GCs/iter` is the sum of `minor/iter`,
   `major/iter`, and `global/iter`; a global cycle counts under `global` on
-  the Ractor that initiated it, not under `major`. Single-executable reports
-  also show `GC ms/worker`, which divides each iteration's worker-sum GC
-  time by its sampled worker count, then averages.
+  the Ractor that initiated it, not under `major`. The absolute GC tables
+  (single-executable reports and the `GC per ruby` table) also show
+  `GC ms/worker`, which divides each iteration's worker-sum GC time by its
+  sampled worker count, then averages.
 * `controller compacts/iter*` shows the main Ractor's
   `GC.stat(:compact_count)` delta. Every global compacting cycle increments
   it in every object space, so it is not summed across workers.

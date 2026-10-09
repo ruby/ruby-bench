@@ -148,8 +148,9 @@ def run_benchmark(_num_itrs_hint, **, &block)
     heap_snapshot.each do |idx, stats|
       slot_size = stats[:slot_size] || 0
       eden_slots = stats[:heap_eden_slots] || 0
-      live_slots = stats[:heap_live_slots] || 0
-      free_slots = stats[:heap_free_slots] || 0
+      # Ruby < 4.0 omits heap_live_slots/heap_free_slots; derive them from the per-heap counters.
+      live_slots = stats[:heap_live_slots] || stats[:total_allocated_objects].to_i - stats[:total_freed_objects].to_i
+      free_slots = stats[:heap_free_slots] || eden_slots - live_slots
       eden_pages = stats[:heap_eden_pages] || 0
       live_pct = eden_slots > 0 ? (live_slots * 100.0 / eden_slots) : 0.0
       mem_kib = page_size ? (eden_pages * page_size / 1024.0) : 0.0

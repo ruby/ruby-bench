@@ -47,6 +47,13 @@ class ResultsTableBuilder
     [table, format, gc_table, build_gc_summary_format(gc_table)]
   end
 
+  def build_gc_per_ruby
+    return [nil, nil] unless @include_gc && !@other_names.empty?
+
+    table = build_gc_absolute_table(["bench", *@row_layout.extra_header_columns], @executable_names)
+    [table, build_gc_summary_format(table)]
+  end
+
   private
 
   def has_complete_data?(bench_name)
@@ -128,7 +135,7 @@ class ResultsTableBuilder
     label_columns = ["bench", *@row_layout.extra_header_columns]
 
     if @other_names.empty?
-      return build_gc_absolute_table(label_columns)
+      return build_gc_absolute_table(label_columns, [@base_name])
     end
 
     count_suffix = ractor_gc_table? ? " (worker sum)" : ""
@@ -168,11 +175,12 @@ class ResultsTableBuilder
     rows.size == 1 ? nil : rows
   end
 
-  def build_gc_absolute_table(label_columns)
+  def build_gc_absolute_table(label_columns, names)
     ractor = ractor_gc_table?
     count_suffix = ractor ? " (worker sum)" : ""
+    per_ruby = names.size > 1
 
-    header = label_columns + ["GC ms/iter#{count_suffix}"]
+    header = label_columns + (per_ruby ? ["ruby"] : []) + ["GC ms/iter#{count_suffix}"]
     header << "GC ms/worker" if ractor
     header += ["mark ms/iter#{count_suffix}", "sweep ms/iter#{count_suffix}", "GCs/iter#{count_suffix}", "major/iter#{count_suffix}", "minor/iter#{count_suffix}"]
     header << "global/iter#{count_suffix}" if gc_series_present?('gc_global_count_bench')
@@ -181,21 +189,25 @@ class ResultsTableBuilder
     rows = [header]
 
     gc_entries.each do |entry|
-      data = bench_data_for(@base_name, entry.data_key)
-      next unless GC_SERIES_KEYS.any? { |key| data.key?(key) }
+      data_by_name = names.to_h { |name| [name, bench_data_for(name, entry.data_key)] }
+      next if per_ruby && !gc_activity?(*data_by_name.values.flat_map { |data| data.values_at(*GC_SERIES_KEYS) })
 
-      cells = [format_gc_series_mean_precise(data['gc_total_time_bench'])]
-      cells << gc_ms_per_worker_cell(data['gc_total_time_bench'], data['gc_worker_samples']) if ractor
-      cells += [
-        format_gc_series_mean_precise(data['gc_marking_time_bench']),
-        format_gc_series_mean_precise(data['gc_sweeping_time_bench']),
-        format_gc_series_mean(gc_count_series(data)),
-        format_gc_series_mean(data['gc_major_count_bench']),
-        format_gc_series_mean(data['gc_minor_count_bench']),
-      ]
-      cells << format_gc_series_mean(data['gc_global_count_bench']) if gc_series_present?('gc_global_count_bench')
-      cells << format_gc_series_mean(data['gc_controller_compact_count_bench']) if gc_series_present?('gc_controller_compact_count_bench')
-      rows << gc_label_cells(entry) + cells
+      data_by_name.each do |name, data|
+        next unless GC_SERIES_KEYS.any? { |key| data.key?(key) }
+
+        cells = [format_gc_series_mean_precise(data['gc_total_time_bench'])]
+        cells << gc_ms_per_worker_cell(data['gc_total_time_bench'], data['gc_worker_samples']) if ractor
+        cells += [
+          format_gc_series_mean_precise(data['gc_marking_time_bench']),
+          format_gc_series_mean_precise(data['gc_sweeping_time_bench']),
+          format_gc_series_mean(gc_count_series(data)),
+          format_gc_series_mean(data['gc_major_count_bench']),
+          format_gc_series_mean(data['gc_minor_count_bench']),
+        ]
+        cells << format_gc_series_mean(data['gc_global_count_bench']) if gc_series_present?('gc_global_count_bench')
+        cells << format_gc_series_mean(data['gc_controller_compact_count_bench']) if gc_series_present?('gc_controller_compact_count_bench')
+        rows << gc_label_cells(entry) + (per_ruby ? [name] : []) + cells
+      end
     end
 
     rows.size == 1 ? nil : rows

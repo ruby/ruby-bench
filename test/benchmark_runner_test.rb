@@ -489,7 +489,8 @@ describe BenchmarkRunner do
       assert_includes result, "- controller compacts/iter*: the main Ractor's GC.stat(:compact_count) delta per iteration."
       assert_includes result, 'Every global compacting cycle increments compact_count in every object space.'
       assert_includes result, 'Do not sum it across workers.'
-      assert_includes result, 'Comparison tables show ruby-base → comparison values.'
+      assert_includes result, 'GC summary shows ruby-base → comparison values.'
+      refute_includes result, 'GC per ruby shows the value for each ruby.'
       refute_includes result, 'global GCs/iter'
     end
 
@@ -510,7 +511,7 @@ describe BenchmarkRunner do
       refute_includes result, 'Legend:'
       assert_includes result, "GC metric notes:\n"
       assert_includes result, "- controller compacts/iter*: the main Ractor's GC.stat(:compact_count) delta per iteration."
-      refute_includes result, 'Comparison tables show'
+      refute_includes result, 'GC summary shows'
       refute_includes result, 'global GCs/iter'
     end
 
@@ -536,7 +537,7 @@ describe BenchmarkRunner do
 
       refute_includes result, 'GC metric notes:'
       assert_includes result, "the same run's GCs/iter count"
-      assert_includes result, 'show ruby-base → comparison values, not ratios'
+      assert_includes result, 'In GC summary, GCs/iter, major/iter, minor/iter, controller compacts/iter*, and minor GC % show ruby-base → comparison values, not ratios. A row is omitted when neither ruby-base nor the comparison has GC activity.'
     end
 
     it 'omits the Ractor scope note when the section rendered no GC table' do
@@ -558,6 +559,74 @@ describe BenchmarkRunner do
       )
 
       refute_includes result, 'Ractor GC scope note:'
+    end
+
+    it 'prints the GC per ruby table before the GC summary, with its legend line' do
+      ruby_descriptions = { 'master' => 'ruby 4.1.0dev', 'four' => 'ruby 4.0.6', 'three' => 'ruby 3.4.10' }
+      sections = [
+        {
+          title: 'harness-gc',
+          table: [['bench', 'master (ms)', 'four (ms)', 'three (ms)'], ['gcbench', '1.0', '2.0', '3.0']],
+          format: ['%s', '%s', '%s', '%s'],
+          failures: {},
+          include_gc: true,
+          gc_per_ruby_table: [
+            ['bench', 'ruby', 'GC ms/iter', 'controller compacts/iter*'],
+            ['gcbench', 'master', '1.000', '0.0'],
+            ['gcbench', 'four', '2.000', '0.0'],
+            ['gcbench', 'three', '3.000', '0.0']
+          ],
+          gc_per_ruby_format: ['%s', '%s', '%s', '%s'],
+          gc_table: [['bench', 'comparison', 'gc/iter ratio'], ['gcbench', 'four', '0.500'], ['gcbench', 'three', '0.333']],
+          gc_format: ['%s', '%s', '%s'],
+        },
+        {
+          title: 'harness',
+          table: [['bench', 'master (ms)', 'four (ms)', 'three (ms)'], ['fib', '1.0', '2.0', '3.0']],
+          format: ['%s', '%s', '%s', '%s'],
+          failures: {},
+          include_gc: false,
+        }
+      ]
+
+      result = BenchmarkRunner.build_output_text(
+        ruby_descriptions, sections.first[:table], sections.first[:format], {}, sections: sections
+      )
+
+      per_ruby_at = result.index("GC per ruby (harness-gc):\n")
+      summary_at = result.index("GC summary (harness-gc):\n")
+      refute_nil per_ruby_at
+      refute_nil summary_at
+      assert_operator per_ruby_at, :<, summary_at
+      assert_match(/^gcbench\s+master\s+1\.000\s+0\.0$/, result)
+      assert_includes result, '- GC per ruby shows the mean GC values per benchmark iteration for each ruby. These values are not ratios. Benchmarks with no GC activity on any ruby are omitted.'
+      assert_includes result, 'Do not sum it across workers. GC summary shows master → comparison values. GC per ruby shows the value for each ruby.'
+      refute_includes result, 'GC per ruby (harness):'
+    end
+
+    it 'explains GC ms/worker in the Ractor scope note when only the GC per ruby table shows it' do
+      ruby_descriptions = { 'base' => 'ruby 4.1.0dev', 'exp' => 'ruby 4.1.0dev experiment' }
+      sections = [
+        {
+          title: 'harness-ractor',
+          table: [['bench', 'ractors', 'base (ms)', 'exp (ms)'], ['object-new', '2', '1.0', '2.0']],
+          format: ['%s', '%s', '%s', '%s'],
+          failures: {},
+          include_gc: true,
+          gc_per_ruby_table: [['bench', 'ractors', 'ruby', 'GC ms/iter (worker sum)', 'GC ms/worker'], ['object-new', '2', 'base', '4.000', '2.000']],
+          gc_per_ruby_format: ['%s'] * 5,
+          gc_table: [['bench', 'ractors', 'gc/iter ratio'], ['object-new', '2', '2.000']],
+          gc_format: ['%s'] * 3,
+          gc_scope: 'ractor-local-workload',
+        }
+      ]
+
+      result = BenchmarkRunner.build_output_text(
+        ruby_descriptions, sections.first[:table], sections.first[:format], {}, sections: sections
+      )
+
+      assert_includes result, "Ractor GC scope note:\n"
+      assert_includes result, "GC ms/worker divides each iteration's worker-sum GC time by its sampled worker count, then averages."
     end
 
     it 'includes RSS ratio legend when include_rss is true' do

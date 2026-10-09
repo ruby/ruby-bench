@@ -714,6 +714,66 @@ describe ResultsTableBuilder do
       assert_equal ['%s'] * 9, gc_format
       assert_equal ['gcbench', '5.000', '2.000', '1.000', '11.0', '2.0', '8.0', '1.0', '0.0'], gc_table[1]
     end
+
+    it 'gives every executable, including the baseline, its own row in the GC per ruby table' do
+      gc_data = ->(mark, major, minor) do
+        {
+          'warmup' => [0.1],
+          'bench' => [0.1, 0.1],
+          'rss' => 10,
+          'gc_marking_time_bench' => [mark, mark],
+          'gc_sweeping_time_bench' => [1.0, 1.0],
+          'gc_major_count_bench' => [major, major],
+          'gc_minor_count_bench' => [minor, minor]
+        }
+      end
+      bench_data = {
+        'master' => { 'gcbench' => gc_data.(4.0, 1, 9) },
+        'four' => { 'gcbench' => gc_data.(2.0, 0, 6) },
+        'three' => { 'gcbench' => gc_data.(3.0, 2, 4) }
+      }
+
+      builder = ResultsTableBuilder.new(
+        executable_names: ['master', 'four', 'three'],
+        bench_data: bench_data
+      )
+
+      gc_table, gc_format = builder.build_gc_per_ruby
+
+      assert_equal [
+        'bench', 'ruby', 'GC ms/iter', 'mark ms/iter', 'sweep ms/iter', 'GCs/iter', 'major/iter', 'minor/iter'
+      ], gc_table[0]
+      assert_equal ['%s'] * 8, gc_format
+      assert_equal [
+        ['gcbench', 'master', 'N/A', '4.000', '1.000', '10.0', '1.0', '9.0'],
+        ['gcbench', 'four', 'N/A', '2.000', '1.000', '6.0', '0.0', '6.0'],
+        ['gcbench', 'three', 'N/A', '3.000', '1.000', '6.0', '2.0', '4.0']
+      ], gc_table[1..]
+    end
+
+    it 'omits the GC per ruby table for one executable or idle benchmarks, and keeps idle rubies when another is active' do
+      idle = {
+        'warmup' => [0.1],
+        'bench' => [0.1],
+        'rss' => 10,
+        'gc_marking_time_bench' => [0.0],
+        'gc_sweeping_time_bench' => [0.0],
+        'gc_major_count_bench' => [0],
+        'gc_minor_count_bench' => [0]
+      }
+
+      single = ResultsTableBuilder.new(executable_names: ['ruby'], bench_data: { 'ruby' => { 'fib' => idle.merge('gc_minor_count_bench' => [3]) } })
+      assert_equal [nil, nil], single.build_gc_per_ruby
+
+      multi = ResultsTableBuilder.new(executable_names: ['a', 'b'], bench_data: { 'a' => { 'fib' => idle }, 'b' => { 'fib' => idle } })
+      assert_equal [nil, nil], multi.build_gc_per_ruby
+
+      mixed = ResultsTableBuilder.new(executable_names: ['a', 'b'], bench_data: { 'a' => { 'fib' => idle }, 'b' => { 'fib' => idle.merge('gc_minor_count_bench' => [3]) } })
+      assert_equal [
+        ['fib', 'a', 'N/A', '0.000', '0.000', '0.0', '0.0', '0.0'],
+        ['fib', 'b', 'N/A', '0.000', '0.000', '3.0', '0.0', '3.0']
+      ], mixed.build_gc_per_ruby[0][1..], 'an idle ruby keeps its row when another ruby has GC activity'
+    end
   end
 
   describe 'RSS sampling (rss_samples)' do
@@ -1114,6 +1174,29 @@ describe ResultsTableBuilder do
         'minor/iter (worker sum)', 'global/iter (worker sum)', 'controller compacts/iter*'
       ], gc_table[0]
       assert_equal ['object-new', '0', '4.000', '4.000', 'N/A', 'N/A', '7.0', '1.0', '3.0', '3.0', '1.0'], gc_table[1]
+    end
+
+    it 'puts the ruby column after ractors in the GC per ruby table' do
+      bench_data = {
+        'base' => { 'object-new' => ractor_gc_blob('2' => { bench: [1.0, 1.0], gc: gc_group(total: [12.0, 12.0], major: [2, 2], minor: [6, 6]) }) },
+        'candidate' => { 'object-new' => ractor_gc_blob('2' => { bench: [1.0, 1.0], gc: gc_group(total: [3.0, 3.0], major: [1, 1], minor: [3, 3]) }) }
+      }
+      expanded = RactorBreakdown.expand(bench_data)
+      builder = ResultsTableBuilder.new(
+        executable_names: bench_data.keys,
+        bench_data: expanded.bench_data,
+        row_layout: RactorRowLayout.new(groups: expanded.groups)
+      )
+
+      gc_table, gc_format = builder.build_gc_per_ruby
+
+      assert_equal [
+        'bench', 'ractors', 'ruby', 'GC ms/iter (worker sum)', 'GC ms/worker', 'mark ms/iter (worker sum)',
+        'sweep ms/iter (worker sum)', 'GCs/iter (worker sum)', 'major/iter (worker sum)', 'minor/iter (worker sum)'
+      ], gc_table[0]
+      assert_equal ['%s'] * 10, gc_format
+      assert_equal ['object-new', '2', 'base', '12.000', '12.000', 'N/A', 'N/A', '8.0', '2.0', '6.0'], gc_table[1]
+      assert_equal ['object-new', '2', 'candidate', '3.000', '3.000', 'N/A', 'N/A', '4.0', '1.0', '3.0'], gc_table[2]
     end
   end
 end

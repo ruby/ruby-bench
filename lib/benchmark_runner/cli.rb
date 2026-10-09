@@ -200,6 +200,7 @@ module BenchmarkRunner
         row_layout: layout
       )
       table, format, gc_table, gc_format = builder.build
+      gc_per_ruby_table, gc_per_ruby_format = builder.build_gc_per_ruby
 
       section = {
         title: harness,
@@ -209,6 +210,8 @@ module BenchmarkRunner
         include_gc: builder.include_gc?,
         gc_table: gc_table,
         gc_format: gc_format,
+        gc_per_ruby_table: gc_per_ruby_table,
+        gc_per_ruby_format: gc_per_ruby_format,
       }
       section[:gc_scope] = 'ractor-local-workload' if ResultsTableBuilder.ractor_gc_data?(section_data)
       section
