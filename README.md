@@ -235,10 +235,13 @@ ruby -Iharness-ractor benchmarks/ractor-dead-set/benchmark.rb
 ```
 The harness prints `BENCH_METRIC retained_mib=<worst count median>` and
 `BENCH_METRIC peak_mib=...` lines, plus one pair per ractor count. The JSON
-fields `ractor_mem_medians` and `ractor_mem_samples` hold the same data. The
-summary table of `run_benchmarks.rb` does not show it. The ractor counts and
-trials are controlled with `RUBY_BENCH_RACTORS` (default `1,2,4,6,8`) and
-`MIN_BENCH_ITRS` (default 3 for these benchmarks).
+fields `ractor_mem_medians` and `ractor_mem_samples` hold the same data; each
+`ractor_mem_medians` entry also carries `<metric>_mean` and `<metric>_max` over
+the same trials. `run_benchmarks.rb` prints a `Scenario memory` table, one row
+per ractor count, below the GC tables of the section: `retained med` and
+`retained mean` for retention, and `peak`, the highest peak any trial reached.
+The ractor counts and trials are controlled with `RUBY_BENCH_RACTORS` (default
+`1,2,4,6,8`) and `MIN_BENCH_ITRS` (default 3 for these benchmarks).
 
 The harness collects with `GC.start(global: true)` when the target Ruby's
 `GC.start` accepts the `global:` keyword. Some Ruby 4.1 builds do not accept it.

@@ -42,7 +42,7 @@ class ResultsTableBuilder
       table << (entry.label_cells + build_stat_cells(entry.data_key))
     end
 
-    [table, format, build_gc_tables]
+    [table, format, build_gc_tables, build_memory_tables]
   end
 
   private
@@ -220,6 +220,10 @@ class ResultsTableBuilder
   end
 
   def assemble_gc_table(name, label_header, rows, columns)
+    assemble_table(name, ractor_gc_table? ? "worker sum" : nil, label_header, rows, columns)
+  end
+
+  def assemble_table(name, scope, label_header, rows, columns)
     return nil if rows.empty?
 
     cells = rows.map { |(_labels, args)| columns.map { |(_header, cell)| cell.call(*args) } }
@@ -228,10 +232,113 @@ class ResultsTableBuilder
     body = rows.each_with_index.map { |(labels, _args), r| labels + shown.map { |i| cells[r][i][0] } }
     {
       name: name,
-      scope: ractor_gc_table? ? "worker sum" : nil,
+      scope: scope,
       rows: [label_header + shown.map { |i| columns[i][0] }] + body,
       hidden: (columns.each_index.to_a - shown).map { |i| columns[i][0] },
     }
+  end
+
+  MEMORY_MEDIANS_KEY = 'ractor_mem_medians'
+
+  # Scenario benchmarks record per-trial retained and peak RSS. These are
+  # process-level numbers, not per-worker, so they get their own table rather
+  # than columns in the worker-sum GC tables.
+  def build_memory_tables
+    return nil unless memory_data?
+
+    label_header = ["bench", *@row_layout.extra_header_columns]
+    table = if @other_names.empty?
+      assemble_table("Scenario memory", "process RSS, MiB", label_header, memory_absolute_rows, memory_absolute_columns)
+    else
+      label_header += ["comparison"] if include_gc_comparison_name?
+      assemble_table("Scenario memory", "process RSS, MiB", label_header, memory_comparison_rows, memory_comparison_columns)
+    end
+    table ? [table] : nil
+  end
+
+  def memory_absolute_rows
+    gc_entries.filter_map do |entry|
+      medians = memory_medians(@base_name, entry)
+      [gc_label_cells(entry), [medians]] if medians
+    end
+  end
+
+  def memory_comparison_rows
+    rows = []
+    gc_entries.each do |entry|
+      base, *others = @executable_names.map { |name| memory_medians(name, entry) }
+      next unless base
+
+      others.each_with_index do |other, i|
+        next unless other
+
+        labels = gc_label_cells(entry)
+        labels << @other_names[i] if include_gc_comparison_name?
+        rows << [labels, [base, other]]
+      end
+    end
+    rows
+  end
+
+  # Retention gets both the median and the mean of the per-trial samples, since
+  # the two diverge when one trial retains much more than the rest. Peak gets
+  # the largest sample instead: the question a peak answers is how high the
+  # scenario ever went, not how high a typical trial went. Data written before
+  # the harness recorded these keys leaves the column empty, and assemble_table
+  # drops it. The peak column reads peak_max, not the peak median the JSON
+  # keeps under 'peak'.
+  def memory_absolute_columns
+    [
+      ["retained med", ->(medians) { mib_cell(medians['retained']) }],
+      ["retained mean", ->(medians) { mib_cell(medians['retained_mean']) }],
+      ["peak", ->(medians) { mib_cell(medians['peak_max']) }],
+    ]
+  end
+
+  def memory_comparison_columns
+    [
+      ["retained med", ->(base, other) { mib_pair_cell(base['retained'], other['retained']) }],
+      ["retained mean", ->(base, other) { mib_pair_cell(base['retained_mean'], other['retained_mean']) }],
+      ["peak", ->(base, other) { mib_pair_cell(base['peak_max'], other['peak_max']) }],
+    ]
+  end
+
+  # The medians of the process that ran this row's Ractor count. Each count runs
+  # in its own process, so the blob normally holds exactly one entry; a direct
+  # harness run puts every count in one blob, hence the lookup by count.
+  def memory_medians(exe_name, entry)
+    medians = bench_data_for(exe_name, entry.data_key)[MEMORY_MEDIANS_KEY]
+    return nil unless medians.is_a?(Hash) && !medians.empty?
+
+    count = entry.label_cells[1]
+    found = medians[count.to_s] if count && !count.to_s.empty?
+    found ||= medians.values.first if medians.size == 1
+    found.is_a?(Hash) ? found : nil
+  end
+
+  def mib_cell(bytes)
+    [format_mib(bytes), bytes.is_a?(Numeric) && bytes > 0]
+  end
+
+  def mib_pair_cell(base, other)
+    text = "%6s  →  %6s" % [format_mib(base), format_mib(other)]
+    [text, [base, other].any? { |v| v.is_a?(Numeric) && v > 0 }]
+  end
+
+  def format_mib(bytes)
+    return "N/A" unless bytes.is_a?(Numeric)
+
+    "%.1f" % (bytes / BYTES_TO_MIB)
+  end
+
+  def memory_data?
+    return @memory_data if defined?(@memory_data)
+
+    @memory_data = @bench_data.values.any? do |benchmarks|
+      benchmarks.values.any? do |d|
+        d.is_a?(Hash) && d[MEMORY_MEDIANS_KEY].is_a?(Hash) && !d[MEMORY_MEDIANS_KEY].empty?
+      end
+    end
   end
 
   def ratio_cell(text)
