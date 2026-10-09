@@ -77,13 +77,23 @@ def get_rss
     # Collect our own peak mem usage as soon as reasonable after finishing the last iteration.
     # This method is only accurate to kilobytes, but is nicely portable and doesn't require
     # any extra gems/dependencies.
-    begin
-      mem = `ps -o rss= -p #{Process.pid}`
-      1024 * Integer(mem)
-    rescue ArgumentError, Errno::ENOENT
-      # ps failed (e.g. Nix procps on macOS). Fall back to peak RSS via getrusage.
-      get_maxrss || 0
+    if is_macos && (rss = macos_resident_size)
+      return rss
     end
+    # Prefer /bin/ps on macOS: a procps ps earlier in PATH (e.g. from Nix) reports
+    # "ps: rss: requires entitlement" instead of the RSS.
+    ps_commands = is_macos ? ["/bin/ps", "ps"] : ["ps"]
+    ps_commands.each do |ps|
+      begin
+        mem = IO.popen([ps, "-o", "rss=", "-p", Process.pid.to_s], err: File::NULL, &:read)
+        return 1024 * Integer(mem)
+      rescue ArgumentError, Errno::ENOENT
+        next
+      end
+    end
+    # Every ps failed. Fall back to peak RSS via getrusage. Note that this is the
+    # peak over the life of the process, not the current RSS.
+    get_maxrss || 0
   end
 end
 
@@ -91,7 +101,7 @@ def is_macos
   RUBY_PLATFORM.match?(/darwin/)
 end
 
-def get_maxrss
+def load_fiddle
   unless $LOAD_PATH.resolve_feature_path("fiddle")
     # In Ruby 3.5+, fiddle is no longer a default gem. Load the bundled-gem fiddle instead.
     if defined?(Bundler) # benchmarks with Gemfile
@@ -109,6 +119,49 @@ def get_maxrss
   verbose, $VERBOSE = $VERBOSE, nil
   require 'fiddle'
   $VERBOSE = verbose
+end
+
+# struct rusage_info_v0 is a 16 byte uuid followed by uint64 fields, of which
+# ri_resident_size is the 7th.
+RUSAGE_INFO_V0 = 0
+RI_RESIDENT_SIZE_OFFSET = 16 + 6 * 8
+
+# Memoized on a module, not on main: the Ractor harness freezes main.
+module ProcPidRusage
+  @resolved = false
+
+  def self.fn
+    return @fn if @resolved
+
+    @resolved = true
+    @fn = begin
+      load_fiddle
+      Fiddle::Function.new(
+        Fiddle.dlopen(nil)['proc_pid_rusage'],
+        [Fiddle::TYPE_INT, Fiddle::TYPE_INT, Fiddle::TYPE_VOIDP],
+        Fiddle::TYPE_INT,
+      )
+    rescue LoadError, Fiddle::DLError, NameError
+      nil
+    end
+  end
+end
+
+# The current RSS in bytes on macOS, read from libproc. Unlike ps this does not
+# fork, so the Ractor harness can sample it every few milliseconds. Returns nil
+# when libproc is unavailable or the call fails.
+def macos_resident_size
+  fn = ProcPidRusage.fn
+  return nil unless fn
+
+  buffer = "\0".b * 1024 # more than enough, the actual struct is 96 bytes
+  return nil unless fn.call(Process.pid, RUSAGE_INFO_V0, buffer).zero?
+
+  buffer[RI_RESIDENT_SIZE_OFFSET, 8].unpack1('Q')
+end
+
+def get_maxrss
+  load_fiddle
 
   require 'rbconfig/sizeof'
 
