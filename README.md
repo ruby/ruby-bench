@@ -231,7 +231,12 @@ with multiple ractors, for GC work that reclaims ractor-local memory:
   includes the gate sleep (`RACTOR_BACKLOG_GATE_SLEEP`, default 1 second).
 
 ```bash
+# Every count in one process
 ruby -Iharness-ractor benchmarks/ractor-dead-set/benchmark.rb
+
+# One process per count, comparing two Rubies, with Ractor GC metrics
+RUBY_BENCH_RACTORS=1,2,4,6,8 ./run_benchmarks.rb --category ractor --ractor-gc \
+  --chruby "base::ruby-base --yjit" --chruby "exp::ruby-exp --yjit" ractor-dead-set
 ```
 The harness prints `BENCH_METRIC retained_mib=<worst count median>` and
 `BENCH_METRIC peak_mib=...` lines, plus one pair per ractor count. The JSON
@@ -378,6 +383,48 @@ PERF=record ruby --yjit-perf=map -Iharness-perf benchmarks/railsbench/benchmark.
 
 This is the only harness that uses `run_benchmark`'s argument, `num_itrs_hint`.
 
+### Using samply
+
+[samply](https://github.com/mstange/samply) is a sampling profiler for macOS and
+Linux that shows its profiles in the Firefox Profiler. Run the benchmark script
+directly under `samply record`:
+
+```sh
+samply record ruby -Iharness benchmarks/railsbench/benchmark.rb
+
+# Name JIT-compiled methods. Both JITs write /tmp/perf-<pid>.map, which samply reads.
+samply record ruby --yjit --yjit-perf -Iharness benchmarks/railsbench/benchmark.rb
+samply record ruby --zjit --zjit-perf -Iharness benchmarks/railsbench/benchmark.rb
+
+# Save the profile without opening it, and open it later
+samply record --save-only -o railsbench.json.gz ruby -Iharness benchmarks/railsbench/benchmark.rb
+samply load railsbench.json.gz
+```
+
+The profile includes warmup. Use `WARMUP_ITRS`, `MIN_BENCH_ITRS` and
+`MIN_BENCH_TIME` (see [Iterations and duration](#iterations-and-duration)) to
+change how long each phase runs, or select the measured iterations in the
+profiler's timeline.
+
+A direct run of a Ractor benchmark runs every Ractor count in one process, so
+set `RUBY_BENCH_RACTORS` to the one count you want to profile. For a scenario
+benchmark, also set `RUBY_BENCH_PROFILING=1` to keep the harness's retention
+GCs out of the profile. The worker Ractors show up as separate thread tracks.
+
+```sh
+RUBY_BENCH_RACTORS=4 RUBY_BENCH_PROFILING=1 samply record ruby -Iharness-ractor benchmarks/ractor-dead-set/benchmark.rb
+```
+
+samply also records child processes, so `samply record ruby run_benchmarks.rb ...`
+profiles every benchmark process, next to the setup commands of
+`run_benchmarks.rb` itself.
+
+* On macOS, samply cannot profile Apple-signed binaries. Use
+  `ruby run_benchmarks.rb`, not `./run_benchmarks.rb`, which starts through
+  `/usr/bin/env`. A Ruby you built or installed with a version manager is fine.
+* On Linux, samply needs access to perf events, for example
+  `sudo sysctl kernel.perf_event_paranoid=1`.
+
 ### Printing YJIT stats
 
 The `--yjit-stats` option of `./run_benchmarks.rb` allows you to print the diff of YJIT stats counters
@@ -416,7 +463,15 @@ fail before warmup.
 
 ```sh
 ./run_benchmarks.rb --category ractor --chruby=base::ruby-base --ractor-gc
+
+# One benchmark, run directly. --ractor-gc sets RUBY_BENCH_RACTOR_GC=1.
+RUBY_BENCH_RACTOR_GC=1 ruby -Iharness-ractor benchmarks/ractor-dead-set/benchmark.rb
 ```
+
+`run_benchmarks.rb` only runs Ractor harness benchmarks with `--category ractor`
+or `--category ractor-only`. Without one, it skips them even when you name them.
+[Ractor Scenario Benchmarks](#ractor-scenario-benchmarks) has an example that
+compares two Rubies on one benchmark.
 
 Each measured iteration samples `GC.stat` and GC total time in every worker
 Ractor's own object space. The JSON output records the scope as
