@@ -737,6 +737,48 @@ describe BenchmarkSuite do
 
       assert_equal run_data['simple'].keys.sort, single_result[:data].keys.sort
     end
+
+    describe 'on Windows' do
+      before do
+        File.write('benchmarks/pin_cpu.rb', <<~RUBY)
+          require 'json'
+          File.write(ENV['RESULT_JSON_PATH'], JSON.generate('warmup' => [], 'bench' => [0.001], 'pin_cpu' => ENV['RUBY_BENCH_PIN_CPU']))
+        RUBY
+      end
+
+      def pin_cpu_seen_by_benchmark(ruby_description: 'ruby 3.2.0', **options)
+        suite = BenchmarkSuite.new(categories: [], name_filters: ['pin_cpu'], out_path: @out_path, harness: 'harness', **options)
+        result = nil
+        suite.stub(:windows?, true) do
+          suite.stub(:linux?, false) do
+            capture_io do
+              result = suite.run_benchmark(suite.benchmarks.first, ruby: [RbConfig.ruby], ruby_description: ruby_description)
+            end
+          end
+        end
+        result[:data]['pin_cpu']
+      end
+
+      it 'passes the CPU to pin to through the environment' do
+        assert_equal [(Etc.nprocessors / 3) - 1, 0].max.to_s, pin_cpu_seen_by_benchmark
+      end
+
+      it 'does not pin with no_pinning' do
+        assert_nil pin_cpu_seen_by_benchmark(no_pinning: true)
+      end
+
+      it 'does not pass on a CPU inherited from the environment' do
+        original = ENV['RUBY_BENCH_PIN_CPU']
+        ENV['RUBY_BENCH_PIN_CPU'] = '3'
+        assert_nil pin_cpu_seen_by_benchmark(no_pinning: true)
+      ensure
+        ENV['RUBY_BENCH_PIN_CPU'] = original
+      end
+
+      it 'does not pin other Ruby implementations' do
+        assert_nil pin_cpu_seen_by_benchmark(ruby_description: 'truffleruby 24.0.0')
+      end
+    end
   end
 
   describe 'integration with BenchmarkFilter' do

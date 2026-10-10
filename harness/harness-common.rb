@@ -101,6 +101,10 @@ def is_macos
   RUBY_PLATFORM.match?(/darwin/)
 end
 
+def is_windows
+  RUBY_PLATFORM.match?(/mswin|mingw/)
+end
+
 def load_fiddle
   unless $LOAD_PATH.resolve_feature_path("fiddle")
     # In Ruby 3.5+, fiddle is no longer a default gem. Load the bundled-gem fiddle instead.
@@ -161,6 +165,36 @@ def macos_resident_size
   return nil unless fn.call(Process.pid, RUSAGE_INFO_V0, buffer).zero?
 
   buffer[RI_RESIDENT_SIZE_OFFSET, 8].unpack1('Q')
+end
+
+# A dropped Fiddle::Handle is freed by a deferred finalizer, and its interrupt sends YJIT code back to the
+# interpreter for the rest of the loop the benchmark was in, so kernel32 stays open.
+module WindowsKernel32
+  def self.function(name, args, ret)
+    @handle ||= Fiddle.dlopen("kernel32")
+    Fiddle::Function.new(@handle[name], args, ret)
+  end
+end
+
+def pin_to_cpu(cpu)
+  load_fiddle
+  # Etc.nprocessors counts the CPUs of every processor group, but the mask holds those of one group only.
+  if cpu >= Fiddle::SIZEOF_VOIDP * 8
+    warn "Not pinning to CPU #{cpu}, which is out of the affinity mask"
+    return false
+  end
+  process = WindowsKernel32.function('GetCurrentProcess', [], Fiddle::TYPE_VOIDP).call
+  set_affinity = WindowsKernel32.function('SetProcessAffinityMask', [Fiddle::TYPE_VOIDP, Fiddle::TYPE_UINTPTR_T], Fiddle::TYPE_INT)
+  raise "SetProcessAffinityMask failed" if set_affinity.call(process, 1 << cpu).zero?
+  true
+end
+
+if is_windows && ENV["RUBY_BENCH_PIN_CPU"]
+  begin
+    pin_to_cpu(Integer(ENV["RUBY_BENCH_PIN_CPU"]))
+  rescue LoadError, StandardError => e
+    warn "Failed to pin the benchmark: #{e.message}"
+  end
 end
 
 def get_maxrss

@@ -19,6 +19,7 @@ class BenchmarkSuite
   RACTOR_CATEGORY = ["ractor"].freeze
   RACTOR_ONLY_CATEGORY = ["ractor-only"].freeze
   RACTOR_HARNESS = "harness-ractor"
+  PIN_CPU_ENV = "RUBY_BENCH_PIN_CPU"
 
   attr_reader :categories, :name_filters, :excludes, :out_path, :harness, :harness_explicit, :pre_init, :no_pinning, :force_pinning, :bench_dir
 
@@ -47,7 +48,7 @@ class BenchmarkSuite
   # Run a single benchmark entry on a single executable.
   # Returns { name:, data: } on success, { name:, failure: } on error.
   def run_benchmark(entry, ruby:, ruby_description:)
-    env = benchmark_env(ruby)
+    env = benchmark_env(ruby).merge(pinning_env(ruby_description, entry.name))
     caller_json_path = ENV["RESULT_JSON_PATH"]
     quiet = ENV['BENCHMARK_QUIET'] == '1'
     cmd_prefix = base_cmd(ruby_description, entry.name)
@@ -272,24 +273,36 @@ class BenchmarkSuite
     @linux ||= RbConfig::CONFIG['host_os'] =~ /linux/
   end
 
+  def windows?
+    @windows ||= RbConfig::CONFIG['host_os'] =~ /mswin|mingw/
+  end
+
   # Set up the base command with CPU pinning if needed
   def base_cmd(ruby_description, benchmark_name)
     if linux?
       cmd = setarch_prefix
-
-      # Pin the process to one given core to improve caching and reduce variance on CRuby
-      # and Spinel, which compiles the benchmark to a single-threaded native binary.
-      # Other Rubies need to use multiple cores, e.g., for JIT threads
-      if (ruby_description.start_with?('ruby ') || ruby_description.start_with?('spinel ')) && should_pin?(benchmark_name)
-        # Up to the last two thirds of Intel CPU cores may be slow E-Cores, so avoid using them.
-        cpu = [(Etc.nprocessors / 3) - 1, 0].max
-        cmd.concat(["taskset", "-c", "#{cpu}"])
-      end
-
+      cmd.concat(["taskset", "-c", "#{pinned_cpu}"]) if pin?(ruby_description, benchmark_name)
       cmd
     else
       []
     end
+  end
+
+  # Windows has no taskset, so the harness pins itself to the CPU given in this variable.
+  def pinning_env(ruby_description, benchmark_name)
+    { PIN_CPU_ENV => (pinned_cpu.to_s if windows? && pin?(ruby_description, benchmark_name)) }
+  end
+
+  # Pin the process to one given core to improve caching and reduce variance on CRuby
+  # and Spinel, which compiles the benchmark to a single-threaded native binary.
+  # Other Rubies need to use multiple cores, e.g., for JIT threads
+  def pin?(ruby_description, benchmark_name)
+    (ruby_description.start_with?('ruby ') || ruby_description.start_with?('spinel ')) && should_pin?(benchmark_name)
+  end
+
+  # Up to the last two thirds of Intel CPU cores may be slow E-Cores, so avoid using them.
+  def pinned_cpu
+    [(Etc.nprocessors / 3) - 1, 0].max
   end
 
   def should_pin?(benchmark_name)
