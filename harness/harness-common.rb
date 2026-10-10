@@ -117,8 +117,11 @@ def load_fiddle
   end
   # Suppress a warning for Ruby 3.4+ on benchmarks with Gemfile
   verbose, $VERBOSE = $VERBOSE, nil
-  require 'fiddle'
-  $VERBOSE = verbose
+  begin
+    require 'fiddle'
+  ensure
+    $VERBOSE = verbose
+  end
 end
 
 # struct rusage_info_v0 is a 16 byte uuid followed by uint64 fields, of which
