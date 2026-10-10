@@ -189,9 +189,21 @@ def pin_to_cpu(cpu)
   true
 end
 
+def raise_priority
+  load_fiddle
+  process = WindowsKernel32.function('GetCurrentProcess', [], Fiddle::TYPE_VOIDP).call
+  set_priority_class = WindowsKernel32.function('SetPriorityClass', [Fiddle::TYPE_VOIDP, Fiddle::TYPE_INT], Fiddle::TYPE_INT)
+  raise "SetPriorityClass failed" if set_priority_class.call(process, 0x80).zero? # HIGH_PRIORITY_CLASS
+
+  # PROCESS_POWER_THROTTLING_STATE that turns off the EXECUTION_SPEED throttling Windows 11 may apply to a windowless process.
+  set_information = WindowsKernel32.function('SetProcessInformation', [Fiddle::TYPE_VOIDP, Fiddle::TYPE_INT, Fiddle::TYPE_VOIDP, Fiddle::TYPE_INT], Fiddle::TYPE_INT)
+  state = [1, 1, 0].pack('L3')
+  raise "SetProcessInformation failed" if set_information.call(process, 4, state, state.bytesize).zero? # ProcessPowerThrottling
+end
+
 if is_windows && ENV["RUBY_BENCH_PIN_CPU"]
   begin
-    pin_to_cpu(Integer(ENV["RUBY_BENCH_PIN_CPU"]))
+    raise_priority if pin_to_cpu(Integer(ENV["RUBY_BENCH_PIN_CPU"]))
   rescue LoadError, StandardError => e
     warn "Failed to pin the benchmark: #{e.message}"
   end
