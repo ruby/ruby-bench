@@ -214,7 +214,7 @@ class BenchmarkSuite
     ].compact).map(&:to_s)
 
     # Do the benchmarking
-    result = BenchmarkRunner.check_call(cmd, env: env, raise_error: false, quiet: quiet)
+    result = BenchmarkRunner.check_call(cmd, env: env.merge("HARNESS" => benchmark_harness), raise_error: false, quiet: quiet)
     result[:command] = cmd.shelljoin
     result
   ensure

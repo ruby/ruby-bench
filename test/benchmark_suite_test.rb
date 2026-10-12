@@ -740,6 +740,30 @@ describe BenchmarkSuite do
       assert_equal run_data['simple'].keys.sort, single_result[:data].keys.sort
     end
 
+    it 'loads the selected harness when HARNESS is set in the environment' do
+      loader_path = File.expand_path('../lib/harness/loader', __dir__)
+      harness_dir = File.expand_path('../harness', __dir__)
+      File.write('benchmarks/harness_probe.rb', <<~RUBY)
+        require #{loader_path.inspect}
+        require 'json'
+        harnesses = $LOADED_FEATURES.filter_map { |f| File.basename(f, '.rb') if File.dirname(f) == #{harness_dir.inspect} }
+        File.write(ENV['RESULT_JSON_PATH'], JSON.generate('warmup' => [], 'bench' => [0.001], 'harnesses' => harnesses))
+      RUBY
+      suite = BenchmarkSuite.new(categories: [], name_filters: ['harness_probe'], out_path: @out_path, harness: 'default', harness_explicit: true, no_pinning: true)
+
+      result = nil
+      ENV['HARNESS'] = 'once'
+      begin
+        capture_io do
+          result = suite.run_benchmark(suite.benchmarks.first, ruby: [RbConfig.ruby], ruby_description: 'ruby 3.2.0')
+        end
+      ensure
+        ENV.delete('HARNESS')
+      end
+
+      assert_equal ['default'], result[:data]['harnesses']
+    end
+
     describe 'on Windows' do
       before do
         File.write('benchmarks/pin_cpu.rb', <<~RUBY)
