@@ -208,8 +208,8 @@ class BenchmarkSuite
     # Set up the benchmarking command
     cmd = (cmd_prefix + [
       *ruby,
-      *harness_args_for(benchmark_harness),
       *pre_init,
+      *harness_args_for(benchmark_harness),
       script_path,
     ].compact).map(&:to_s)
 

@@ -515,6 +515,28 @@ describe BenchmarkSuite do
       assert_equal 'setup', suite.pre_init[3].to_s
     end
 
+    it 'runs pre_init before the Ractor harness freezes main' do
+      pre_init_file = File.join(@temp_dir, 'pre_init.rb')
+      File.write(pre_init_file, "@pre_init_ran = true\n")
+      File.write('benchmarks/ractor_pre_init.rb', <<~RUBY)
+        require 'json'
+        File.write(ENV['RESULT_JSON_PATH'], JSON.generate('warmup' => [], 'bench' => [1.0], 'pre_init_ran' => @pre_init_ran))
+      RUBY
+      File.write('benchmarks.yml', YAML.dump('ractor_pre_init' => { 'category' => 'other', 'ractor' => true, 'default_harness' => 'ractor' }))
+      suite = BenchmarkSuite.new(categories: ['ractor'], name_filters: [], out_path: @out_path, harness: 'default', pre_init: pre_init_file, no_pinning: true)
+
+      ENV['RUBY_BENCH_RACTORS'] = '1'
+      bench_data, bench_failures = nil
+      capture_io do
+        bench_data, bench_failures = suite.run(ruby: [RbConfig.ruby], ruby_description: 'ruby 3.2.0')
+      end
+
+      assert_empty bench_failures
+      assert_equal true, bench_data['ractor_pre_init']['pre_init_ran']
+    ensure
+      ENV.delete('RUBY_BENCH_RACTORS')
+    end
+
     it 'exits when pre_init file does not exist' do
       output = capture_io do
         assert_raises(SystemExit) do
