@@ -73,6 +73,8 @@ def get_rss
     # First, grab a line like "62796 kB". Checking the Linux kernel source, Rss will always be in kB.
     rss_desc = File.read(mem_rollup_file).lines.detect { |line| line.start_with?("Rss") }.split(":", 2)[1][/(\d+)/, 1]
     1024 * Integer(rss_desc)
+  elsif defined?(WindowsMemoryCounters)
+    WindowsMemoryCounters.read&.fetch(:working_set) || 0
   else
     # Collect our own peak mem usage as soon as reasonable after finishing the last iteration.
     # This method is only accurate to kilobytes, but is nicely portable and doesn't require
@@ -163,7 +165,12 @@ def macos_resident_size
   buffer[RI_RESIDENT_SIZE_OFFSET, 8].unpack1('Q')
 end
 
+# Loaded after load_fiddle is defined, since it calls it right away.
+require_relative "harness/windows_memory_counters" if RUBY_PLATFORM.match?(/mswin|mingw/)
+
 def get_maxrss
+  return WindowsMemoryCounters.read&.fetch(:peak_working_set) if defined?(WindowsMemoryCounters)
+
   load_fiddle
 
   require 'rbconfig/sizeof'
