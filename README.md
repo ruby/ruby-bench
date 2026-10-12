@@ -431,6 +431,7 @@ HARNESS=perf perf record ruby --yjit-perf=map benchmarks/railsbench/benchmark.rb
 
 # Use `perf record` only for benchmark
 HARNESS=perf PERF=record ruby --yjit-perf=map benchmarks/railsbench/benchmark.rb
+```
 
 This is the only harness that uses `run_benchmark`'s argument, `num_itrs_hint`.
 
