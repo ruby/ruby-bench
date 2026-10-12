@@ -370,6 +370,13 @@ describe ArgumentParser do
 
         assert_equal 'stats', args.harness
       end
+
+      it 'maps the old default harness name to default' do
+        parser = ArgumentParser.new
+        args = parser.parse(['--harness=harness'])
+
+        assert_equal 'default', args.harness
+      end
     end
 
     describe '--warmup option' do
