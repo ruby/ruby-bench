@@ -228,6 +228,10 @@ def return_results(warmup_iterations, bench_iterations, **extra)
   if maxrss = get_maxrss
     ruby_bench_results["maxrss"] = maxrss
   end
+  if defined?(WindowsMemoryCounters) && (counters = WindowsMemoryCounters.read)
+    ruby_bench_results["commit_charge"] = counters[:commit_charge]
+    ruby_bench_results["peak_commit_charge"] = counters[:peak_commit_charge]
+  end
 
   # If YJIT or ZJIT is enabled, show some of its stats unless it does by itself.
   if yjit_stats
