@@ -323,6 +323,7 @@ describe BenchmarkSuite do
     end
 
     it 'handles ractor category with ractor benchmarks' do
+      skip 'target Ruby has no Ractor' unless defined?(Ractor)
       # Create a ractor benchmark
       File.write('benchmarks/ractor_test.rb', <<~RUBY)
         require 'json'
@@ -362,6 +363,7 @@ describe BenchmarkSuite do
     end
 
     it 'runs each Ractor count in its own process and merges the results' do
+      skip 'target Ruby has no Ractor' unless defined?(Ractor)
       File.write('benchmarks/per_count.rb', <<~RUBY)
         require 'json'
         count = ENV.fetch('RUBY_BENCH_RACTORS')
@@ -401,6 +403,7 @@ describe BenchmarkSuite do
     end
 
     it 'reports a Ractor benchmark as failed when one count fails' do
+      skip 'target Ruby has no Ractor' unless defined?(Ractor)
       File.write('benchmarks/fails_at_two.rb', <<~RUBY)
         require 'json'
         count = ENV.fetch('RUBY_BENCH_RACTORS')
@@ -425,6 +428,7 @@ describe BenchmarkSuite do
     end
 
     it 'skips count 0 for a scenario benchmark unless it is the only count' do
+      skip 'target Ruby has no Ractor' unless defined?(Ractor)
       File.write('benchmarks/scenario.rb', <<~RUBY)
         require 'json'
         count = ENV.fetch('RUBY_BENCH_RACTORS')
@@ -516,6 +520,7 @@ describe BenchmarkSuite do
     end
 
     it 'runs pre_init before the Ractor harness freezes main' do
+      skip 'target Ruby has no Ractor' unless defined?(Ractor)
       pre_init_file = File.join(@temp_dir, 'pre_init.rb')
       File.write(pre_init_file, "@pre_init_ran = true\n")
       File.write('benchmarks/ractor_pre_init.rb', <<~RUBY)
