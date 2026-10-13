@@ -363,19 +363,19 @@ There is also a robust but complex CI harness in [the yjit-metrics repo](https:/
 
 ### Chain harness
 
-The `chain` harness allows you to combine multiple harnesses together. This is useful when you want to run a benchmark through multiple analysis tools or measurement approaches in sequence.
+The `chain` harness allows you to combine multiple harnesses together. This is useful when you want to run a benchmark through an analysis tool, such as a profiler, while another harness drives the iterations.
 
 Use the `HARNESS_CHAIN` environment variable to specify which harnesses to chain (comma-separated, at least 2 required):
 
 ```bash
-# Chain the 'once' and 'default' harnesses (runs benchmark once, then with default iterations)
-HARNESS=chain HARNESS_CHAIN="once,default" ruby benchmarks/fib.rb
+# Profile the iterations of the default harness with vernier
+HARNESS=chain HARNESS_CHAIN="vernier,default" ruby benchmarks/fib.rb
 
-# Profile with vernier while using ractor harness
-HARNESS=chain HARNESS_CHAIN="vernier,ractor" ruby benchmarks-ractor/some_benchmark.rb
+# Profile a benchmark running under the ractor harness with vernier
+HARNESS=chain HARNESS_CHAIN="vernier,ractor" ruby benchmarks/fib.rb
 ```
 
-The harnesses are executed in the order specified, with each harness wrapping the previous one.
+The harnesses are nested, not run one after another. The first harness is the outermost one: its benchmark block calls the `run_benchmark` of the next harness, and the last harness runs the benchmark itself. Every harness writes its results to the same file, and the outermost harness writes last, so its results are the ones kept.
 
 ### Iterations and duration
 
