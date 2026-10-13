@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
 # Profile the benchmark (ignoring initialization code) using vernier and display the profile.
-# Set NO_VIERWER=1 to disable automatically opening the profile in a browser.
+# Set NO_VIEWER=1 to disable automatically opening the profile in a browser.
 # Usage:
-# HARNESS=vernier MIN_BENCH_TIME=1 MIN_BENCH_ITRS=1 ruby -v -I harness-vernier benchmarks/...
-# NO_VIEWER=1 HARNESS=vernier MIN_BENCH_TIME=1 MIN_BENCH_ITRS=1 ruby -v -I harness-vernier benchmarks/...
+# HARNESS=vernier MIN_BENCH_TIME=1 MIN_BENCH_ITRS=1 ruby -v benchmarks/...
+# NO_VIEWER=1 HARNESS=vernier MIN_BENCH_TIME=1 MIN_BENCH_ITRS=1 ruby -v benchmarks/...
 
 require_relative "../lib/harness"
 require_relative "../lib/harness/extra"
