@@ -104,8 +104,7 @@ def run_benchmark(bench_name, no_yjit, logs_path, run_time, ruby_version, metada
   cmd = [
     'ruby',
     *test_options,
-    "-Iharness",
-    "-r#{harness}",
+    "-r#{File.expand_path("harness/#{harness}", __dir__)}",
     script_path,
   ].compact
   cmd_str = cmd.shelljoin
