@@ -32,12 +32,12 @@ end
 
 # Get name of harness (stackprof, vernier, etc) from the file path of the loaded harness.
 def harness_name
+  harness_dir = File.expand_path("../../harness", __dir__)
   $LOADED_FEATURES.reverse_each do |feat|
-    if m = feat.match(%r{/harness-([^/]+)/harness\.rb$})
-      return m[1]
-    end
+    return File.basename(feat, ".rb") if File.dirname(feat) == harness_dir
   end
-  raise "Unable to determine harness name"
+  # Default to 'harness' if we can't determine the name
+  'harness'
 end
 
 # Share a single timestamp for everything from this execution.
@@ -46,7 +46,7 @@ TIMESTAMP = Time.now.strftime('%F-%H%M%S')
 # Create a consistent file path in the data directory
 # so that the data can be further analyzed.
 def output_file_path(prefix: harness_name, suffix: benchmark_name, ruby_info: ruby_version_info, timestamp: TIMESTAMP, ext: "bin")
-  File.expand_path("../data/#{prefix}-#{timestamp}-#{ruby_info}-#{suffix}.#{ext}", __dir__)
+  File.expand_path("../../data/#{prefix}-#{timestamp}-#{ruby_info}-#{suffix}.#{ext}", __dir__)
 end
 
 # Can we get the benchmark config name from somewhere?

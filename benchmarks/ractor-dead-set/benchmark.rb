@@ -4,7 +4,7 @@
 
 Warning[:experimental] = false
 
-require_relative "../../harness/loader"
+require_relative "../../lib/harness/loader"
 
 DEAD_SET_ITEMS = Integer(ENV.fetch("RACTOR_DEAD_SET_ITEMS", 100_000))
 

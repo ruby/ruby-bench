@@ -81,7 +81,7 @@ gcbench:
   desc: Ellis-Kovac-Boehm GCBench builds binary trees of various depths to exercise GC marking, sweeping, and write barriers.
   category: gc
   single_file: true
-  default_harness: harness-gc
+  default_harness: gc
 erubi:
   desc: erubi compiles a simple Erb template into a method with erubi, then times evaluating that method.
   ractor: true
@@ -105,7 +105,7 @@ knucleotide-ractor:
   desc: k-nucleotide from the Computer Language Benchmarks Game - counts nucleotide frequencies using hash tables in parallel using Ractors
   ractor: true
   ractor_only: true
-  default_harness: harness
+  default_harness: default
 lee:
   desc: lee is a circuit-board layout solver, deployed in a plausibly reality-like way
 matmul:
@@ -145,7 +145,7 @@ string_malloc_pressure:
   desc: Allocates and retains many empty Strings with large reserved capacity to exercise GC under malloc-backed String buffer pressure.
   category: gc
   single_file: true
-  default_harness: harness-gc
+  default_harness: gc
 tinygql:
   desc: TinyGQL gem parsing a large file in pure Ruby
 
@@ -285,37 +285,37 @@ gvl_release_acquire:
   desc: microbenchmark designed to test how fast the gvl can be acquired and released between ractors.
   ractor: true
   ractor_only: true
-  default_harness: harness-ractor
+  default_harness: ractor
 json_parse_float:
   desc: test the performance of parsing multiple lists of json floats with ractors.
   ractor: true
   ractor_only: true
-  default_harness: harness-ractor
+  default_harness: ractor
 json_parse_string:
   desc: test the performance of parsing multiple lists of strings with ractors.
   ractor: true
   ractor_only: true
-  default_harness: harness-ractor
+  default_harness: ractor
 ractor-dead-set:
   desc: multiple ractors each build a large live set and terminate, then memory retention after their death is measured.
   ractor: true
   ractor_only: true
   ractor_scenario: true
-  default_harness: harness-ractor
+  default_harness: ractor
 ractor-idle-garbage:
   desc: multiple ractors each build and drop a large garbage set, then idle uncollected while retention is measured.
   ractor: true
   ractor_only: true
   ractor_scenario: true
-  default_harness: harness-ractor
+  default_harness: ractor
 ractor-msg-backlog:
   desc: unshareable message payloads flood the queues of gated consumer ractors, duplicating data per consumer and driving peak RSS and retention.
   ractor: true
   ractor_only: true
   ractor_scenario: true
-  default_harness: harness-ractor
+  default_harness: ractor
 symbol-name-ractor:
   desc: repeatedly calls Symbol#name on a static symbol under the ractor harness to stress ID-to-string lookup.
   ractor: true
   ractor_only: true
-  default_harness: harness-ractor
+  default_harness: ractor

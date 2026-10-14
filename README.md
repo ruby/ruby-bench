@@ -6,7 +6,7 @@ Small set of benchmarks and scripts for the Ruby programming language.
 The benchmarks are found in the `benchmarks` directory. Individual Ruby files
 in `benchmarks` are microbenchmarks. Subdirectories under `benchmarks` are
 larger macrobenchmarks. Each benchmark relies on a harness found in
-[./harness/harness.rb](harness/harness.rb). The harness controls the number of times a benchmark is
+[./harness/default.rb](harness/default.rb). The harness controls the number of times a benchmark is
 run, and writes timing values into an output file.
 
 The `run_benchmarks.rb` script (optional) traverses the `benchmarks` directory and
@@ -97,8 +97,8 @@ This is the easiest way to run a single benchmark.
 It requires no setup at all and assumes nothing about the Ruby you are benchmarking.
 It's also convenient for profiling, debugging, etc, especially since all benchmarked code runs in that process.
 
-```
-ruby benchmarks/some_benchmark.rb
+```bash
+ruby benchmarks/fib.rb
 ```
 
 ### Benchmark organization
@@ -138,19 +138,19 @@ There are two Ractor-related categories:
 
 * **`--category ractor`** - Runs both regular benchmarks marked with `ractor:
   true` in `benchmarks.yml` AND all benchmarks from the `benchmarks-ractor`
-  directory. The `harness-ractor` harness is used for both types of benchmark.
+  directory. The `ractor` harness is used for both types of benchmark.
 
 * **`--category ractor-only`** - Runs ONLY benchmarks from the
   `benchmarks-ractor` directory, ignoring regular benchmarks even if they are
   marked with `ractor: true`. This category also automatically uses the
-  `harness-ractor` harness.
+  `ractor` harness.
 
 ### Directory Structure
 
 The `benchmarks-ractor/` directory sits at the same level as the main
 `benchmarks` directory, and contains Ractor-specific benchmark
 implementations that are designed to test Ractor functionality. They are not
-intended to be used with any harness except `harness-ractor`.
+intended to be used with any harness except `ractor`.
 
 ### Usage Examples
 
@@ -162,7 +162,7 @@ intended to be used with any harness except `harness-ractor`.
 ./run_benchmarks.rb --category ractor-only
 ```
 
-Note: The `harness-ractor` harness is automatically selected when using these
+Note: The `ractor` harness is automatically selected when using these
 categories, so there's no need to specify `--harness` manually.
 
 ### Ractor counts
@@ -188,12 +188,12 @@ because no single process ran all counts.
 The text summary, the CSV output, and `misc/zjit_diff.rb` show one row for
 each count, with the RSS and JIT stats of that count's process.
 
-When you run a benchmark directly with `-Iharness-ractor`, the harness runs
+When you run a benchmark directly with `-r./harness/ractor`, the harness runs
 all counts in one process, one count after another.
 
 ### Ractor Scenario Benchmarks
 
-By default, `harness-ractor` spawns the worker Ractors and runs the benchmark
+By default, the `ractor` harness spawns the worker Ractors and runs the benchmark
 block inside each of them. A benchmark that calls
 `run_benchmark(n, scenario: true)` uses scenario mode instead. The harness
 calls the block one time per trial in the main Ractor, with the Ractor count as
@@ -232,7 +232,7 @@ with multiple ractors, for GC work that reclaims ractor-local memory:
 
 ```bash
 # Every count in one process
-ruby -Iharness-ractor benchmarks/ractor-dead-set/benchmark.rb
+ruby -r./harness/ractor benchmarks/ractor-dead-set/benchmark.rb
 
 # One process per count, comparing two Rubies, with Ractor GC metrics
 RUBY_BENCH_RACTORS=1,2,4,6,8 ./run_benchmarks.rb --category ractor --ractor-gc \
@@ -321,25 +321,61 @@ This file will then be passed to the underlying Ruby interpreter with
 
 ## Harnesses
 
-You can find several test harnesses in this repository:
+You can find several test harnesses in the `harness/` directory:
 
-* harness - the normal default harness, with duration controlled by warmup iterations and time/count limits
-* harness-bips - a harness that measures iterations/second until stable
-* harness-continuous - a harness that adjusts the batch sizes of iterations to run in stable iteration size batches
-* harness-once - a simplified harness that simply runs once
-* harness-perf - a simplified harness that runs for exactly the hinted number of iterations
-* harness-stackprof - a harness to profile the benchmark with stackprof
-* harness-stats - count method calls and loop iterations
-* harness-vernier - a harness to profile the benchmark with vernier
-* harness-warmup - a harness which runs as long as needed to find warmed up (peak) performance
+* `default` - the normal default harness, with duration controlled by warmup iterations and time/count limits
+* `bips` - a harness that measures iterations/second until stable
+* `continuous` - a harness that adjusts the batch sizes of iterations to run in stable iteration size batches
+* `once` - a simplified harness that simply runs once
+* `perf` - a simplified harness that runs for exactly the hinted number of iterations
+* `ractor` - a harness that runs the benchmark inside Ractors to measure scaling
+* `gc` - the default harness plus GC timing, count and heap statistics
+* `stackprof` - a harness to profile the benchmark with stackprof
+* `stats` - count method calls and loop iterations
+* `vernier` - a harness to profile the benchmark with vernier
+* `warmup` - a harness which runs as long as needed to find warmed up (peak) performance
+* `chain` - a harness to chain multiple harnesses together
+* `mplr` - a harness for multiple iterations with time limits
 
-To use it, run a benchmark script directly, specifying a harness directory with `-I`:
+### Selecting a harness
 
+**Using the `HARNESS` environment variable**
+
+```bash
+# Run with specific harness
+HARNESS=perf ruby benchmarks/fib.rb
+HARNESS=stackprof ruby benchmarks/railsbench/benchmark.rb
+HARNESS=vernier ruby benchmarks/optcarrot/benchmark.rb
+
+# Combine with Ruby options
+HARNESS=perf ruby --yjit benchmarks/fib.rb
+HARNESS=once ruby --yjit-stats benchmarks/railsbench/benchmark.rb
 ```
-ruby -Iharness benchmarks/railsbench/benchmark.rb
+
+When using `run_benchmarks.rb`, you can specify a harness with the `--harness` option:
+
+```bash
+./run_benchmarks.rb --harness=once
+./run_benchmarks.rb --harness=perf
 ```
 
 There is also a robust but complex CI harness in [the yjit-metrics repo](https://github.com/Shopify/yjit-metrics).
+
+### Chain harness
+
+The `chain` harness allows you to combine multiple harnesses together. This is useful when you want to run a benchmark through an analysis tool, such as a profiler, while another harness drives the iterations.
+
+Use the `HARNESS_CHAIN` environment variable to specify which harnesses to chain (comma-separated, at least 2 required):
+
+```bash
+# Profile the iterations of the default harness with vernier
+HARNESS=chain HARNESS_CHAIN="vernier,default" ruby benchmarks/fib.rb
+
+# Profile a benchmark running under the ractor harness with vernier
+HARNESS=chain HARNESS_CHAIN="vernier,ractor" ruby benchmarks/fib.rb
+```
+
+The harnesses are nested, not run one after another. The first harness is the outermost one: its benchmark block calls the `run_benchmark` of the next harness, and the last harness runs the benchmark itself. Every harness writes its results to the same file, and the outermost harness writes last, so its results are the ones kept.
 
 ### Iterations and duration
 
@@ -360,12 +396,11 @@ You can also use `--warmup`, `--bench`, or `--once` to set these environment var
 ./run_benchmarks.rb railsbench --once
 ```
 
-There is also a handy script for running benchmarks just once using
-`WARMUP_ITRS=0 MIN_BENCH_ITRS=1 MIN_BENCH_TIME=0`, for example
-with the `--yjit-stats` command-line option:
+To run a single benchmark once directly with Ruby, set the same variables as `--once`:
 
-```
-./run_once.sh --yjit-stats benchmarks/railsbench/benchmark.rb
+```bash
+# Run once with YJIT stats
+WARMUP_ITRS=0 MIN_BENCH_ITRS=1 MIN_BENCH_TIME=0 ruby --yjit-stats benchmarks/railsbench/benchmark.rb
 ```
 
 ### Using perf
@@ -373,12 +408,12 @@ with the `--yjit-stats` command-line option:
 There is also a harness to use Linux perf. By default, it only runs a fixed number of iterations.
 If `PERF` environment variable is present, it starts the perf subcommand after warmup.
 
-```sh
+```bash
 # Use `perf record` for both warmup and benchmark
-perf record ruby --yjit-perf=map -Iharness-perf benchmarks/railsbench/benchmark.rb
+HARNESS=perf perf record ruby --yjit-perf=map benchmarks/railsbench/benchmark.rb
 
 # Use `perf record` only for benchmark
-PERF=record ruby --yjit-perf=map -Iharness-perf benchmarks/railsbench/benchmark.rb
+HARNESS=perf PERF=record ruby --yjit-perf=map benchmarks/railsbench/benchmark.rb
 ```
 
 This is the only harness that uses `run_benchmark`'s argument, `num_itrs_hint`.
@@ -390,14 +425,14 @@ Linux that shows its profiles in the Firefox Profiler. Run the benchmark script
 directly under `samply record`:
 
 ```sh
-samply record ruby -Iharness benchmarks/railsbench/benchmark.rb
+samply record ruby benchmarks/railsbench/benchmark.rb
 
 # Name JIT-compiled methods. Both JITs write /tmp/perf-<pid>.map, which samply reads.
-samply record ruby --yjit --yjit-perf -Iharness benchmarks/railsbench/benchmark.rb
-samply record ruby --zjit --zjit-perf -Iharness benchmarks/railsbench/benchmark.rb
+samply record ruby --yjit --yjit-perf benchmarks/railsbench/benchmark.rb
+samply record ruby --zjit --zjit-perf benchmarks/railsbench/benchmark.rb
 
 # Save the profile without opening it, and open it later
-samply record --save-only -o railsbench.json.gz ruby -Iharness benchmarks/railsbench/benchmark.rb
+samply record --save-only -o railsbench.json.gz ruby benchmarks/railsbench/benchmark.rb
 samply load railsbench.json.gz
 ```
 
@@ -412,7 +447,7 @@ benchmark, also set `RUBY_BENCH_PROFILING=1` to keep the harness's retention
 GCs out of the profile. The worker Ractors show up as separate thread tracks.
 
 ```sh
-RUBY_BENCH_RACTORS=4 RUBY_BENCH_PROFILING=1 samply record ruby -Iharness-ractor benchmarks/ractor-dead-set/benchmark.rb
+RUBY_BENCH_RACTORS=4 RUBY_BENCH_PROFILING=1 samply record ruby -r./harness/ractor benchmarks/ractor-dead-set/benchmark.rb
 ```
 
 samply also records child processes, so `samply record ruby run_benchmarks.rb ...`
@@ -465,7 +500,7 @@ fail before warmup.
 ./run_benchmarks.rb --category ractor --chruby=base::ruby-base --ractor-gc
 
 # One benchmark, run directly. --ractor-gc sets RUBY_BENCH_RACTOR_GC=1.
-RUBY_BENCH_RACTOR_GC=1 ruby -Iharness-ractor benchmarks/ractor-dead-set/benchmark.rb
+RUBY_BENCH_RACTOR_GC=1 ruby -r./harness/ractor benchmarks/ractor-dead-set/benchmark.rb
 ```
 
 `run_benchmarks.rb` only runs Ractor harness benchmarks with `--category ractor`

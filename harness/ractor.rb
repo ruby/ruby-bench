@@ -1,5 +1,5 @@
 # frozen_string_literal: true
-require_relative '../harness/harness-common'
+require_relative '../lib/harness'
 require 'etc'
 
 Warning[:experimental] = false

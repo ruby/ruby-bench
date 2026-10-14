@@ -51,13 +51,13 @@ describe BenchmarkSuite do
         categories: ['micro'],
         name_filters: [],
         out_path: @out_path,
-        harness: 'harness'
+        harness: 'default'
       )
 
       assert_equal ['micro'], suite.categories
       assert_equal [], suite.name_filters
       assert_equal @out_path, suite.out_path
-      assert_equal 'harness', suite.harness
+      assert_equal 'default', suite.harness
       assert_nil suite.pre_init
       assert_equal false, suite.no_pinning
     end
@@ -67,7 +67,7 @@ describe BenchmarkSuite do
         categories: [],
         name_filters: [],
         out_path: @out_path,
-        harness: 'harness',
+        harness: 'default',
         no_pinning: true
       )
 
@@ -79,11 +79,11 @@ describe BenchmarkSuite do
         categories: ['micro'],
         name_filters: [],
         out_path: @out_path,
-        harness: 'harness'
+        harness: 'default'
       )
 
       assert_equal 'benchmarks', suite.bench_dir
-      assert_equal 'harness', suite.harness
+      assert_equal 'default', suite.harness
       assert_equal ['micro'], suite.categories
     end
 
@@ -92,11 +92,11 @@ describe BenchmarkSuite do
         categories: ['ractor'],
         name_filters: [],
         out_path: @out_path,
-        harness: 'harness'
+        harness: 'default'
       )
 
       assert_equal 'benchmarks', suite.bench_dir
-      assert_equal 'harness', suite.harness
+      assert_equal 'default', suite.harness
       assert_equal ['ractor'], suite.categories
     end
 
@@ -114,7 +114,7 @@ describe BenchmarkSuite do
         categories: [],
         name_filters: [],
         out_path: @out_path,
-        harness: 'harness-ractor'
+        harness: 'ractor'
       )
       assert_equal false, suite_auto.harness_explicit
     end
@@ -124,7 +124,7 @@ describe BenchmarkSuite do
     before do
       @metadata_with_harness = {
         'simple' => { 'category' => 'micro' },
-        'custom_harness_bench' => { 'category' => 'other', 'default_harness' => 'harness' }
+        'custom_harness_bench' => { 'category' => 'other', 'default_harness' => 'default' }
       }
       File.write('benchmarks.yml', YAML.dump(@metadata_with_harness))
     end
@@ -134,12 +134,12 @@ describe BenchmarkSuite do
         categories: [],
         name_filters: [],
         out_path: @out_path,
-        harness: 'harness-ractor',
+        harness: 'ractor',
         harness_explicit: false
       )
 
-      assert_equal 'harness', suite.send(:benchmark_harness_for, 'custom_harness_bench')
-      assert_equal 'harness-ractor', suite.send(:benchmark_harness_for, 'simple')
+      assert_equal 'default', suite.send(:benchmark_harness_for, 'custom_harness_bench')
+      assert_equal 'ractor', suite.send(:benchmark_harness_for, 'simple')
     end
 
     it 'ignores default_harness when harness is explicit' do
@@ -162,7 +162,7 @@ describe BenchmarkSuite do
         categories: ['ractor'],
         name_filters: [],
         out_path: @out_path,
-        harness: 'harness-ractor'
+        harness: 'ractor'
       )
 
       assert_equal true, suite.send(:ractor_category_run?)
@@ -173,7 +173,7 @@ describe BenchmarkSuite do
         categories: ['micro'],
         name_filters: [],
         out_path: @out_path,
-        harness: 'harness'
+        harness: 'default'
       )
 
       assert_equal false, suite.send(:ractor_category_run?)
@@ -186,7 +186,7 @@ describe BenchmarkSuite do
         categories: ['micro'],
         name_filters: [],
         out_path: @out_path,
-        harness: 'harness'
+        harness: 'default'
       )
       suite.stub :linux?, true do
         suite.stub :setarch_prefix, [] do
@@ -212,7 +212,7 @@ describe BenchmarkSuite do
         categories: [],
         name_filters: ['simple'],
         out_path: @out_path,
-        harness: 'harness',
+        harness: 'default',
         no_pinning: true
       )
 
@@ -234,7 +234,7 @@ describe BenchmarkSuite do
         categories: [],
         name_filters: ['simple'],
         out_path: @out_path,
-        harness: 'harness',
+        harness: 'default',
         no_pinning: true
       )
 
@@ -257,7 +257,7 @@ describe BenchmarkSuite do
         categories: [],
         name_filters: ['simple'],
         out_path: @out_path,
-        harness: 'harness',
+        harness: 'default',
         no_pinning: true
       )
 
@@ -278,7 +278,7 @@ describe BenchmarkSuite do
         categories: [],
         name_filters: ['failing'],
         out_path: @out_path,
-        harness: 'harness',
+        harness: 'default',
         no_pinning: true
       )
 
@@ -309,7 +309,7 @@ describe BenchmarkSuite do
         categories: [],
         name_filters: ['subdir'],
         out_path: @out_path,
-        harness: 'harness',
+        harness: 'default',
         no_pinning: true
       )
 
@@ -323,6 +323,7 @@ describe BenchmarkSuite do
     end
 
     it 'handles ractor category with ractor benchmarks' do
+      skip 'target Ruby has no Ractor' unless defined?(Ractor)
       # Create a ractor benchmark
       File.write('benchmarks/ractor_test.rb', <<~RUBY)
         require 'json'
@@ -344,7 +345,7 @@ describe BenchmarkSuite do
         categories: ['ractor'],
         name_filters: [],
         out_path: @out_path,
-        harness: 'harness',
+        harness: 'default',
         no_pinning: true
       )
 
@@ -357,9 +358,12 @@ describe BenchmarkSuite do
       assert_includes bench_data, 'ractor_test'
       refute_includes bench_data, 'simple'
       assert_empty bench_failures
+
+
     end
 
     it 'runs each Ractor count in its own process and merges the results' do
+      skip 'target Ruby has no Ractor' unless defined?(Ractor)
       File.write('benchmarks/per_count.rb', <<~RUBY)
         require 'json'
         count = ENV.fetch('RUBY_BENCH_RACTORS')
@@ -377,7 +381,7 @@ describe BenchmarkSuite do
       custom_json_path = File.join(@out_path, 'nested', 'custom_result.json')
       ENV['RESULT_JSON_PATH'] = custom_json_path
       ENV['RUBY_BENCH_RACTORS'] = '0,2,1'
-      suite = BenchmarkSuite.new(categories: ['ractor'], name_filters: [], out_path: @out_path, harness: 'harness', no_pinning: true)
+      suite = BenchmarkSuite.new(categories: ['ractor'], name_filters: [], out_path: @out_path, harness: 'default', no_pinning: true)
 
       bench_data, bench_failures = nil
       capture_io do
@@ -399,6 +403,7 @@ describe BenchmarkSuite do
     end
 
     it 'reports a Ractor benchmark as failed when one count fails' do
+      skip 'target Ruby has no Ractor' unless defined?(Ractor)
       File.write('benchmarks/fails_at_two.rb', <<~RUBY)
         require 'json'
         count = ENV.fetch('RUBY_BENCH_RACTORS')
@@ -408,7 +413,7 @@ describe BenchmarkSuite do
       File.write('benchmarks.yml', YAML.dump('fails_at_two' => { 'category' => 'other', 'ractor' => true }))
 
       ENV['RUBY_BENCH_RACTORS'] = '0,2,4'
-      suite = BenchmarkSuite.new(categories: ['ractor'], name_filters: [], out_path: @out_path, harness: 'harness', no_pinning: true)
+      suite = BenchmarkSuite.new(categories: ['ractor'], name_filters: [], out_path: @out_path, harness: 'default', no_pinning: true)
 
       bench_data, bench_failures = nil
       capture_io do
@@ -423,6 +428,7 @@ describe BenchmarkSuite do
     end
 
     it 'skips count 0 for a scenario benchmark unless it is the only count' do
+      skip 'target Ruby has no Ractor' unless defined?(Ractor)
       File.write('benchmarks/scenario.rb', <<~RUBY)
         require 'json'
         count = ENV.fetch('RUBY_BENCH_RACTORS')
@@ -430,7 +436,7 @@ describe BenchmarkSuite do
         File.write(ENV['RESULT_JSON_PATH'], JSON.generate('warmup' => [], 'bench' => [count.to_f], 'rss' => 1))
       RUBY
       File.write('benchmarks.yml', YAML.dump('scenario' => { 'category' => 'other', 'ractor' => true, 'ractor_scenario' => true }))
-      suite = BenchmarkSuite.new(categories: ['ractor'], name_filters: [], out_path: @out_path, harness: 'harness', no_pinning: true)
+      suite = BenchmarkSuite.new(categories: ['ractor'], name_filters: [], out_path: @out_path, harness: 'default', no_pinning: true)
 
       ENV['RUBY_BENCH_RACTORS'] = '0,1,2'
       bench_data, bench_failures = nil
@@ -461,7 +467,7 @@ describe BenchmarkSuite do
         categories: [],
         name_filters: ['simple'],
         out_path: @out_path,
-        harness: 'harness',
+        harness: 'default',
         pre_init: pre_init_file,
         no_pinning: true
       )
@@ -483,7 +489,7 @@ describe BenchmarkSuite do
         categories: [],
         name_filters: ['simple'],
         out_path: @out_path,
-        harness: 'harness',
+        harness: 'default',
         pre_init: pre_init_file,
         no_pinning: true
       )
@@ -503,7 +509,7 @@ describe BenchmarkSuite do
         categories: [],
         name_filters: ['simple'],
         out_path: @out_path,
-        harness: 'harness',
+        harness: 'default',
         pre_init: pre_init_file,
         no_pinning: true
       )
@@ -513,6 +519,29 @@ describe BenchmarkSuite do
       assert_equal 'setup', suite.pre_init[3].to_s
     end
 
+    it 'runs pre_init before the Ractor harness freezes main' do
+      skip 'target Ruby has no Ractor' unless defined?(Ractor)
+      pre_init_file = File.join(@temp_dir, 'pre_init.rb')
+      File.write(pre_init_file, "@pre_init_ran = true\n")
+      File.write('benchmarks/ractor_pre_init.rb', <<~RUBY)
+        require 'json'
+        File.write(ENV['RESULT_JSON_PATH'], JSON.generate('warmup' => [], 'bench' => [1.0], 'pre_init_ran' => @pre_init_ran))
+      RUBY
+      File.write('benchmarks.yml', YAML.dump('ractor_pre_init' => { 'category' => 'other', 'ractor' => true, 'default_harness' => 'ractor' }))
+      suite = BenchmarkSuite.new(categories: ['ractor'], name_filters: [], out_path: @out_path, harness: 'default', pre_init: pre_init_file, no_pinning: true)
+
+      ENV['RUBY_BENCH_RACTORS'] = '1'
+      bench_data, bench_failures = nil
+      capture_io do
+        bench_data, bench_failures = suite.run(ruby: [RbConfig.ruby], ruby_description: 'ruby 3.2.0')
+      end
+
+      assert_empty bench_failures
+      assert_equal true, bench_data['ractor_pre_init']['pre_init_ran']
+    ensure
+      ENV.delete('RUBY_BENCH_RACTORS')
+    end
+
     it 'exits when pre_init file does not exist' do
       output = capture_io do
         assert_raises(SystemExit) do
@@ -520,7 +549,7 @@ describe BenchmarkSuite do
             categories: [],
             name_filters: ['simple'],
             out_path: @out_path,
-            harness: 'harness',
+            harness: 'default',
             pre_init: '/nonexistent/file.rb',
             no_pinning: true
           )
@@ -536,7 +565,7 @@ describe BenchmarkSuite do
             categories: [],
             name_filters: ['simple'],
             out_path: @out_path,
-            harness: 'harness',
+            harness: 'default',
             pre_init: @temp_dir,
             no_pinning: true
           )
@@ -550,7 +579,7 @@ describe BenchmarkSuite do
         categories: [],
         name_filters: ['simple'],
         out_path: @out_path,
-        harness: 'harness',
+        harness: 'default',
         no_pinning: true
       )
 
@@ -569,7 +598,7 @@ describe BenchmarkSuite do
         categories: [],
         name_filters: ['simple'],
         out_path: @out_path,
-        harness: 'harness',
+        harness: 'default',
         no_pinning: true
       )
 
@@ -590,7 +619,7 @@ describe BenchmarkSuite do
         categories: [],
         name_filters: ['simple'],
         out_path: @out_path,
-        harness: 'harness',
+        harness: 'default',
         no_pinning: true
       )
 
@@ -624,7 +653,7 @@ describe BenchmarkSuite do
         categories: [],
         name_filters: ['bench_a'],
         out_path: @out_path,
-        harness: 'harness',
+        harness: 'default',
         no_pinning: true
       )
 
@@ -644,7 +673,7 @@ describe BenchmarkSuite do
         categories: [],
         name_filters: ['simple'],
         out_path: @out_path,
-        harness: 'harness',
+        harness: 'default',
         no_pinning: true
       )
 
@@ -659,7 +688,7 @@ describe BenchmarkSuite do
         categories: [],
         name_filters: ['simple'],
         out_path: @out_path,
-        harness: 'harness',
+        harness: 'default',
         no_pinning: true
       )
 
@@ -673,7 +702,7 @@ describe BenchmarkSuite do
         categories: [],
         name_filters: ['simple'],
         out_path: @out_path,
-        harness: 'harness',
+        harness: 'default',
         no_pinning: true
       )
 
@@ -688,7 +717,7 @@ describe BenchmarkSuite do
       assert_includes result[:data], 'warmup'
       assert_includes result[:data], 'bench'
       assert_includes result[:data], 'rss'
-      assert_equal 'harness', result[:harness]
+      assert_equal 'default', result[:harness]
       assert_nil result[:failure]
     end
 
@@ -699,7 +728,7 @@ describe BenchmarkSuite do
         categories: [],
         name_filters: ['failing'],
         out_path: @out_path,
-        harness: 'harness',
+        harness: 'default',
         no_pinning: true
       )
 
@@ -712,7 +741,7 @@ describe BenchmarkSuite do
       assert_equal 'failing', result[:name]
       assert_nil result[:data]
       assert_equal 1, result[:failure]
-      assert_equal 'harness', result[:harness]
+      assert_equal 'default', result[:harness]
     end
 
     it 'produces same data as run for the same benchmark' do
@@ -720,7 +749,7 @@ describe BenchmarkSuite do
         categories: [],
         name_filters: ['simple'],
         out_path: @out_path,
-        harness: 'harness',
+        harness: 'default',
         no_pinning: true
       )
 
@@ -738,6 +767,30 @@ describe BenchmarkSuite do
       assert_equal run_data['simple'].keys.sort, single_result[:data].keys.sort
     end
 
+    it 'loads the selected harness when HARNESS is set in the environment' do
+      loader_path = File.expand_path('../lib/harness/loader', __dir__)
+      harness_dir = File.expand_path('../harness', __dir__)
+      File.write('benchmarks/harness_probe.rb', <<~RUBY)
+        require #{loader_path.inspect}
+        require 'json'
+        harnesses = $LOADED_FEATURES.filter_map { |f| File.basename(f, '.rb') if File.dirname(f) == #{harness_dir.inspect} }
+        File.write(ENV['RESULT_JSON_PATH'], JSON.generate('warmup' => [], 'bench' => [0.001], 'harnesses' => harnesses))
+      RUBY
+      suite = BenchmarkSuite.new(categories: [], name_filters: ['harness_probe'], out_path: @out_path, harness: 'default', harness_explicit: true, no_pinning: true)
+
+      result = nil
+      ENV['HARNESS'] = 'once'
+      begin
+        capture_io do
+          result = suite.run_benchmark(suite.benchmarks.first, ruby: [RbConfig.ruby], ruby_description: 'ruby 3.2.0')
+        end
+      ensure
+        ENV.delete('HARNESS')
+      end
+
+      assert_equal ['default'], result[:data]['harnesses']
+    end
+
     describe 'on Windows' do
       before do
         File.write('benchmarks/pin_cpu.rb', <<~RUBY)
@@ -747,7 +800,7 @@ describe BenchmarkSuite do
       end
 
       def pin_cpu_seen_by_benchmark(ruby_description: 'ruby 3.2.0', **options)
-        suite = BenchmarkSuite.new(categories: [], name_filters: ['pin_cpu'], out_path: @out_path, harness: 'harness', **options)
+        suite = BenchmarkSuite.new(categories: [], name_filters: ['pin_cpu'], out_path: @out_path, harness: 'default', **options)
         result = nil
         suite.stub(:windows?, true) do
           suite.stub(:linux?, false) do
@@ -800,7 +853,7 @@ describe BenchmarkSuite do
         categories: ['micro'],
         name_filters: [],
         out_path: @out_path,
-        harness: 'harness',
+        harness: 'default',
         no_pinning: true
       )
 

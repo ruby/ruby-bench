@@ -29,7 +29,7 @@
 # Ported to Ruby from the V8/WebKit JavaScript benchmark suite.
 # https://browserbench.org/JetStream2.1/Octane/splay.js
 
-require_relative '../harness/loader'
+require_relative '../lib/harness/loader'
 
 class SplayTree
   class Node

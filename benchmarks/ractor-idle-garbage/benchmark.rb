@@ -6,7 +6,7 @@
 
 Warning[:experimental] = false
 
-require_relative "../../harness/loader"
+require_relative "../../lib/harness/loader"
 
 IDLE_GARBAGE_ITEMS = Integer(ENV.fetch("RACTOR_IDLE_GARBAGE_ITEMS", 100_000))
 

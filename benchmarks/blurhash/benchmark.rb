@@ -172,7 +172,7 @@ module Blurhash
   # :startdoc:
 end
 
-require_relative "../../harness/loader"
+require_relative "../../lib/harness/loader"
 
 FILE = File.join(__dir__, "test.bin")
 

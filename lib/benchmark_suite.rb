@@ -18,7 +18,8 @@ class BenchmarkSuite
   BENCHMARKS_DIR = "benchmarks"
   RACTOR_CATEGORY = ["ractor"].freeze
   RACTOR_ONLY_CATEGORY = ["ractor-only"].freeze
-  RACTOR_HARNESS = "harness-ractor"
+  RACTOR_HARNESS = "ractor"
+  HARNESS_DIR = File.expand_path("../harness", __dir__)
   PIN_CPU_ENV = "RUBY_BENCH_PIN_CPU"
 
   attr_reader :categories, :name_filters, :excludes, :out_path, :harness, :harness_explicit, :pre_init, :no_pinning, :force_pinning, :bench_dir
@@ -207,13 +208,13 @@ class BenchmarkSuite
     # Set up the benchmarking command
     cmd = (cmd_prefix + [
       *ruby,
-      "-I", benchmark_harness,
       *pre_init,
+      *harness_args_for(benchmark_harness),
       script_path,
     ].compact).map(&:to_s)
 
     # Do the benchmarking
-    result = BenchmarkRunner.check_call(cmd, env: env, raise_error: false, quiet: quiet)
+    result = BenchmarkRunner.check_call(cmd, env: env.merge("HARNESS" => benchmark_harness), raise_error: false, quiet: quiet)
     result[:command] = cmd.shelljoin
     result
   ensure
@@ -327,6 +328,17 @@ class BenchmarkSuite
     return [] unless system(*prefix, "true", out: File::NULL, err: File::NULL)
 
     prefix
+  end
+
+  # If harness is 'default', use default (no -r needed)
+  # Otherwise use -r to load the specific harness file with full path
+  def harness_args_for(benchmark_harness)
+    @harness_args ||= {}
+    @harness_args[benchmark_harness] ||= if benchmark_harness == "default"
+      []
+    else
+      ["-r", File.join(HARNESS_DIR, benchmark_harness)]
+    end
   end
 
   # Resolve the pre_init file path into a form that can be required

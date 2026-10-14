@@ -1,5 +1,5 @@
 require 'benchmark'
-require_relative "../harness/harness-common"
+require_relative "../lib/harness"
 
 # Minimum number of benchmarking iterations
 MAX_BENCH_ITRS = Integer(ENV.fetch('MAX_BENCH_ITRS', 1000))

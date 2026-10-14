@@ -6,7 +6,7 @@
 
 Warning[:experimental] = false
 
-require_relative "../../harness/loader"
+require_relative "../../lib/harness/loader"
 
 BACKLOG_MESSAGES = Integer(ENV.fetch("RACTOR_BACKLOG_MESSAGES", 20_000))
 BACKLOG_GATE_SLEEP = Float(ENV.fetch("RACTOR_BACKLOG_GATE_SLEEP", 1.0))

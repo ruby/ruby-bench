@@ -1,4 +1,4 @@
-require_relative '../harness/loader'
+require_relative '../lib/harness/loader'
 
 def nq_solve(n)
   a = Array.new(n, -1)

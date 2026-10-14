@@ -62,7 +62,7 @@ end
 def run_benchmark(bench_name, no_yjit, logs_path, run_time, ruby_version, metadata)
   bench_dir = 'benchmarks'
   entry = metadata[bench_name] || {}
-  harness = entry.fetch('default_harness', 'harness')
+  harness = entry.fetch('default_harness', 'default')
 
   script_path = File.join(bench_dir, bench_name, 'benchmark.rb')
   if not File.exist?(script_path)
@@ -104,7 +104,7 @@ def run_benchmark(bench_name, no_yjit, logs_path, run_time, ruby_version, metada
   cmd = [
     'ruby',
     *test_options,
-    "-I#{harness}",
+    "-r#{File.expand_path("harness/#{harness}", __dir__)}",
     script_path,
   ].compact
   cmd_str = cmd.shelljoin
@@ -225,7 +225,7 @@ else
   metadata.each do |name, entry|
     category = entry.fetch('category', 'other')
     is_ractor_only = entry['ractor_only'] ||
-      (entry['ractor'] && entry['default_harness'] == 'harness-ractor')
+      (entry['ractor'] && entry['default_harness'] == 'ractor')
     if args.categories.include?(category) && !is_ractor_only
       bench_names << name
     end

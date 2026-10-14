@@ -1,4 +1,4 @@
-require_relative '../harness/loader'
+require_relative '../lib/harness/loader'
 
 def sd_genmat
   mr = Array.new(324) { [] }

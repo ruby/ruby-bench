@@ -11,7 +11,7 @@
 # Tree construction uses both top-down (populate — creates old-to-young pointers,
 # exercises write barriers) and bottom-up (make_tree — young-to-young only).
 
-require_relative '../harness/loader'
+require_relative '../lib/harness/loader'
 
 class GCBench
   class Node

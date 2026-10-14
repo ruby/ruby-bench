@@ -6,7 +6,7 @@
 
 Warning[:experimental] = false
 
-require_relative '../../harness/loader'
+require_relative '../../lib/harness/loader'
 
 def frequency(seq, length)
   frequencies = Hash.new(0)

@@ -152,8 +152,12 @@ jobs:
         with:
           ruby-version: head
 
-      - name: Test run_once.sh
-        run: ./run_once.sh --yjit-stats benchmarks/railsbench/benchmark.rb
+      - name: Run a benchmark once directly with Ruby
+        run: ruby --yjit-stats benchmarks/railsbench/benchmark.rb
+        env:
+          WARMUP_ITRS: '0'
+          MIN_BENCH_ITRS: '1'
+          MIN_BENCH_TIME: '0'
 
   test-windows:
     runs-on: windows-latest
