@@ -279,6 +279,10 @@ class BenchmarkSuite
 
   # Set up the base command with CPU pinning if needed
   def base_cmd(ruby_description, benchmark_name)
+    ENV["RUBY_BENCH_PREFIX_COMMAND"]&.tap do |var|
+      return [var] if var
+    end
+
     if linux?
       cmd = setarch_prefix
       cmd.concat(["taskset", "-c", "#{pinned_cpu}"]) if pin?(ruby_description, benchmark_name)
