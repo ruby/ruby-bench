@@ -458,7 +458,8 @@ The `--ractor-gc` option of `run_benchmarks.rb` collects Ractor-local GC
 metrics for benchmarks that use the Ractor harness (`--category ractor`),
 in both the per-worker mode and scenario mode.
 The target must use Ruby 4.1 or newer with per-Ractor global GC attribution
-([ruby/ruby#19147](https://github.com/ruby/ruby/pull/19147)); older targets
+through `GC.stat(:global_gc_invocation_count)` and `GC.stat(process: true)`
+([ruby/ruby#19383](https://github.com/ruby/ruby/pull/19383)); older targets
 fail before warmup.
 
 ```sh
@@ -489,9 +490,11 @@ data when it is zero or `N/A` in every row.
 * Tables marked `worker sum` add the Ractor-local counters and GC times of
   the sampled workers of each iteration. `GCs/iter` is the sum of `minor/iter`,
   `major/iter`, and `global/iter`; a global cycle counts under `global` on
-  the Ractor that initiated it, not under `major`. Single-executable reports
-  also show `GC ms/worker`, which divides each iteration's worker-sum GC
-  time by its sampled worker count, then averages.
+  the Ractor that initiated it (`GC.stat(:global_gc_invocation_count)`), not
+  under `major`. The worker `GCs/iter` excludes global cycles that other
+  Ractors started, so each cycle counts once in the sum. Single-executable
+  reports also show `GC ms/worker`, which divides each iteration's worker-sum
+  GC time by its sampled worker count, then averages.
 * `compacts*` shows the main Ractor's
   `GC.stat(:compact_count)` delta. Every global compacting cycle increments
   it in every object space, so it is not summed across workers.

@@ -30,7 +30,7 @@ def run_benchmark(_num_itrs_hint, **, &block)
 
   has_marking = GC.stat.key?(:marking_time)
   has_sweeping = GC.stat.key?(:sweeping_time)
-  has_global_gc = GCStats.stat_available?(:global_gc_count)
+  has_global_gc = GCStats.stat_available?(:global_gc_invocation_count)
 
   header = "itr:   time"
   header << "   marking" if has_marking
@@ -44,7 +44,6 @@ def run_benchmark(_num_itrs_hint, **, &block)
 
   begin
     gc_before = GCStats.snapshot
-    global_gc_before = GC.stat(:global_gc_count) if has_global_gc
 
     time = realtime(&block)
     num_itrs += 1
@@ -57,7 +56,7 @@ def run_benchmark(_num_itrs_hint, **, &block)
     count_delta = sample["gc_count"]
     major_delta = sample["gc_major_count"]
     minor_delta = sample["gc_minor_count"]
-    global_delta = has_global_gc ? GC.stat(:global_gc_count) - global_gc_before : nil
+    global_delta = sample["gc_global_count"]
     ratio_str = minor_delta > 0 ? "%.2f" % (major_delta.to_f / minor_delta) : "-"
 
     itr_str = "%4s %6s" % ["##{num_itrs}:", "#{time_ms}ms"]
