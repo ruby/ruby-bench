@@ -180,7 +180,7 @@ describe 'Ractor GC harness' do
 
     _out, attr_err, attr_status = Open3.capture3(CLEAN_ENV, @ruby, '--disable-gems', '-r', File.join(ROOT, 'lib', 'gc_stats'), '-e', 'exit(GCStats.global_gc_attributed? ? 0 : 1)')
     unless attr_status.success?
-      detail = "target #{@ruby} lacks per-Ractor global GC attribution (ruby/ruby#19147): #{attr_err.strip}"
+      detail = "target #{@ruby} lacks per-Ractor global GC attribution (ruby/ruby#19383): #{attr_err.strip}"
       flunk("RACTOR_GC_TEST_RUBY #{detail}") if @explicit_target
       skip("test ruby #{detail}")
     end
@@ -307,9 +307,9 @@ describe 'Ractor GC harness' do
       worker = Ractor.new do
         GC.disable
         Ractor.receive
-        before = GC.stat(:count, scope: :ractor)
+        before = GC.stat(:count)
         10.times { GC.start(full_mark: false, immediate_sweep: true, global: false) }
-        Ractor.main.send(GC.stat(:count, scope: :ractor) - before)
+        Ractor.main.send(GC.stat(:count) - before)
         Ractor.receive
       end
 
@@ -510,7 +510,7 @@ describe 'Ractor GC harness' do
   it 'fails before warmup when the target lacks per-Ractor global GC attribution' do
     run_workload(UNATTRIBUTED_GLOBAL_BODY) do |stdout, stderr, status, result_path|
       assert status.success?, "probe script itself failed:\n#{stdout}\n#{stderr}"
-      assert_includes stdout, 'raised: Ractor GC metrics require per-Ractor global GC attribution (ruby/ruby#19147)'
+      assert_includes stdout, 'raised: Ractor GC metrics require per-Ractor global GC attribution (ruby/ruby#19383)'
       assert_includes stdout, 'workload_ran=false'
       refute File.exist?(result_path), 'no results file may be written for an unsupported target'
     end

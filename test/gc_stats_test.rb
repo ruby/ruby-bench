@@ -54,6 +54,19 @@ describe GCStats do
       assert_equal 250_000, GCStats.delta(before, after)['gc_total_time_ns']
     end
 
+    it 'counts only the global GCs that this Ractor started' do
+      before = snapshot(count: 10, major: 2, minor: 5)
+      before[:stat].merge!(global_gc_count: 3, global_gc_invocation_count: 1)
+      after = snapshot(count: 16, major: 2, minor: 6)
+      after[:stat].merge!(global_gc_count: 8, global_gc_invocation_count: 2)
+
+      sample = GCStats.delta(before, after)
+
+      assert_equal 2, sample['gc_count']
+      assert_equal 1, sample['gc_global_count']
+      assert_equal sample['gc_major_count'] + sample['gc_minor_count'] + sample['gc_global_count'], sample['gc_count']
+    end
+
     it 'keeps heap gauge deltas signed and omits heaps/keys absent from the before snapshot' do
       before = snapshot(count: 0, major: 0, minor: 0, heap: {
         0 => { slot_size: 40, heap_eden_slots: 100, heap_live_slots: 50 }
@@ -178,8 +191,8 @@ describe GCStats do
   end
 
   describe '.global_gc_attributed?' do
-    it 'is false when GC.stat lacks the global_gc_count key' do
-      skip 'this build has the key; attribution depends on ruby/ruby#19147' if GCStats.stat_available?(:global_gc_count)
+    it 'is false when GC.stat lacks the global_gc_invocation_count key' do
+      skip 'this build has the key; attribution depends on ruby/ruby#19383' if GCStats.stat_available?(:global_gc_invocation_count)
       refute GCStats.global_gc_attributed?
     end
   end

@@ -3,9 +3,8 @@
 module GCStats
   module_function
 
-  SCALAR_FIELDS = [
-    ["gc_count", :count],
-    ["gc_global_count", :global_gc_count],
+  STAT_FIELDS = [
+    ["gc_global_count", :global_gc_invocation_count],
     ["gc_major_count", :major_gc_count],
     ["gc_minor_count", :minor_gc_count],
     ["gc_marking_time", :marking_time],
@@ -14,7 +13,7 @@ module GCStats
 
   TOTAL_TIME_FIELD = "gc_total_time_ns"
 
-  SCALAR_FIELD_NAMES = (SCALAR_FIELDS.map(&:first) + [TOTAL_TIME_FIELD]).freeze
+  SCALAR_FIELD_NAMES = (["gc_count"] + STAT_FIELDS.map(&:first) + [TOTAL_TIME_FIELD]).freeze
 
   RACTOR_SERIES = {
     "gc_count_bench" => "gc_count",
@@ -44,11 +43,15 @@ module GCStats
       Warning[:experimental] = false
       $stderr.reopen(File::NULL, "w")
       begin
-        main_before = GC.stat(:global_gc_count)
-        process_before = GC.stat(:global_gc_count, scope: :global)
-        Ractor.new { GC.start(full_mark: true, immediate_mark: true, immediate_sweep: true, global: true) }.join
-        attributed = GC.stat(:global_gc_count) == main_before
-        ran = GC.stat(:global_gc_count, scope: :global) > process_before
+        main_before = GC.stat(:global_gc_invocation_count)
+        process_before = GC.stat(:global_gc_count, process: true)
+        started = Ractor.new do
+          before = GC.stat(:global_gc_invocation_count)
+          GC.start(full_mark: true, immediate_mark: true, immediate_sweep: true, global: true)
+          GC.stat(:global_gc_invocation_count) - before
+        end.value
+        attributed = started == 1 && GC.stat(:global_gc_invocation_count) == main_before
+        ran = GC.stat(:global_gc_count, process: true) > process_before
         exit!(attributed && ran ? 0 : 1)
       rescue StandardError
         exit!(2)
@@ -66,7 +69,7 @@ module GCStats
       raise NotImplementedError, "Ractor GC metrics require GC.total_time and GC.measure_total_time="
     end
     unless global_gc_attributed?
-      raise NotImplementedError, "Ractor GC metrics require per-Ractor global GC attribution (ruby/ruby#19147)"
+      raise NotImplementedError, "Ractor GC metrics require per-Ractor global GC attribution (ruby/ruby#19383)"
     end
   end
 
@@ -93,17 +96,27 @@ module GCStats
     after - before if before.is_a?(Numeric) && after.is_a?(Numeric)
   end
 
+  # :count includes global GCs that other Ractors started. Count only the ones
+  # this Ractor started, so that sums across Ractors count each GC once.
+  def started_gc_count(stat)
+    count, swept, started = stat.values_at(:count, :global_gc_count, :global_gc_invocation_count)
+    return count unless [count, swept, started].all?(Numeric)
+
+    count - swept + started
+  end
+
   def snapshot
     {
-      stat: GC.stat(scope: :ractor),
+      stat: GC.stat,
       heap: heap_snapshot,
       total_time_ns: GC.respond_to?(:total_time) ? GC.total_time : nil,
     }
   end
 
   def delta(before, after)
-    sample = SCALAR_FIELDS.each_with_object({}) do |(name, key), result|
-      result[name] = numeric_delta(before[:stat][key], after[:stat][key])
+    sample = { "gc_count" => numeric_delta(started_gc_count(before[:stat]), started_gc_count(after[:stat])) }
+    STAT_FIELDS.each do |name, key|
+      sample[name] = numeric_delta(before[:stat][key], after[:stat][key])
     end
     sample[TOTAL_TIME_FIELD] = numeric_delta(before[:total_time_ns], after[:total_time_ns])
     sample["gc_stat_heap_delta"] = heap_delta(before[:heap], after[:heap])
