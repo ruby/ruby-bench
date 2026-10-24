@@ -239,10 +239,13 @@ class ZjitDiff
         next nil if times.empty?
         gc_times = gc_seconds_per_iteration(ruby, bench_name, times.size)
         next nil unless gc_times
+        exits = side_exits_per_iteration(ruby, bench_name, times.size)
+        next nil unless exits
         without_gc = times.zip(gc_times).map { |time, gc| time - gc }
         gc_avg = gc_times.sum / gc_times.size
         { ruby: ruby, avg: without_gc.sum / without_gc.size, min: without_gc.min,
-          gc_avg: gc_avg, gc_pct: gc_avg / (times.sum / times.size) * 100 }
+          gc_avg: gc_avg, gc_pct: gc_avg / (times.sum / times.size) * 100,
+          side_exit_avg: exits.sum / exits.size }
       end.compact
 
       # Without the baseline's GC times there is nothing to compare against
@@ -273,6 +276,13 @@ class ZjitDiff
     series.transpose.map { |ms| ms.sum / 1000.0 }
   end
 
+  def side_exits_per_iteration(ruby, bench_name, size)
+    bench_data = @raw_data.dig(ruby, bench_name) || {}
+    series = bench_data["side_exit_count_bench"]
+    return nil unless series.size == size
+    series
+  end
+
   def print_timing_rows(stats)
     baseline = stats.first
     fastest = stats.min_by { |s| s[:avg] }
@@ -282,13 +292,16 @@ class ZjitDiff
       is_fastest = s == fastest && stats.size > 1
       marker = is_fastest ? '★' : ' '
       gc = s[:gc_avg] ? format("  gc: %7.3fs (%3.0f%%)", s[:gc_avg], s[:gc_pct]) : ''
+      if (side_exit_avg = s[:side_exit_avg])
+        side_exit_avg = sprintf("side_exit_avg: %d", side_exit_avg)
+      end
       if s == baseline
-        printf "    %-20s avg: %7.3fs  min: %7.3fs%s  %s (baseline)\n",
-               s[:ruby], s[:avg], s[:min], gc, marker
+        printf "    %-20s avg: %7.3fs  min: %7.3fs%s %s %s (baseline)\n",
+               s[:ruby], s[:avg], s[:min], gc, side_exit_avg, marker
       else
         slower_faster = diff_pct > 0 ? 'slower' : 'faster'
-        printf "    %-20s avg: %7.3fs  min: %7.3fs%s  %s %+7.1f%% (%s)\n",
-               s[:ruby], s[:avg], s[:min], gc, marker, diff_pct, slower_faster
+        printf "    %-20s avg: %7.3fs  min: %7.3fs%s %s %s %+7.1f%% (%s)\n",
+               s[:ruby], s[:avg], s[:min], gc, side_exit_avg, marker, diff_pct, slower_faster
       end
     end
   end
