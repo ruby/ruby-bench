@@ -240,12 +240,11 @@ class ZjitDiff
         gc_times = gc_seconds_per_iteration(ruby, bench_name, times.size)
         next nil unless gc_times
         exits = side_exits_per_iteration(ruby, bench_name, times.size)
-        next nil unless exits
         without_gc = times.zip(gc_times).map { |time, gc| time - gc }
         gc_avg = gc_times.sum / gc_times.size
         { ruby: ruby, avg: without_gc.sum / without_gc.size, min: without_gc.min,
           gc_avg: gc_avg, gc_pct: gc_avg / (times.sum / times.size) * 100,
-          side_exit_avg: exits.sum / exits.size }
+          side_exit_avg: exits && exits.sum / exits.size }
       end.compact
 
       # Without the baseline's GC times there is nothing to compare against
@@ -276,10 +275,12 @@ class ZjitDiff
     series.transpose.map { |ms| ms.sum / 1000.0 }
   end
 
+  # Side exits in each benchmark iteration, or nil if the results don't have them
+  # (e.g. recorded with a harness-gc that predates side exit tracking).
   def side_exits_per_iteration(ruby, bench_name, size)
     bench_data = @raw_data.dig(ruby, bench_name) || {}
     series = bench_data["side_exit_count_bench"]
-    return nil unless series.size == size
+    return nil unless series.is_a?(Array) && series.size == size
     series
   end
 
