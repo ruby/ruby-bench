@@ -83,7 +83,7 @@ def run_benchmark(_num_itrs_hint, **, &block)
     total_time += time
 
     last_side_exit_count = side_exit_counts.last || 0
-    side_exit_counts << RubyVM::ZJIT.stats(:side_exit_count) - last_side_exit_count
+    side_exit_counts << (RubyVM::ZJIT.stats(:side_exit_count) || 0) - last_side_exit_count
   end until num_itrs >= WARMUP_ITRS + MIN_BENCH_ITRS and total_time >= MIN_BENCH_TIME
 
   warmup_range = 0...WARMUP_ITRS
