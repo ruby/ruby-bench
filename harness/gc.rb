@@ -17,6 +17,7 @@ end
 def run_benchmark(_num_itrs_hint, **, &block)
   times = []
   side_exit_counts = []
+  side_exit_total = RubyVM::ZJIT.stats(:side_exit_count) || 0
   rss_samples = []
   marking_times = []
   sweeping_times = []
@@ -82,8 +83,9 @@ def run_benchmark(_num_itrs_hint, **, &block)
     gc_total_time_ns << sample["gc_total_time_ns"]
     total_time += time
 
-    last_side_exit_count = side_exit_counts.last || 0
-    side_exit_counts << (RubyVM::ZJIT.stats(:side_exit_count) || 0) - last_side_exit_count
+    side_exit_now = RubyVM::ZJIT.stats(:side_exit_count) || 0
+    side_exit_counts << side_exit_now - side_exit_total
+    side_exit_total = side_exit_now
   end until num_itrs >= WARMUP_ITRS + MIN_BENCH_ITRS and total_time >= MIN_BENCH_TIME
 
   warmup_range = 0...WARMUP_ITRS
