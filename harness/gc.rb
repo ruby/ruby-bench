@@ -125,13 +125,13 @@ def run_benchmark(_num_itrs_hint, **, &block)
 
     if has_marking
       mark_bench = marking_times[bench_range]
-      avg_mark = mark_bench.sum / mark_bench.size
+      avg_mark = mark_bench.sum.fdiv(mark_bench.size)
       puts "Average marking time: %.1fms" % avg_mark
     end
 
     if has_sweeping
       sweep_bench = sweeping_times[bench_range]
-      avg_sweep = sweep_bench.sum / sweep_bench.size
+      avg_sweep = sweep_bench.sum.fdiv(sweep_bench.size)
       puts "Average sweeping time: %.1fms" % avg_sweep
     end
   end
