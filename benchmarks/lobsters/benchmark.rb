@@ -15,6 +15,9 @@ file_db = SQLite3::Database.new('db/production.sqlite3')
 b = SQLite3::Backup.new(mem_db, 'main', file_db, 'main')
 b.step(-1) # import until finished
 b.finish # destroy the Backup object
+# The fixture has no planner statistics. Without them, SQLite misplans the
+# hottest-stories query behind /, /recent and /rss.
+mem_db.execute("ANALYZE")
 
 app = Rails.application
 generator = RouteGenerator.new(app)
