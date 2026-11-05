@@ -800,6 +800,46 @@ describe ResultsTableBuilder do
       assert_nil gc_tables
     end
 
+    it 'compares the marking time of one minor and one major collection' do
+      blob = ->(minor, major, minor_times, major_times) do
+        {
+          'warmup' => [], 'bench' => [0.1, 0.1], 'rss' => 10,
+          'gc_marking_time_bench' => [10.0, 10.0], 'gc_sweeping_time_bench' => [1.0, 1.0],
+          'gc_major_count_bench' => major, 'gc_minor_count_bench' => minor,
+          'gc_minor_marking_times_bench' => minor_times, 'gc_major_marking_times_bench' => major_times,
+        }
+      end
+      base = blob.call([2, 1], [1, 0], [[1.0, 3.0], [2.0]], [[8.0], []])
+      exp = blob.call([1, 1], [0, 1], [[0.5], [1.5]], [[], [16.0]])
+      partial = blob.call([1, 1], [0, 1], [nil, [1.5]], [nil, [16.0]])
+      builder = ResultsTableBuilder.new(
+        executable_names: ['ruby-base', 'ruby-exp', 'ruby-partial'],
+        bench_data: { 'ruby-base' => { 'fib' => base }, 'ruby-exp' => { 'fib' => exp }, 'ruby-partial' => { 'fib' => partial } }
+      )
+
+      _table, _format, gc_tables = builder.build
+
+      ratios = gc_tables.first
+      assert_equal ['bench', 'comparison', 'mark/iter', 'sweep/iter', 'mark/GC', 'sweep/GC', 'mark/minor', 'mark/major'], ratios[:rows][0]
+      # mark/GC mixes the two kinds: fewer collections per iteration make it 0.750.
+      assert_equal ['fib', 'ruby-exp', '1.000', '1.000', '0.750', '0.750', '2.000', '0.500'], ratios[:rows][1]
+      assert_equal ['N/A', 'N/A'], ratios[:rows][2].last(2), 'an iteration without records makes the series unavailable'
+    end
+
+    it 'averages the marking time per collection within each iteration first' do
+      blob = {
+        'warmup' => [], 'bench' => [0.1, 0.1], 'rss' => 10,
+        'gc_major_count_bench' => [0, 0], 'gc_minor_count_bench' => [2, 1],
+        'gc_minor_marking_times_bench' => [[1.0, 2.0], [6.0]], 'gc_major_marking_times_bench' => [[], []],
+      }
+      builder = ResultsTableBuilder.new(executable_names: ['ruby'], bench_data: { 'ruby' => { 'fib' => blob } })
+
+      _table, _format, gc_tables = builder.build
+
+      assert_equal [['bench', 'GCs/iter', 'minor/iter', 'mark ms/minor'], ['fib', '1.5', '1.5', '3.750']], gc_tables.first[:rows]
+      assert_includes gc_tables.first[:hidden], 'mark ms/major'
+    end
+
     it 'builds a non-Ractor absolute GC table and hides a column that is zero in every row' do
       bench_data = {
         'ruby' => {

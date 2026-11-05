@@ -144,6 +144,8 @@ class ResultsTableBuilder
           count: gc_count_series(data),
           global: data['gc_global_count_bench'],
           compact: data['gc_controller_compact_count_bench'],
+          minor_mark: collection_series(data, 'gc_minor_marking_times_bench'),
+          major_mark: collection_series(data, 'gc_major_marking_times_bench'),
         }
       end
 
@@ -173,6 +175,10 @@ class ResultsTableBuilder
     columns << ["sweep/iter", ->(base, other) { ratio_cell(gc_ratio(base[:sweep], other[:sweep])) }]
     columns << ["mark/GC", ->(base, other) { ratio_cell(per_gc_ratio(base, other, :mark)) }]
     columns << ["sweep/GC", ->(base, other) { ratio_cell(per_gc_ratio(base, other, :sweep)) }]
+    if gc_series_present?('gc_minor_marking_times_bench')
+      columns << ["mark/minor", ->(base, other) { ratio_cell(gc_ratio(base[:minor_mark], other[:minor_mark])) }]
+      columns << ["mark/major", ->(base, other) { ratio_cell(gc_ratio(base[:major_mark], other[:major_mark])) }]
+    end
     columns
   end
 
@@ -210,6 +216,10 @@ class ResultsTableBuilder
       ["major/iter", ->(data) { mean_cell(data['gc_major_count_bench']) }],
       ["minor/iter", ->(data) { mean_cell(data['gc_minor_count_bench']) }],
     ]
+    if gc_series_present?('gc_minor_marking_times_bench')
+      columns << ["mark ms/minor", ->(data) { mean_cell(collection_series(data, 'gc_minor_marking_times_bench'), precise: true) }]
+      columns << ["mark ms/major", ->(data) { mean_cell(collection_series(data, 'gc_major_marking_times_bench'), precise: true) }]
+    end
     if gc_series_present?('gc_global_count_bench')
       columns << ["global/iter", ->(data) { mean_cell(data['gc_global_count_bench']) }]
     end
@@ -493,6 +503,16 @@ class ResultsTableBuilder
     return nil unless numeric_series?(major) && numeric_series?(minor) && major.length == minor.length
 
     major.zip(minor).map { |a, b| a + b }
+  end
+
+  # The mean per-collection time of each iteration that ran such a
+  # collection. Collections within an iteration share heap state, so the
+  # iteration, not the collection, is the sample for p-values.
+  def collection_series(data, key)
+    values = data[key]
+    return nil unless values.is_a?(Array) && values.all?(Array)
+
+    values.reject(&:empty?).map { |times| times.sum / times.size }
   end
 
   def gc_time_per_gc(time, count)
