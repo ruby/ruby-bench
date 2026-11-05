@@ -187,11 +187,6 @@ jobs:
       fail-fast: false
       matrix:
         ruby: [ruby, head]
-    env:
-      # erubi-rails, lobsters, railsbench: nokogiri 1.18.9 builds from source and its libiconv fails to compile
-      # graphql-native: graphql-c_parser's FLOAT, INT and INPUT tokens clash with Windows headers
-      # lobsters: stackprof fails to build
-      EXCLUDES: erubi-rails,graphql-native,lobsters,railsbench
     if: ${{ github.event_name != 'schedule' || github.repository == 'ruby/ruby-bench' }}
     steps:
       - uses: actions/checkout@v3
@@ -201,7 +196,7 @@ jobs:
           ruby-version: ${{ matrix.ruby }}
 
       - name: Test run_benchmarks.rb
-        run: ruby run_benchmarks.rb --excludes=${{ env.EXCLUDES }}
+        run: ruby run_benchmarks.rb
         env:
           WARMUP_ITRS: '1'
           MIN_BENCH_ITRS: '1'
