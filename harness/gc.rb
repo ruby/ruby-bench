@@ -25,12 +25,20 @@ def run_benchmark(_num_itrs_hint, **, &block)
   global_counts = []
   gc_heap_deltas = []
   gc_total_time_ns = []
+  minor_marking_times = []
+  major_marking_times = []
   total_time = 0
   num_itrs = 0
 
   has_marking = GC.stat.key?(:marking_time)
   has_sweeping = GC.stat.key?(:sweeping_time)
   has_global_gc = GCStats.stat_available?(:global_gc_invocation_count)
+  has_records = GCStats.collection_records_supported?
+  if has_records
+    profiler_was_enabled = GC::Profiler.enabled?
+    GC::Profiler.enable unless profiler_was_enabled
+    record_seq = GC::Profiler.raw_data(limit: 1).last&.fetch(:GC_SEQUENCE)
+  end
 
   header = "itr:   time"
   header << "   marking" if has_marking
@@ -80,6 +88,14 @@ def run_benchmark(_num_itrs_hint, **, &block)
     gc_heap_deltas << sample["gc_stat_heap_delta"]
     gc_total_time_ns << sample["gc_total_time_ns"]
     total_time += time
+
+    if has_records
+      minor_ms, major_ms, record_seq = GCStats.marking_times_since(record_seq)
+      # A global GC's record has no major_by even when it marks fully.
+      minor_ms = major_ms = nil if global_delta.to_i > 0
+      minor_marking_times << minor_ms
+      major_marking_times << major_ms
+    end
   end until num_itrs >= WARMUP_ITRS + MIN_BENCH_ITRS and total_time >= MIN_BENCH_TIME
 
   warmup_range = 0...WARMUP_ITRS
@@ -107,6 +123,12 @@ def run_benchmark(_num_itrs_hint, **, &block)
     gc_total_time_ms = gc_total_time_ns.map { |ns| ns / 1_000_000.0 }
     extra["gc_total_time_warmup"] = gc_total_time_ms[warmup_range]
     extra["gc_total_time_bench"] = gc_total_time_ms[bench_range]
+  end
+
+  if has_records
+    GC::Profiler.disable unless profiler_was_enabled
+    extra["gc_minor_marking_times_bench"] = minor_marking_times[bench_range]
+    extra["gc_major_marking_times_bench"] = major_marking_times[bench_range]
   end
 
   # Snapshot heap utilisation after benchmark

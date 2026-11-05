@@ -96,6 +96,9 @@ module BenchmarkRunner
           output_str << "- GC time ratios are #{base_name}/comparison; above 1 means the comparison spent less GC time.\n"
           output_str << "- gc/iter, mark/iter, and sweep/iter compare total GC (or phase) time per benchmark iteration, so they include both per-GC cost and GC frequency changes.\n"
           output_str << "- gc/GC, mark/GC, and sweep/GC divide average GC (or phase) time by the same run's GCs/iter count; they are not complete per-cycle attribution of process-wide GC.\n"
+          if sections.any? { |section| Array(section[:gc_tables]).any? { |gc_table| gc_table[:rows].first.include?('mark/minor') } }
+            output_str << "- mark/minor and mark/major compare the marking time of one minor or one major collection (GC::Profiler records, Ruby 4.1+), averaged per iteration. A change to root marking shows here even when a major GC lands in a different iteration; changes in how many objects are young or remembered move them too, so read them with GC counts.\n"
+          end
           output_str << "- GC counts show #{base_name} → comparison values, not ratios. Rows with no GC activity are omitted.\n"
         end
         if has_memory_summary
