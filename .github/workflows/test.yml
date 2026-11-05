@@ -187,9 +187,6 @@ jobs:
       fail-fast: false
       matrix:
         ruby: [ruby, head]
-    env:
-      # graphql-native: graphql-c_parser's FLOAT, INT and INPUT tokens clash with Windows headers
-      EXCLUDES: graphql-native
     if: ${{ github.event_name != 'schedule' || github.repository == 'ruby/ruby-bench' }}
     steps:
       - uses: actions/checkout@v3
@@ -199,7 +196,7 @@ jobs:
           ruby-version: ${{ matrix.ruby }}
 
       - name: Test run_benchmarks.rb
-        run: ruby run_benchmarks.rb --excludes=${{ env.EXCLUDES }}
+        run: ruby run_benchmarks.rb
         env:
           WARMUP_ITRS: '1'
           MIN_BENCH_ITRS: '1'
