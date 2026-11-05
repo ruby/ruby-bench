@@ -53,7 +53,7 @@ group :development do
   gem 'flamegraph'
   gem 'memory_profiler'
   gem 'rack-mini-profiler'
-  gem 'stackprof'
+  gem 'stackprof', platforms: :mri
 end
 
 gem "oauth" # for twitter-posting bot
