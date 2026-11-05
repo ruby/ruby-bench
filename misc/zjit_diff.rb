@@ -6,6 +6,9 @@
 # By default some categories limit how many entries are shown
 # and some results only appear when the comparison passes a threshold.
 # Pass --help to see options.
+#
+# If the results were recorded with the GC harness (--harness=gc), iteration
+# timings are also compared with GC time removed.
 
 require 'json'
 require_relative '../lib/ractor_breakdown'
@@ -14,6 +17,9 @@ class ZjitDiff
   DEFAULT_THRESHOLD_PCT = 5.0   # Percentage change to highlight
   DEFAULT_MINIMUM_DIFF = 100    # Minimum absolute difference to report
   DEFAULT_LIMIT = nil           # Show all by default (nil = no limit)
+
+  # Per-iteration GC times (ms) recorded by harness-gc
+  GC_TIME_KEYS = %w[gc_marking_time_bench gc_sweeping_time_bench].freeze
 
   # Categories matching zjit.rb stats_string output order
   STAT_CATEGORIES = [
@@ -102,6 +108,7 @@ class ZjitDiff
 
     print_header
     print_benchmark_timings
+    print_benchmark_timings_without_gc
     print_memory_usage
     print_send_counters
     print_summary_counters
@@ -213,24 +220,77 @@ class ZjitDiff
 
       next if stats.empty?
 
-      baseline = stats.first
-      fastest = stats.min_by { |s| s[:avg] }
-
-      stats.each do |s|
-        diff_pct = ((s[:avg] - baseline[:avg]) / baseline[:avg] * 100)
-        is_fastest = s == fastest && stats.size > 1
-        marker = is_fastest ? '★' : ' '
-        if s == baseline
-          printf "    %-20s avg: %7.3fs  min: %7.3fs  %s (baseline)\n",
-                 s[:ruby], s[:avg], s[:min], marker
-        else
-          slower_faster = diff_pct > 0 ? 'slower' : 'faster'
-          printf "    %-20s avg: %7.3fs  min: %7.3fs  %s %+7.1f%% (%s)\n",
-                 s[:ruby], s[:avg], s[:min], marker, diff_pct, slower_faster
-        end
-      end
+      print_timing_rows(stats)
     end
     puts
+  end
+
+  # Iterations are supposed to do the same work, but GC heuristics move work
+  # between them: garbage left by earlier iterations is marked and (lazily)
+  # swept during later ones. Subtracting each iteration's GC time compares
+  # the time spent outside the GC, which doesn't depend on where the GC
+  # happened to run.
+  def print_benchmark_timings_without_gc
+    any_printed = false
+
+    benchmarks.each do |bench_name|
+      stats = @ruby_names.map do |ruby|
+        times = @raw_data.dig(ruby, bench_name, 'bench') || []
+        next nil if times.empty?
+        gc_times = gc_seconds_per_iteration(ruby, bench_name, times.size)
+        next nil unless gc_times
+        without_gc = times.zip(gc_times).map { |time, gc| time - gc }
+        gc_avg = gc_times.sum / gc_times.size
+        { ruby: ruby, avg: without_gc.sum / without_gc.size, min: without_gc.min,
+          gc_avg: gc_avg, gc_pct: gc_avg / (times.sum / times.size) * 100 }
+      end.compact
+
+      # Without the baseline's GC times there is nothing to compare against
+      next unless stats.size > 1 && stats.first[:ruby] == @ruby_names.first
+
+      unless any_printed
+        puts "BENCHMARK TIMINGS WITHOUT GC TIME (lower is better)"
+        puts "-" * 80
+        any_printed = true
+      end
+
+      puts "  #{bench_name}:"
+      print_timing_rows(stats)
+    end
+
+    return unless any_printed
+    puts "  gc: average GC (marking + sweeping) time per iteration, and its share of the iteration."
+    puts "  GC.stat reports whole milliseconds, so min is approximate; avg is not affected."
+    puts
+  end
+
+  # Seconds of GC time (marking + sweeping) in each benchmark iteration,
+  # or nil if the results were not recorded with harness-gc.
+  def gc_seconds_per_iteration(ruby, bench_name, size)
+    bench_data = @raw_data.dig(ruby, bench_name) || {}
+    series = GC_TIME_KEYS.map { |key| bench_data[key] }
+    return nil unless series.all? { |ms| ms.is_a?(Array) && ms.size == size }
+    series.transpose.map { |ms| ms.sum / 1000.0 }
+  end
+
+  def print_timing_rows(stats)
+    baseline = stats.first
+    fastest = stats.min_by { |s| s[:avg] }
+
+    stats.each do |s|
+      diff_pct = ((s[:avg] - baseline[:avg]) / baseline[:avg] * 100)
+      is_fastest = s == fastest && stats.size > 1
+      marker = is_fastest ? '★' : ' '
+      gc = s[:gc_avg] ? format("  gc: %7.3fs (%3.0f%%)", s[:gc_avg], s[:gc_pct]) : ''
+      if s == baseline
+        printf "    %-20s avg: %7.3fs  min: %7.3fs%s  %s (baseline)\n",
+               s[:ruby], s[:avg], s[:min], gc, marker
+      else
+        slower_faster = diff_pct > 0 ? 'slower' : 'faster'
+        printf "    %-20s avg: %7.3fs  min: %7.3fs%s  %s %+7.1f%% (%s)\n",
+               s[:ruby], s[:avg], s[:min], gc, marker, diff_pct, slower_faster
+      end
+    end
   end
 
   def print_memory_usage
