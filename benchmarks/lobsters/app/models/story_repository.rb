@@ -64,8 +64,8 @@ class StoryRepository
   end
 
   def top(length)
-    top = Story.base(@user).where("created_at >= (DATETIME('now', '- " <<
-      "#{length[:dur]} #{length[:intv].upcase}'))")
+    dur, intv = length[:intv] == "Week" ? [length[:dur] * 7, "Day"] : length.values_at(:dur, :intv)
+    top = Story.base(@user).where("created_at >= DATETIME(?, '-#{dur} #{intv.upcase}')", Time.current)
     top.order("score DESC")
   end
 end
