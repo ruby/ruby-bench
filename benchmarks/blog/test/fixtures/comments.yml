@@ -1,0 +1,9 @@
+one:
+  article: one
+  commenter: Alice
+  body: Great introduction! Rails really does make development faster.
+
+two:
+  article: two
+  commenter: Bob
+  body: This pattern really helps keep code organized!
