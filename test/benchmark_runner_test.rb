@@ -433,7 +433,7 @@ describe BenchmarkRunner do
         ruby_descriptions, table, format, bench_failures, include_pvalue: true
       )
 
-      assert_includes result, "- ***: p < 0.001, **: p < 0.01, *: p < 0.05 (Welch's t-test)"
+      assert_includes result, "- ***: p < 0.001, **: p < 0.01, *: p < 0.05 (Welch's t-test over the per-process means of --runs; N/A with a single process)"
     end
 
     it 'prints the GC ratio and count tables and their legend when include_gc is true' do
