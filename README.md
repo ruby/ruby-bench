@@ -475,6 +475,24 @@ after each iteration with the default harness.
 ./run_benchmarks.rb --yjit-stats=code_region_size,yjit_alloc_size
 ```
 
+## Statistical significance
+
+`--pvalue` adds a p-value and significance column to each comparison and marks
+the ratio with `*` (p < 0.05), `**` (p < 0.01) or `***` (p < 0.001), from a
+Welch's t-test. The iterations of one process share its heap layout, GC timing
+and JIT decisions, so they are not independent samples: two processes of the
+same Ruby often differ by more than their iterations vary. The test therefore
+compares the means of separate processes, and needs `--runs`:
+
+```sh
+# Run each benchmark in 5 processes per Ruby, interleaved
+./run_benchmarks.rb --chruby "before;after" --runs 5 --pvalue railsbench
+```
+
+`--runs N` multiplies the benchmarking time by N. The timing columns then
+report all measured iterations of the N processes. With one process per Ruby,
+the p-value is N/A.
+
 ## Measuring memory usage
 
 `--rss` option of `run_benchmarks.rb` allows you to measure RSS (resident set size).

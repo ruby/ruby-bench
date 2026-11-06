@@ -51,6 +51,7 @@ describe BenchmarkRunner::CLI do
       excludes: [],
       rss: false,
       interleave: false,
+      runs: 1,
       graph: false,
       no_pinning: true,
       turbo: true,
@@ -629,6 +630,83 @@ describe BenchmarkRunner::CLI do
           assert raw_data[name].key?('fib'), "Expected '#{name}' to have 'fib' results"
           assert raw_data[name].key?('respond_to'), "Expected '#{name}' to have 'respond_to' results"
         end
+      end
+    end
+
+    it 'runs each benchmark in several processes with --runs' do
+      Dir.mktmpdir do |tmpdir|
+        args = create_args(
+          name_filters: ['fib'],
+          out_path: tmpdir,
+          interleave: true,
+          runs: 2
+        )
+
+        cli = BenchmarkRunner::CLI.new(args)
+        capture_io { cli.run }
+
+        json_data = JSON.parse(File.read(Dir.glob(File.join(tmpdir, "*.json")).first))
+        args.executables.each_key do |name|
+          fib = json_data['raw_data'][name]['fib']
+          assert_equal [1, 1], fib['bench_itrs_per_run']
+          assert_equal 2, fib['warmup_itrs_per_run'].size
+          assert_equal 2, fib['bench'].size
+        end
+      end
+    end
+
+    it 'flips the order of the executables every run' do
+      Dir.mktmpdir do |tmpdir|
+        args = create_args(
+          executables: { 'a' => [RbConfig.ruby], 'b' => [RbConfig.ruby] },
+          name_filters: ['fib'],
+          out_path: tmpdir,
+          interleave: true,
+          runs: 2
+        )
+
+        output = capture_io { BenchmarkRunner::CLI.new(args).run }.join
+        order = output.scan(/^Running benchmark "fib" \[(\w+)\]/).flatten
+        assert_equal %w[a b b a], order
+      end
+    end
+
+    it 'drops a benchmark whose later run is killed by a signal' do
+      skip 'needs POSIX signals' if Gem.win_platform?
+      Dir.mktmpdir do |tmpdir|
+        counter = File.join(tmpdir, 'count')
+        wrapper = File.join(tmpdir, 'killed_on_second_run.rb')
+        File.write(wrapper, <<~RUBY)
+          if ARGV.any? { |arg| arg.end_with?('.rb') }
+            count = File.exist?(#{counter.inspect}) ? File.read(#{counter.inspect}).to_i + 1 : 1
+            File.write(#{counter.inspect}, count.to_s)
+            Process.kill(:KILL, Process.pid) if count == 2
+          end
+          exec(#{RbConfig.ruby.inspect}, *ARGV)
+        RUBY
+        args = create_args(
+          executables: { 'a' => [RbConfig.ruby], 'b' => [RbConfig.ruby, wrapper] },
+          name_filters: ['fib'],
+          out_path: tmpdir,
+          interleave: true,
+          runs: 3
+        )
+
+        output = capture_io { assert_raises(SystemExit) { BenchmarkRunner::CLI.new(args).run } }.join
+        json_data = JSON.parse(File.read(Dir.glob(File.join(tmpdir, "*.json")).first))
+        assert_match(/^  b: fib$/, output)
+        assert_equal [1, 1, 1], json_data['raw_data']['a']['fib']['bench_itrs_per_run']
+        refute json_data['raw_data']['b'].key?('fib')
+        assert_equal 2, output.scan(/^Running benchmark "fib" \[b\]/).size
+      end
+    end
+
+    it 'refuses --runs with the Ractor harness' do
+      Dir.mktmpdir do |tmpdir|
+        args = create_args(name_filters: ['fib'], out_path: tmpdir, harness: 'ractor', harness_explicit: true, interleave: true, runs: 2)
+
+        error = assert_raises(SystemExit) { capture_io { BenchmarkRunner::CLI.new(args).run } }
+        assert_match(/Ractor harness/, error.message)
       end
     end
 
