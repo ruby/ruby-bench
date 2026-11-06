@@ -144,12 +144,13 @@ class ResultsTableBuilder
           count: gc_count_series(data),
           global: data['gc_global_count_bench'],
           compact: data['gc_controller_compact_count_bench'],
+          runs: data['bench_itrs_per_run'],
         }
       end
 
       base, *others = series_by_exe
       others.each_with_index do |other, i|
-        next unless gc_activity?(*base.values, *other.values)
+        next unless gc_activity?(*base.except(:runs).values, *other.except(:runs).values)
 
         labels = gc_label_cells(entry)
         labels << @other_names[i] if include_gc_comparison_name?
@@ -166,11 +167,11 @@ class ResultsTableBuilder
   def gc_ratio_columns
     columns = []
     if include_gc_total_time?
-      columns << ["gc/iter", ->(base, other) { ratio_cell(gc_ratio(base[:total], other[:total])) }]
+      columns << ["gc/iter", ->(base, other) { ratio_cell(gc_ratio(base, other, :total)) }]
       columns << ["gc/GC", ->(base, other) { ratio_cell(per_gc_ratio(base, other, :total)) }]
     end
-    columns << ["mark/iter", ->(base, other) { ratio_cell(gc_ratio(base[:mark], other[:mark])) }]
-    columns << ["sweep/iter", ->(base, other) { ratio_cell(gc_ratio(base[:sweep], other[:sweep])) }]
+    columns << ["mark/iter", ->(base, other) { ratio_cell(gc_ratio(base, other, :mark)) }]
+    columns << ["sweep/iter", ->(base, other) { ratio_cell(gc_ratio(base, other, :sweep)) }]
     columns << ["mark/GC", ->(base, other) { ratio_cell(per_gc_ratio(base, other, :mark)) }]
     columns << ["sweep/GC", ->(base, other) { ratio_cell(per_gc_ratio(base, other, :sweep)) }]
     columns
@@ -425,7 +426,7 @@ class ResultsTableBuilder
     row = []
     build_base_columns(row, base_t, base_rss_cell, zjit_stat_values, 0)
     build_comparison_columns(row, other_ts, other_rss_cells, zjit_stat_values)
-    build_ratio_columns(row, base_t0, other_t0s, base_t, other_ts)
+    build_ratio_columns(row, bench_name, base_t0, other_t0s, base_t, other_ts)
     build_rss_ratio_columns(row, base_rss, other_rsss)
 
     row
@@ -455,12 +456,14 @@ class ResultsTableBuilder
     "%.1f ± %.1f%%" % [mean(values), stddev_percent(values)]
   end
 
-  def build_ratio_columns(row, base_t0, other_t0s, base_t, other_ts)
+  def build_ratio_columns(row, bench_name, base_t0, other_t0s, base_t, other_ts)
     ratio_1sts = other_t0s.map { |other_t0| base_t0 / other_t0 }
     row.concat(ratio_1sts)
 
-    other_ts.each do |other_t|
-      pval = @include_pvalue ? Stats.welch_p_value(base_t, other_t) : nil
+    base_runs = bench_data_for(@base_name, bench_name)['bench_itrs_per_run']
+    other_ts.each_with_index do |other_t, i|
+      other_runs = bench_data_for(@other_names[i], bench_name)['bench_itrs_per_run']
+      pval = p_value(base_t, base_runs, other_t, other_runs)
       row << format_ratio(mean(base_t) / mean(other_t), pval)
       if @include_pvalue
         row << format_p_value(pval)
@@ -563,12 +566,41 @@ class ResultsTableBuilder
     format_ratio(base / other, nil)
   end
 
-  def gc_ratio(base, other)
+  def gc_ratio(base_series, other_series, key)
+    base = base_series[key]
+    other = other_series[key]
     return "N/A" unless numeric_series?(base) && numeric_series?(other)
     return "N/A" if mean(other) == 0.0
 
-    pval = @include_pvalue ? Stats.welch_p_value(base, other) : nil
+    pval = p_value(base, base_series[:runs], other, other_series[:runs])
     format_ratio(mean(base) / mean(other), pval)
+  end
+
+  # Iterations of one process share its heap layout, GC timing and JIT decisions, so they are
+  # not independent samples. The test compares the means of separate processes (--runs) instead,
+  # and there is no p-value with a single process.
+  def p_value(base, base_runs, other, other_runs)
+    return nil unless @include_pvalue
+
+    base_means = run_means(base, base_runs)
+    other_means = run_means(other, other_runs)
+    base_means && other_means ? Stats.welch_p_value(base_means, other_means) : nil
+  end
+
+  def run_means(series, itrs_per_run)
+    split_runs(series, itrs_per_run)&.map { |values| mean(values) }
+  end
+
+  # Splits a series concatenated by BenchmarkRunner.merge_runs back into one array per process.
+  def split_runs(series, itrs_per_run)
+    return nil unless itrs_per_run.is_a?(Array) && series.is_a?(Array) && itrs_per_run.sum == series.size
+
+    offset = 0
+    itrs_per_run.map do |size|
+      values = series[offset, size]
+      offset += size
+      values
+    end
   end
 
   def format_ratio(ratio, pval)
@@ -618,7 +650,13 @@ class ResultsTableBuilder
   def extract_first_iteration_times(bench_name)
     @executable_names.map do |name|
       data = bench_data_for(name, bench_name)
-      (data['warmup'][0] || data['bench'][0]) * SECONDS_TO_MS
+      bench_runs = split_runs(data['bench'], data['bench_itrs_per_run'])
+      if bench_runs
+        warmup_runs = split_runs(data['warmup'], data['warmup_itrs_per_run'])
+        mean(bench_runs.each_index.map { |i| (warmup_runs && warmup_runs[i][0]) || bench_runs[i][0] }) * SECONDS_TO_MS
+      else
+        (data['warmup'][0] || data['bench'][0]) * SECONDS_TO_MS
+      end
     end
   end
 

@@ -472,6 +472,30 @@ describe ArgumentParser do
       end
     end
 
+    describe '--runs option' do
+      it 'sets runs and interleaves the runs' do
+        parser = ArgumentParser.new
+        args = parser.parse(['--runs=3'])
+
+        assert_equal 3, args.runs
+        assert_equal true, args.interleave
+      end
+
+      it 'defaults to one run' do
+        parser = ArgumentParser.new
+        args = parser.parse([])
+
+        assert_equal 1, args.runs
+      end
+
+      it 'does not interleave a single run' do
+        parser = ArgumentParser.new
+        args = parser.parse(['--runs=1'])
+
+        assert_equal false, args.interleave
+      end
+    end
+
     describe '--interleave option' do
       it 'sets interleave flag' do
         parser = ArgumentParser.new
