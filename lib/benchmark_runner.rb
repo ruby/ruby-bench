@@ -31,6 +31,18 @@ module BenchmarkRunner
       end
     end
 
+    def merge_runs(blobs)
+      return blobs.first if blobs.size == 1
+
+      merged = blobs.first.to_h do |key, value|
+        series = blobs.map { |blob| blob[key] }
+        [key, series.all?(Array) ? series.flatten(1) : value]
+      end
+      merged['warmup_itrs_per_run'] = blobs.map { |blob| Array(blob['warmup']).size }
+      merged['bench_itrs_per_run'] = blobs.map { |blob| blob['bench'].size }
+      merged
+    end
+
     # Write benchmark data to JSON file
     def write_json(output_path, ruby_descriptions, bench_data)
       out_json_path = "#{output_path}.json"
@@ -102,7 +114,7 @@ module BenchmarkRunner
           output_str << "- Scenario memory shows #{base_name} → comparison values, not ratios. Lower is better.\n"
         end
         if include_pvalue
-          output_str << "- ***: p < 0.001, **: p < 0.01, *: p < 0.05 (Welch's t-test)\n"
+          output_str << "- ***: p < 0.001, **: p < 0.01, *: p < 0.05 (Welch's t-test over the per-process means of --runs; N/A with a single process)\n"
         end
       end
       gc_headers = sections.flat_map { |section| Array(section[:gc_tables]).flat_map { |gc_table| gc_table[:rows].first } }
