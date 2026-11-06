@@ -258,6 +258,7 @@ def return_results(warmup_iterations, bench_iterations, **extra)
         :profile_time_ns,
         :gc_time_ns,
         :invalidation_time_ns,
+        :side_exit_count,
       ].uniq
       puts "ZJIT stats:"
     elsif defined?(RubyVM::ZJIT.stats_string)
