@@ -1,0 +1,31 @@
+<%= turbo_stream_from "articles" %>
+
+<% content_for :title, "Articles" %>
+
+<%# The bare statement spelling of a turbo Drive directive (campfire's
+    sessions/new shape). `exempts_page_from_cache` and not
+    `page_requires_reload`, which is a NAVIGATION change: Turbo
+    full-reloads a page carrying it, and on a page with a form that
+    drops the 422 re-render the validation e2e asserts on. Live Rails
+    does the same — the directive works, it just wants a page without
+    a form. %>
+<% turbo_exempts_page_from_cache %>
+
+<div class="w-full">
+  <% if notice.present? %>
+    <p class="py-2 px-3 bg-green-50 mb-5 text-green-500 font-medium rounded-md inline-block" id="notice"><%= notice %></p>
+  <% end %>
+
+  <div class="flex justify-between items-center">
+    <h1 class="font-bold text-4xl">Articles</h1>
+    <%= link_to "New article", new_article_path, class: "rounded-md px-3.5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white block font-medium" %>
+  </div>
+
+  <div id="articles" class="min-w-full divide-y divide-gray-200 space-y-5">
+    <% if @articles.any? %>
+      <%= render @articles %>
+    <% else %>
+      <p class="text-center my-10">No articles found.</p>
+    <% end %>
+  </div>
+</div>
