@@ -372,18 +372,8 @@ There is also a robust but complex CI harness in [the yjit-metrics repo](https:/
 
 Requires Valgrind with Callgrind support and Ruby 3.4 or newer for the
 [`valgrind` gem](https://rubygems.org/gems/valgrind). Like the other profiler
-harnesses, it loads its dependency before benchmark setup. If the gem is
-missing, it automatically runs `bundle install` with the root Gemfile's optional
-`callgrind` group using the benchmark Ruby. Building it requires Valgrind
-headers. You can also install it ahead of time:
-
-```sh
-BUNDLE_WITH=callgrind bundle install
-```
-
-The harness resolves that group from the root `Gemfile.lock`, including gems
-installed in `vendor/bundle`, without activating the rest of the root bundle.
-Benchmarks remain free to use their own Gemfiles.
+harnesses, it installs the gem globally if missing; you can install it ahead
+of time with `gem install valgrind` (building it requires Valgrind headers).
 
 With the runner, `--harness=callgrind` automatically launches each benchmark
 under `valgrind --tool=callgrind --instr-atstart=no`:
