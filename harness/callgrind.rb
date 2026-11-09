@@ -9,9 +9,37 @@
 require_relative "../lib/harness"
 require_relative "../lib/harness/extra"
 
-# Load before benchmark Bundler setup can hide globally installed gems.
-ensure_global_gem("valgrind")
-require "valgrind"
+# Resolve the harness dependency from the root Gemfile without activating that
+# whole bundle: benchmarks may set up a different Gemfile later. Load it early
+# so benchmark Bundler setup cannot hide it, including vendor/bundle installs.
+require "bundler"
+begin
+  Bundler.with_unbundled_env do
+    gemfile = File.expand_path('../Gemfile', __dir__)
+    ENV['BUNDLE_GEMFILE'] = gemfile
+    Bundler.reset!
+    begin
+      definition = Bundler::Definition.build(gemfile, "#{gemfile}.lock", nil)
+      specs = definition.specs_for([:callgrind])
+    rescue Bundler::GemNotFound
+      warn 'Installing the Callgrind bundle...'
+      installed = system({ 'BUNDLE_WITH' => 'callgrind' }, RbConfig.ruby, '-S', 'bundle', 'install')
+      raise LoadError, 'bundle install failed' unless installed
+
+      Bundler.reset!
+      definition = Bundler::Definition.build(gemfile, "#{gemfile}.lock", nil)
+      specs = definition.specs_for([:callgrind])
+    end
+    specs.each { |spec| $LOAD_PATH.unshift(*spec.full_require_paths) }
+    require "valgrind"
+  end
+rescue Bundler::BundlerError, LoadError => error
+  raise LoadError, "Cannot load the Callgrind bundle: #{error.message}\n" \
+                  "Run BUNDLE_WITH=callgrind bundle install with the benchmark Ruby."
+ensure
+  # Do not let root-bundle settings leak into a benchmark's own Bundler setup.
+  Bundler.reset!
+end
 
 # Also exclude setup when the caller forgot --instr-atstart=no.
 Valgrind.callgrind_stop_instrumentation
