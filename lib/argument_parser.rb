@@ -101,7 +101,7 @@ class ArgumentParser
         args.skip_zjit = true
       end
 
-      opts.on("--harness=HARNESS_NAME", "which harness to use (default: default, options: once, bips, perf, ractor, gc, stackprof, vernier, warmup, stats, continuous, chain, mplr)") do |v|
+      opts.on("--harness=HARNESS_NAME", "which harness to use (default: default, options: once, bips, perf, callgrind, ractor, gc, stackprof, vernier, warmup, stats, continuous, chain, mplr)") do |v|
         # Accept the old directory names (harness, harness-<name>) for backward compatibility
         v = v == 'harness' ? 'default' : v.sub(/^harness-/, '')
         args.harness = v

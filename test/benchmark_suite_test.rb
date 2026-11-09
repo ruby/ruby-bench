@@ -713,6 +713,58 @@ describe BenchmarkSuite do
     end
   end
 
+  describe 'Callgrind command wrapping' do
+    def capture_benchmark_command(harness, script: 'benchmarks/simple.rb', status: 0)
+      suite = BenchmarkSuite.new(categories: [], name_filters: [], out_path: @out_path,
+                                 harness: harness, harness_explicit: true, no_pinning: true)
+      command = nil
+      child_env = nil
+      check_call = lambda do |cmd, **options|
+        command = cmd
+        child_env = options[:env]
+        File.write(ENV.fetch('RESULT_JSON_PATH'), JSON.generate('warmup' => [], 'bench' => [1.0])) if status == 0
+        { success: status == 0, status: Struct.new(:exitstatus).new(status) }
+      end
+      result = nil
+      BenchmarkRunner.stub(:check_call, check_call) do
+        result = suite.send(:run_single_benchmark, script, File.join(@out_path, 'result.json'),
+                            ['/path with spaces/ruby', '--yjit'], ['taskset', '-c', '2'], {}, harness)
+      end
+      [command, child_env, result]
+    end
+
+    it 'wraps Ruby after CPU pinning and preserves Ruby flags and the harness' do
+      command, env, result = capture_benchmark_command('callgrind')
+      assert_equal ['taskset', '-c', '2', 'valgrind', '--tool=callgrind', '--instr-atstart=no'], command.take(6)
+      assert_equal "--callgrind-out-file=#{@out_path}/callgrind-simple.out.%p", command[6]
+      assert_equal ['/path with spaces/ruby', '--yjit', '-r', File.join(BenchmarkSuite::HARNESS_DIR, 'callgrind'),
+                    File.expand_path('benchmarks/simple.rb')], command.drop(7)
+      assert_equal 'callgrind', env['HARNESS']
+      assert_equal command, Shellwords.split(result[:command])
+      assert_nil ENV['RESULT_JSON_PATH']
+    end
+
+    it 'uses the benchmark directory name for macrobenchmarks' do
+      command, = capture_benchmark_command('callgrind', script: 'benchmarks/railsbench/benchmark.rb')
+      assert_equal "--callgrind-out-file=#{@out_path}/callgrind-railsbench.out.%p", command[6]
+    end
+
+    it 'does not wrap other harnesses' do
+      command, env, = capture_benchmark_command('once')
+      assert_equal ['taskset', '-c', '2', '/path with spaces/ruby', '--yjit'], command.take(5)
+      refute_includes command, 'valgrind'
+      assert_equal 'once', env['HARNESS']
+    end
+
+    it 'propagates Valgrind failure and restores the result path' do
+      ENV['RESULT_JSON_PATH'] = 'original.json'
+      _, _, result = capture_benchmark_command('callgrind', status: 7)
+      refute result[:success]
+      assert_equal 7, result[:status].exitstatus
+      assert_equal 'original.json', ENV['RESULT_JSON_PATH']
+    end
+  end
+
   describe '#run_benchmark' do
     it 'returns data hash on success' do
       suite = BenchmarkSuite.new(

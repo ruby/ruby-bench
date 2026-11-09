@@ -207,7 +207,8 @@ class BenchmarkSuite
     ENV["RESULT_JSON_PATH"] = result_json_path
 
     # Set up the benchmarking command
-    cmd = (cmd_prefix + [
+    profiler_prefix = benchmark_harness == "callgrind" ? callgrind_cmd(script_path) : []
+    cmd = (cmd_prefix + profiler_prefix + [
       *ruby,
       *pre_init,
       *harness_args_for(benchmark_harness),
@@ -224,6 +225,19 @@ class BenchmarkSuite
     else
       ENV.delete("RESULT_JSON_PATH")
     end
+  end
+
+  # Keep output outside benchmark directories, which may chdir during setup.
+  # The child PID makes profiles unique across benchmarks and Ruby configurations.
+  def callgrind_cmd(script_path)
+    name = File.basename(script_path, '.rb')
+    name = File.basename(File.dirname(script_path)) if name == 'benchmark'
+    profile_dir = File.expand_path(out_path)
+    FileUtils.mkdir_p(profile_dir)
+    [
+      "valgrind", "--tool=callgrind", "--instr-atstart=no",
+      "--callgrind-out-file=#{File.join(profile_dir, "callgrind-#{name}.out.%p")}",
+    ]
   end
 
   def benchmark_harness_for(benchmark_name)
