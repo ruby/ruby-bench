@@ -45,7 +45,7 @@ module Lobsters
 
     # config.active_record.raise_in_transactional_callbacks = true
 
-    config.cache_store = :file_store, "#{config.root}/tmp/cache/"
+    config.cache_store = :memory_store
 
     config.exceptions_app = self.routes
 
