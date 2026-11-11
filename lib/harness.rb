@@ -131,25 +131,27 @@ end
 RUSAGE_INFO_V0 = 0
 RI_RESIDENT_SIZE_OFFSET = 16 + 6 * 8
 
-# Memoized on a module, not on main: the Ractor harness freezes main.
+# On macOS, `get_rss` reads the RSS through Fiddle via `load_fiddle`. We load it when the harness
+# loads, rather than on the first RSS sample after a benchmark iteration. That's also before the
+# benchmark calls `use_gemfile`, so `load_fiddle` can activate the fiddle gem directly. After
+# `Bundler.setup`, it has to force-activate the gem through Bundler, which loads Bundler code that
+# can invalidate JIT-compiled code and adversely impact benchmark runs.
+#
+# Stored on a module, not on main: the Ractor harness freezes main.
 module ProcPidRusage
-  @resolved = false
-
-  def self.fn
-    return @fn if @resolved
-
-    @resolved = true
-    @fn = begin
+  if is_macos
+    begin
       load_fiddle
-      Fiddle::Function.new(
+      @fn = Fiddle::Function.new(
         Fiddle.dlopen(nil)['proc_pid_rusage'],
         [Fiddle::TYPE_INT, Fiddle::TYPE_INT, Fiddle::TYPE_VOIDP],
         Fiddle::TYPE_INT,
       )
     rescue LoadError, Fiddle::DLError, NameError
-      nil
     end
   end
+
+  def self.fn = @fn
 end
 
 # The current RSS in bytes on macOS, read from libproc. Unlike ps this does not
