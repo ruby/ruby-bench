@@ -336,6 +336,7 @@ You can find several test harnesses in the `harness/` directory:
 * `perf` - a simplified harness that runs for exactly the hinted number of iterations
 * `ractor` - a harness that runs the benchmark inside Ractors to measure scaling
 * `gc` - the default harness plus GC timing, count and heap statistics
+* `callgrind` - a harness to profile fixed iterations with Valgrind Callgrind, excluding setup and warmup
 * `stackprof` - a harness to profile the benchmark with stackprof
 * `stats` - count method calls and loop iterations
 * `vernier` - a harness to profile the benchmark with vernier
@@ -366,6 +367,50 @@ When using `run_benchmarks.rb`, you can specify a harness with the `--harness` o
 ```
 
 There is also a robust but complex CI harness in [the yjit-metrics repo](https://github.com/Shopify/yjit-metrics).
+
+### Callgrind harness
+
+Requires Valgrind with Callgrind support and Ruby 3.4 or newer for the
+[`valgrind` gem](https://rubygems.org/gems/valgrind). Like the other profiler
+harnesses, it installs the gem globally if missing; you can install it ahead
+of time with `gem install valgrind` (building it requires Valgrind headers).
+
+With the runner, `--harness=callgrind` automatically launches each benchmark
+under `valgrind --tool=callgrind --instr-atstart=no`:
+
+```sh
+./run_benchmarks.rb --harness=callgrind --warmup=10 --bench=1 fib
+```
+
+Profiles go in the runner's output directory as `callgrind-<benchmark>.out.<pid>`
+(with numbered suffixes for explicit dumps). Ruby flags, pre-init code, and
+CPU pinning are preserved. Valgrind must be on `PATH`.
+
+When running a benchmark directly, launch Ruby under Callgrind explicitly:
+
+```sh
+WARMUP_ITRS=10 MIN_BENCH_ITRS=1 HARNESS=callgrind \
+  valgrind --tool=callgrind --instr-atstart=no \
+  --callgrind-out-file="$PWD/data/callgrind.out.%p" \
+  ruby benchmarks/fib.rb
+```
+
+Setup and `WARMUP_ITRS` iterations (default: 10) run without instrumentation.
+The harness then starts instrumentation, zeros counters, profiles exactly
+`MIN_BENCH_ITRS` iterations (default: the benchmark's iteration hint), stops
+instrumentation, and dumps stats. Unlike sampling profilers, this harness does
+not use `MIN_BENCH_TIME`: even one iteration can be slow under Callgrind.
+On a measured-iteration failure it still dumps a partial profile and propagates
+the exception without writing results.
+
+The dump argument is a description, **not a filename**. Valgrind controls the
+output path via `--callgrind-out-file`; use an absolute path because some
+benchmarks change directories. Explicit dumps normally have a numbered suffix
+(e.g. `data/callgrind.out.12345.1`); open that dump with `callgrind_annotate`,
+KCachegrind, or QCachegrind. Without Valgrind the gem's requests are no-ops and
+no profile is produced. If `RESULT_JSON_PATH` is set, the harness writes timing
+samples for runner compatibility; these are instrumented times, not normal
+benchmark performance measurements.
 
 ### Chain harness
 
