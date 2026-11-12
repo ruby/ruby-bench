@@ -8,6 +8,25 @@ require 'fileutils'
 class CallgrindHarnessTest < Minitest::Test
   ROOT = File.expand_path('..', __dir__)
 
+  # Pretend to be a Linux process running under Callgrind (or not).
+  def fake_platform(host_os: 'linux', comm: 'callgrind-amd64')
+    <<~STUB
+      require 'rbconfig'
+      RbConfig::CONFIG['host_os'] = #{host_os.inspect}
+      File.singleton_class.prepend(Module.new do
+        def read(path, *args, **kwargs)
+          path == '/proc/self/comm' ? #{(comm + "\n").inspect} : super
+        end
+      end)
+    STUB
+  end
+
+  def load_harness(**platform)
+    script = fake_platform(**platform) + "require #{File.join(ROOT, 'harness/callgrind').inspect}"
+    env = { 'RUBYOPT' => nil, 'BUNDLE_GEMFILE' => nil, 'BUNDLER_SETUP' => nil }
+    Open3.capture3(env, RbConfig.ruby, '-e', script, chdir: ROOT)
+  end
+
   def run_harness(env = {}, fail_at: nil)
     Dir.mktmpdir do |dir|
       # Fake a global gem so tests do not install a native extension.
@@ -21,7 +40,7 @@ class CallgrindHarnessTest < Minitest::Test
           def self.callgrind_dump_stats(name); $events << "dump:" + name; end
         end
       RUBY
-      script = <<~RUBY
+      script = fake_platform + <<~RUBY
         require 'json'
         $events = []
         require #{File.join(ROOT, 'lib/harness/extra').inspect}
@@ -85,5 +104,19 @@ class CallgrindHarnessTest < Minitest::Test
 
   def test_direct_execution_does_not_write_results
     refute run_harness({ 'RESULT_JSON_PATH' => nil }).any? { |event| event.is_a?(Array) }
+  end
+
+  def test_rejects_non_linux
+    _, err, status = load_harness(host_os: 'darwin24')
+    refute status.success?
+    assert_match(/callgrind unsupported/, err)
+  end
+
+  def test_rejects_linux_without_callgrind
+    %w[ruby memcheck-amd64-].each do |comm|
+      _, err, status = load_harness(comm: comm)
+      refute status.success?, comm
+      assert_match(/must run under `valgrind --tool=callgrind`/, err)
+    end
   end
 end

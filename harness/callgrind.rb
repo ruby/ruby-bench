@@ -8,6 +8,17 @@
 
 require_relative "../lib/harness"
 require_relative "../lib/harness/extra"
+require "rbconfig"
+
+# Valgrind client requests are silent no-ops outside Valgrind, so without
+# this check a run without Callgrind would succeed with no profile.
+raise "callgrind unsupported" unless RbConfig::CONFIG["host_os"].include?("linux")
+# Valgrind fakes argv and /proc/self/exe, but the kernel's process name is
+# the tool binary (e.g. "callgrind-amd64").
+unless File.read("/proc/self/comm").start_with?("callgrind-")
+  raise "harness/callgrind.rb must run under `valgrind --tool=callgrind` " \
+        "(e.g. ./run_benchmarks.rb --harness=callgrind)"
+end
 
 # Load before benchmark Bundler setup can hide globally installed gems.
 ensure_global_gem("valgrind")
