@@ -1,0 +1,7 @@
+one:
+  title: Getting Started with Rails
+  body: Rails is a web application framework running on the Ruby programming language.
+
+two:
+  title: Understanding MVC Architecture
+  body: MVC stands for Model-View-Controller. Models handle data and business logic.
