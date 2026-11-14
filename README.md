@@ -396,10 +396,12 @@ WARMUP_ITRS=10 MIN_BENCH_ITRS=1 HARNESS=callgrind \
 ```
 
 Setup and `WARMUP_ITRS` iterations (default: 10) run without instrumentation.
-The harness then starts instrumentation, zeros counters, profiles exactly
-`MIN_BENCH_ITRS` iterations (default: the benchmark's iteration hint), stops
-instrumentation, and dumps stats. Unlike sampling profilers, this harness does
-not use `MIN_BENCH_TIME`: even one iteration can be slow under Callgrind.
+The harness then zeros counters, starts instrumentation, profiles exactly
+`MIN_BENCH_ITRS` iterations (default: the benchmark's iteration hint), dumps
+stats, and stops instrumentation. The dump's `summary:` and `totals:` lines
+both hold the instruction count of the profiled iterations. Unlike sampling
+profilers, this harness does not use `MIN_BENCH_TIME`: even one iteration can
+be slow under Callgrind.
 On a measured-iteration failure it still dumps a partial profile and propagates
 the exception without writing results.
 

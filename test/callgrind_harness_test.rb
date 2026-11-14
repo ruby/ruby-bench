@@ -76,18 +76,18 @@ class CallgrindHarnessTest < Minitest::Test
   end
 
   def test_profiles_hint_iterations_after_warmup
-    assert_equal ['stop', 'stop', 'work', 'work', 'start', 'zero',
-                  'work', 'work', 'work', 'stop', 'dump:-e', ['results', 2, 3]], run_harness
+    assert_equal ['stop', 'stop', 'work', 'work', 'zero', 'start',
+                  'work', 'work', 'work', 'dump:-e', 'stop', 'zero', ['results', 2, 3]], run_harness
   end
 
   def test_iteration_overrides_and_zero_warmup
-    assert_equal ['stop', 'stop', 'start', 'zero', 'work', 'stop', 'dump:-e', ['results', 0, 1]],
+    assert_equal ['stop', 'stop', 'zero', 'start', 'work', 'dump:-e', 'stop', 'zero', ['results', 0, 1]],
                  run_harness({ 'WARMUP_ITRS' => '0', 'MIN_BENCH_ITRS' => '1' })
   end
 
   def test_failure_stops_and_dumps_without_results
-    assert_equal ['stop', 'stop', 'work', 'work', 'start', 'zero', 'work',
-                  'stop', 'dump:-e', 'workload failed'], run_harness({}, fail_at: 3)
+    assert_equal ['stop', 'stop', 'work', 'work', 'zero', 'start', 'work',
+                  'dump:-e', 'stop', 'zero', 'workload failed'], run_harness({}, fail_at: 3)
   end
 
   def test_warmup_failure_never_starts_profiling

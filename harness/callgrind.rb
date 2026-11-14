@@ -42,9 +42,10 @@ def run_benchmark(num_itrs_hint, **, &block)
     warmup << get_time - start
   end
 
+  name = benchmark_name
   begin
-    Valgrind.callgrind_start_instrumentation
     Valgrind.callgrind_zero_stats
+    Valgrind.callgrind_start_instrumentation
     bench_itrs.times do
       start = get_time
       block.call
@@ -52,10 +53,12 @@ def run_benchmark(num_itrs_hint, **, &block)
     end
   ensure
     # Preserve a partial profile on failure, but never leave instrumentation on.
+    # Dump before stopping so the summary line matches the totals; zero this thread so its exit dump is empty.
+    Valgrind.callgrind_dump_stats(name)
     Valgrind.callgrind_stop_instrumentation
-    Valgrind.callgrind_dump_stats(benchmark_name)
+    Valgrind.callgrind_zero_stats
   end
 
-  puts "Callgrind stats dumped for #{benchmark_name} (output controlled by --callgrind-out-file)."
+  puts "Callgrind stats dumped for #{name} (output controlled by --callgrind-out-file)."
   return_results(warmup, bench) if ENV['RESULT_JSON_PATH']
 end
