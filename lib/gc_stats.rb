@@ -124,6 +124,39 @@ module GCStats
     sample
   end
 
+  # GC::Profiler.raw_data(since:) and its per-collection wall times are new
+  # in Ruby 4.1. TruffleRuby and modular GCs have no raw_data.
+  def collection_records_supported?
+    return false unless defined?(GC::Profiler) && GC::Profiler.respond_to?(:raw_data)
+
+    GC::Profiler.raw_data(since: 0, limit: 0)
+    true
+  rescue ArgumentError
+    false
+  end
+
+  # The marking time in ms of each collection that finished marking after the
+  # record numbered +seq+ (nil before the first call), split into minor and
+  # major collections. A collection that is still marking is left for the
+  # next call. Returns [minor_ms, major_ms, seq]; the lists are nil if
+  # records were dropped or the profiler is off.
+  def marking_times_since(seq, marking: nil, records: nil)
+    if records.nil?
+      marking = GC.latest_gc_info(:state) == :marking
+      records = GC::Profiler.raw_data(**(seq ? { since: seq } : {}))
+      return [nil, nil, seq] unless records
+
+      marking ||= GC.latest_gc_info(:state) == :marking
+    end
+    records = records[0...-1] if marking
+    return [[], [], seq] if records.empty?
+
+    complete = seq.nil? || records.first[:GC_SEQUENCE] == seq + 1
+    minor, major = records.partition { |record| record[:GC_FLAGS][:major_by].nil? }
+    ms = ->(list) { list.map { |record| record[:GC_MARK_WALL_TIME] * 1000.0 } if complete }
+    [ms.(minor), ms.(major), records.last[:GC_SEQUENCE]]
+  end
+
   def with_measure_total_time
     has_measure = GC.respond_to?(:measure_total_time) && GC.respond_to?(:measure_total_time=)
     saved = GC.measure_total_time if has_measure
