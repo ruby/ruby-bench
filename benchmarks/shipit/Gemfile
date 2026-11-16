@@ -12,3 +12,7 @@ gem "puma", ">= 5.0"
 gem "tzinfo-data", platforms: %i[ windows jruby ]
 
 gem "shipit-engine", ">= 0.40.0"
+
+# thread_safe (a dependency of shipit-engine via virtus) requires mutex_m on Ruby implementations other than CRuby,
+# and does not declare it as a dependency. mutex_m is no longer a default gem since Ruby 3.4.
+gem "mutex_m"
