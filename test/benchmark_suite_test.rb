@@ -735,10 +735,10 @@ describe BenchmarkSuite do
 
     it 'wraps Ruby after CPU pinning and preserves Ruby flags and the harness' do
       command, env, result = capture_benchmark_command('callgrind')
-      assert_equal ['taskset', '-c', '2', 'valgrind', '--tool=callgrind', '--instr-atstart=no'], command.take(6)
-      assert_equal "--callgrind-out-file=#{@out_path}/callgrind-simple.out.%p", command[6]
+      assert_equal ['taskset', '-c', '2', 'env', "VALGRIND_OPTS=--callgrind-out-file=#{@out_path}/callgrind-simple.out.%p",
+                    'valgrind', '--tool=callgrind', '--instr-atstart=no'], command.take(8)
       assert_equal ['/path with spaces/ruby', '--yjit', '-r', File.join(BenchmarkSuite::HARNESS_DIR, 'callgrind'),
-                    File.expand_path('benchmarks/simple.rb')], command.drop(7)
+                    File.expand_path('benchmarks/simple.rb')], command.drop(8)
       assert_equal 'callgrind', env['HARNESS']
       assert_equal command, Shellwords.split(result[:command])
       assert_nil ENV['RESULT_JSON_PATH']
@@ -746,7 +746,15 @@ describe BenchmarkSuite do
 
     it 'uses the benchmark directory name for macrobenchmarks' do
       command, = capture_benchmark_command('callgrind', script: 'benchmarks/railsbench/benchmark.rb')
-      assert_equal "--callgrind-out-file=#{@out_path}/callgrind-railsbench.out.%p", command[6]
+      assert_equal "VALGRIND_OPTS=--callgrind-out-file=#{@out_path}/callgrind-railsbench.out.%p", command[4]
+    end
+
+    it 'keeps existing VALGRIND_OPTS' do
+      ENV['VALGRIND_OPTS'] = '--dump-instr=yes'
+      command, = capture_benchmark_command('callgrind')
+      assert_equal "VALGRIND_OPTS=--dump-instr=yes --callgrind-out-file=#{@out_path}/callgrind-simple.out.%p", command[4]
+    ensure
+      ENV.delete('VALGRIND_OPTS')
     end
 
     it 'does not wrap other harnesses' do

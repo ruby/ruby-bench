@@ -38,6 +38,9 @@ class Metric
   end
 
   TIME = register("time", noun: "time", unit: "ms", scale: 1000.0, better: "a speedup", ratio_title: "Speedup ratio")
+  # Instructions executed (Ir), from harness/callgrind.rb.
+  register("instructions", noun: "instruction count", unit: "MIr", scale: 1e-6,
+                           better: "fewer instructions", ratio_title: "Instruction count ratio")
 
   # The metric to compare results on: their primary metric when they all agree,
   # otherwise wall time, which every result has.

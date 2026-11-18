@@ -36,6 +36,12 @@ describe Metric do
     assert_same Metric::TIME, Metric.for([])
   end
 
+  it 'shows callgrind instruction counts in millions' do
+    metric = Metric['instructions']
+    assert_equal 'MIr', metric.unit
+    assert_equal [2.5], metric.bench({ 'metrics' => { 'instructions' => { 'bench' => [2_500_000] } } })
+  end
+
   it 'shows unregistered metrics in their raw unit' do
     metric = Metric['cycles']
     assert_equal 'cycles', metric.unit

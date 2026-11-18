@@ -229,14 +229,20 @@ class BenchmarkSuite
 
   # Keep output outside benchmark directories, which may chdir during setup.
   # The child PID makes profiles unique across benchmarks and Ruby configurations.
+  # The output file goes in VALGRIND_OPTS rather than on the command line
+  # because the harness reads each iteration's dump back, and Valgrind hides
+  # its command line (but not its environment) from the program.
   def callgrind_cmd(script_path)
     name = File.basename(script_path, '.rb')
     name = File.basename(File.dirname(script_path)) if name == 'benchmark'
     profile_dir = File.expand_path(out_path)
+    # Valgrind splits VALGRIND_OPTS on whitespace.
+    raise ArgumentError, "callgrind output path must not contain whitespace: #{profile_dir}" if profile_dir.match?(/\s/)
     FileUtils.mkdir_p(profile_dir)
+    valgrind_opts = [ENV["VALGRIND_OPTS"], "--callgrind-out-file=#{File.join(profile_dir, "callgrind-#{name}.out.%p")}"]
     [
+      "env", "VALGRIND_OPTS=#{valgrind_opts.compact.join(" ")}",
       "valgrind", "--tool=callgrind", "--instr-atstart=no",
-      "--callgrind-out-file=#{File.join(profile_dir, "callgrind-#{name}.out.%p")}",
     ]
   end
 
