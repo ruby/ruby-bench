@@ -102,6 +102,12 @@ describe TableFormatter do
       end
     end
 
+    it 'shows N/A for values that were not measured' do
+      table_data = [['bench', 'ratio'], ['fib', nil]]
+      result = TableFormatter.new(table_data, ['%s', '%.3f'], {}).to_s
+      assert_includes result.lines[2], 'N/A'
+    end
+
     it 'applies format strings correctly' do
       table_data = [
         ['bench', 'time'],

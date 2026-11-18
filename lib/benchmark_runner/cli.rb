@@ -218,6 +218,7 @@ module BenchmarkRunner
         include_gc: builder.include_gc?,
         gc_tables: gc_tables,
         memory_tables: memory_tables,
+        metric: builder.metric,
       }
       if ResultsTableBuilder.ractor_gc_data?(section_data)
         section[:gc_scope] = 'ractor-local-workload'

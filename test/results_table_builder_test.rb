@@ -606,6 +606,68 @@ describe ResultsTableBuilder do
     end
   end
 
+  describe 'metrics' do
+    before do
+      Metric.register('test_ir', noun: 'instruction count', unit: 'MIr', scale: 1e-6,
+                                 better: 'fewer instructions', ratio_title: 'Instruction count ratio')
+    end
+
+    after do
+      Metric::REGISTRY.delete('test_ir')
+    end
+
+    def ir_result(bench_ir, warmup_ir: nil)
+      ir = { 'bench' => bench_ir }
+      ir['warmup'] = warmup_ir if warmup_ir
+      { 'warmup' => [1.0], 'bench' => [1.0, 1.0], 'rss' => MIB, 'metrics' => { 'test_ir' => ir }, 'primary_metric' => 'test_ir' }
+    end
+
+    it 'compares on the primary metric, with no first-iteration ratio without warmup values' do
+      builder = ResultsTableBuilder.new(
+        executable_names: ['base', 'exp'],
+        bench_data: {
+          'base' => { 'fib' => ir_result([200_000_000, 200_000_000]) },
+          'exp' => { 'fib' => ir_result([100_000_000, 100_000_000]) },
+        }
+      )
+      table, format = builder.build
+
+      assert_equal 'test_ir', builder.metric.name
+      assert_equal ['bench', 'base (MIr)', 'exp (MIr)', 'exp 1st itr', 'base/exp'], table[0]
+      assert_equal ['fib', '200.0 ± 0.0%', '100.0 ± 0.0%', nil, '2.000'], table[1]
+      assert_equal 5, format.size
+    end
+
+    it 'compares first iterations when the metric records warmup' do
+      builder = ResultsTableBuilder.new(
+        executable_names: ['base', 'exp'],
+        bench_data: {
+          'base' => { 'fib' => ir_result([2_000_000], warmup_ir: [9_000_000]) },
+          'exp' => { 'fib' => ir_result([1_000_000], warmup_ir: [3_000_000]) },
+        }
+      )
+      table, = builder.build
+
+      assert_equal ['bench', 'base (MIr)', 'exp (MIr)', 'exp 1st itr', 'base/exp'], table[0]
+      assert_in_delta 3.0, table[1][3]
+    end
+
+    it 'falls back to time when results disagree on the primary metric' do
+      builder = ResultsTableBuilder.new(
+        executable_names: ['base', 'exp'],
+        bench_data: {
+          'base' => { 'fib' => ir_result([200_000_000]) },
+          'exp' => { 'fib' => { 'warmup' => [0.5], 'bench' => [0.5], 'rss' => MIB } },
+        }
+      )
+      table, = builder.build
+
+      assert_same Metric::TIME, builder.metric
+      assert_equal ['bench', 'base (ms)', 'exp (ms)', 'exp 1st itr', 'base/exp'], table[0]
+      assert_equal '2.000', table[1][4]
+    end
+  end
+
   describe 'scenario memory table' do
     # The mean and the max are offset from the median so the columns cannot be
     # confused for each other.

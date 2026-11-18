@@ -81,4 +81,12 @@ describe GraphRenderer do
       end
     end
   end
+
+  it 'plots ratios of the primary metric' do
+    data = {
+      'a' => { 'b1' => { 'bench' => [1.0], 'metrics' => { 'cycles' => { 'bench' => [40] } }, 'primary_metric' => 'cycles' } },
+      'b' => { 'b1' => { 'bench' => [1.0], 'metrics' => { 'cycles' => { 'bench' => [20] } }, 'primary_metric' => 'cycles' } },
+    }
+    assert_equal [2.0], GraphRenderer.send(:calculate_speedups, Metric['cycles'], data, 'a', 'b', ['b1'])
+  end
 end

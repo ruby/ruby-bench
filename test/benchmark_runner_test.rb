@@ -417,6 +417,19 @@ describe BenchmarkRunner do
       refute_includes result, "p < 0.001"
     end
 
+    it 'describes the metric each section compares' do
+      require_relative '../lib/metric'
+      metric = Metric.new('test_ir', noun: 'instruction count', unit: 'MIr', scale: 1e-6,
+                                     better: 'fewer instructions', ratio_title: 'Instruction count ratio')
+      table = [['bench', 'base (MIr)', 'exp (MIr)', 'base/exp'], ['fib', '2.0', '1.0', '2.0']]
+      sections = [{ table: table, format: ['%s'] * 4, failures: {}, metric: metric }]
+
+      result = BenchmarkRunner.build_output_text({ 'base' => 'ruby a', 'exp' => 'ruby b' }, nil, nil, {}, sections: sections)
+
+      assert_includes result, '- exp 1st itr: ratio of base/exp instruction count for the first iteration.'
+      assert_includes result, '- base/exp: ratio of base/exp instruction count. Higher is better for exp. Above 1 represents fewer instructions.'
+    end
+
     it 'includes p-value legend when include_pvalue is true' do
       ruby_descriptions = {
         'ruby-base' => 'ruby 3.3.0',

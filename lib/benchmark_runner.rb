@@ -4,6 +4,7 @@ require 'csv'
 require 'json'
 require 'rbconfig'
 require 'shellwords'
+require_relative 'metric'
 require_relative 'table_formatter'
 require_relative 'windows_pinning'
 
@@ -60,6 +61,7 @@ module BenchmarkRunner
     end
 
     # Build output text string with metadata, table, and legend
+    # Each section may name the metric its table compares (default: time).
     def build_output_text(ruby_descriptions, table, format, bench_failures, include_rss: false, include_gc: false, include_pvalue: false, gc_tables: nil, memory_tables: nil, sections: nil, ruby_bench_revision: nil)
       base_name, *other_names = ruby_descriptions.keys
 
@@ -84,10 +86,13 @@ module BenchmarkRunner
       end
 
       unless other_names.empty?
+        metrics = sections.map { |section| section[:metric] || Metric::TIME }.uniq
+        noun = metrics.map(&:noun).join(" or ")
+        better = metrics.map(&:better).join(" or ")
         output_str << "Legend:\n"
         other_names.each do |name|
-          output_str << "- #{name} 1st itr: ratio of #{base_name}/#{name} time for the first iteration.\n"
-          output_str << "- #{base_name}/#{name}: ratio of #{base_name}/#{name} time. Higher is better for #{name}. Above 1 represents a speedup.\n"
+          output_str << "- #{name} 1st itr: ratio of #{base_name}/#{name} #{noun} for the first iteration.\n"
+          output_str << "- #{base_name}/#{name}: ratio of #{base_name}/#{name} #{noun}. Higher is better for #{name}. Above 1 represents #{better}.\n"
           if include_rss
             output_str << "- RSS #{base_name}/#{name}: ratio of #{base_name}/#{name} RSS. Higher is better for #{name}. Above 1 means lower memory usage.\n"
           end

@@ -47,8 +47,9 @@ class TableFormatter
     @data_rows.map { |row| apply_format(row) }
   end
 
+  # nil marks a value that was not measured.
   def apply_format(row)
-    @format.zip(row).map { |fmt, data| fmt % data }
+    @format.zip(row).map { |fmt, data| data.nil? ? FAILURE_PLACEHOLDER : fmt % data }
   end
 
   def calculate_column_widths(rows)
