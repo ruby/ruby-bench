@@ -95,6 +95,19 @@ describe GCStats do
 
       assert_same after[:heap], sample['gc_heap_after']
     end
+
+    it 'counts a global GC only in the Ractor that started it' do
+      skip 'target lacks GC.stat(:global_gc_invocation_count)' unless GCStats::INITIATED_GLOBAL_GC_KEY == :global_gc_invocation_count
+
+      before = snapshot(count: 0, major: 0, minor: 0)
+      before[:stat].merge!(global_gc_count: 0, global_gc_invocation_count: 0)
+      after = snapshot(count: 4, major: 1, minor: 1)
+      after[:stat].merge!(global_gc_count: 2, global_gc_invocation_count: 1)
+
+      sample = GCStats.delta(before, after)
+
+      assert_equal [3, 1], sample.values_at('gc_count', 'gc_global_count')
+    end
   end
 
   describe '.aggregate' do

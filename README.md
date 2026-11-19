@@ -489,7 +489,10 @@ data when it is zero or `N/A` in every row.
 * Tables marked `worker sum` add the Ractor-local counters and GC times of
   the sampled workers of each iteration. `GCs/iter` is the sum of `minor/iter`,
   `major/iter`, and `global/iter`; a global cycle counts under `global` on
-  the Ractor that initiated it, not under `major`. Single-executable reports
+  the Ractor that initiated it, not under `major`. On targets that have
+  `GC.stat(:global_gc_invocation_count)`, the harness reads `global` from it,
+  because `GC.stat(:global_gc_count)` there counts a global cycle in every
+  Ractor whose heap it collects. Single-executable reports
   also show `GC ms/worker`, which divides each iteration's worker-sum GC
   time by its sampled worker count, then averages.
 * `compacts*` shows the main Ractor's

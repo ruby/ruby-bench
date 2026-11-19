@@ -3,9 +3,12 @@
 module GCStats
   module_function
 
+  PROCESS_STAT = GC.method(:stat).parameters.include?([:key, :process])
+  INITIATED_GLOBAL_GC_KEY = GC.stat.key?(:global_gc_invocation_count) ? :global_gc_invocation_count : :global_gc_count
+
   SCALAR_FIELDS = [
     ["gc_count", :count],
-    ["gc_global_count", :global_gc_count],
+    ["gc_global_count", INITIATED_GLOBAL_GC_KEY],
     ["gc_major_count", :major_gc_count],
     ["gc_minor_count", :minor_gc_count],
     ["gc_marking_time", :marking_time],
@@ -32,6 +35,10 @@ module GCStats
     false
   end
 
+  def process_stat(key)
+    PROCESS_STAT ? GC.stat(key, process: true) : GC.stat(key, scope: :global)
+  end
+
   def ractor_local_gc_supported?(version = RUBY_VERSION)
     major, minor = version.split(".").first(2).map(&:to_i)
     major > 4 || (major == 4 && minor >= 1)
@@ -44,11 +51,15 @@ module GCStats
       Warning[:experimental] = false
       $stderr.reopen(File::NULL, "w")
       begin
-        main_before = GC.stat(:global_gc_count)
-        process_before = GC.stat(:global_gc_count, scope: :global)
-        Ractor.new { GC.start(full_mark: true, immediate_mark: true, immediate_sweep: true, global: true) }.join
-        attributed = GC.stat(:global_gc_count) == main_before
-        ran = GC.stat(:global_gc_count, scope: :global) > process_before
+        main_before = GC.stat(INITIATED_GLOBAL_GC_KEY)
+        process_before = process_stat(:global_gc_count)
+        initiated = Ractor.new(INITIATED_GLOBAL_GC_KEY) do |key|
+          before = GC.stat(key)
+          GC.start(full_mark: true, immediate_mark: true, immediate_sweep: true, global: true)
+          GC.stat(key) - before
+        end.value
+        attributed = initiated > 0 && GC.stat(INITIATED_GLOBAL_GC_KEY) == main_before
+        ran = process_stat(:global_gc_count) > process_before
         exit!(attributed && ran ? 0 : 1)
       rescue StandardError
         exit!(2)
@@ -95,7 +106,7 @@ module GCStats
 
   def snapshot
     {
-      stat: GC.stat(scope: :ractor),
+      stat: GC.stat,
       heap: heap_snapshot,
       total_time_ns: GC.respond_to?(:total_time) ? GC.total_time : nil,
     }
@@ -106,6 +117,10 @@ module GCStats
       result[name] = numeric_delta(before[:stat][key], after[:stat][key])
     end
     sample[TOTAL_TIME_FIELD] = numeric_delta(before[:total_time_ns], after[:total_time_ns])
+    if INITIATED_GLOBAL_GC_KEY == :global_gc_invocation_count
+      initiated = sample.values_at("gc_minor_count", "gc_major_count", "gc_global_count")
+      sample["gc_count"] = initiated.sum if initiated.all?(Numeric)
+    end
     sample["gc_stat_heap_delta"] = heap_delta(before[:heap], after[:heap])
     sample["gc_heap_after"] = after[:heap]
     sample

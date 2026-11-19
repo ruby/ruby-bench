@@ -307,9 +307,9 @@ describe 'Ractor GC harness' do
       worker = Ractor.new do
         GC.disable
         Ractor.receive
-        before = GC.stat(:count, scope: :ractor)
+        before = GC.stat(:count)
         10.times { GC.start(full_mark: false, immediate_sweep: true, global: false) }
-        Ractor.main.send(GC.stat(:count, scope: :ractor) - before)
+        Ractor.main.send(GC.stat(:count) - before)
         Ractor.receive
       end
 
