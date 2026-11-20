@@ -1,0 +1,52 @@
+<% content_for :title, "Showing article" %>
+
+<%# A turbo Drive directive INSIDE a content_for block for the same
+    slot — campfire's rooms/show shape, and the reason `content_for`
+    has to APPEND: `provide` deposits the directive first, this
+    block's markup follows it, and an overwriting store keeps only
+    one of them. %>
+<% content_for :head do %>
+  <%= turbo_exempts_page_from_preview %>
+  <meta name="article-id" content="<%= @article.id %>">
+<% end %>
+
+<div class="md:w-2/3 w-full">
+  <% if notice.present? %>
+    <p class="py-2 px-3 bg-green-50 mb-5 text-green-500 font-medium rounded-md inline-block" id="notice"><%= notice %></p>
+  <% end %>
+
+  <h1 class="font-bold text-4xl"><%= @article.title %></h1>
+
+  <div class="my-4">
+    <p class="text-gray-700"><%= @article.body %></p>
+  </div>
+
+  <%= link_to "Edit this article", edit_article_path(@article), class: "w-full sm:w-auto text-center rounded-md px-3.5 py-2.5 bg-gray-100 hover:bg-gray-50 inline-block font-medium" %>
+  <%= link_to "Back to articles", articles_path, class: "w-full sm:w-auto text-center mt-2 sm:mt-0 sm:ml-2 rounded-md px-3.5 py-2.5 bg-gray-100 hover:bg-gray-50 inline-block font-medium" %>
+  <%= button_to "Destroy this article", @article, method: :delete, form_class: "sm:inline-block mt-2 sm:mt-0 sm:ml-2", class: "w-full rounded-md px-3.5 py-2.5 text-white bg-red-600 hover:bg-red-500 font-medium cursor-pointer", data: { turbo_confirm: "Are you sure?" } %>
+</div>
+
+<hr class="my-8">
+
+<h2 class="text-xl font-bold mb-4">Comments</h2>
+
+<%# Subscribe to real-time comment updates for this article %>
+<%= turbo_stream_from "article_#{@article.id}_comments" %>
+
+<div id="comments" class="space-y-4 mb-8">
+  <%= render @article.comments %>
+</div>
+
+<h3 class="text-lg font-semibold mb-2">Add a Comment</h3>
+
+<%= form_with model: [@article, Comment.new], class: "space-y-4" do |form| %>
+  <div>
+    <%= form.label :commenter, class: "block font-medium" %>
+    <%= form.text_field :commenter, class: "block w-full border rounded p-2" %>
+  </div>
+  <div>
+    <%= form.label :body, class: "block font-medium" %>
+    <%= form.text_area :body, rows: 3, class: "block w-full border rounded p-2" %>
+  </div>
+  <%= form.submit "Add Comment", class: "bg-blue-600 text-white px-4 py-2 rounded" %>
+<% end %>

@@ -1,0 +1,7 @@
+<div id="<%= dom_id(comment) %>" class="p-4 bg-gray-50 rounded">
+  <p class="font-semibold"><%= comment.commenter %></p>
+  <p class="text-gray-700"><%= comment.body %></p>
+  <%= button_to "Delete", [comment.article, comment], method: :delete,
+      class: "text-red-600 text-sm mt-2",
+      data: { turbo_confirm: "Are you sure?" } %>
+</div>
