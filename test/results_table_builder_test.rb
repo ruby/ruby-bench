@@ -426,6 +426,7 @@ describe ResultsTableBuilder do
           'fib' => {
             'warmup' => [0.1],
             'bench' => [0.100, 0.101, 0.099, 0.1005, 0.0995, 0.1002, 0.0998, 0.1001, 0.0999, 0.1003],
+            'bench_itrs_per_run' => [2, 2, 2, 2, 2],
             'rss' => 1024 * 1024 * 10
           }
         },
@@ -433,6 +434,7 @@ describe ResultsTableBuilder do
           'fib' => {
             'warmup' => [0.05],
             'bench' => [0.050, 0.051, 0.049, 0.0505, 0.0495, 0.0502, 0.0498, 0.0501, 0.0499, 0.0503],
+            'bench_itrs_per_run' => [2, 2, 2, 2, 2],
             'rss' => 1024 * 1024 * 12
           }
         }
@@ -520,6 +522,40 @@ describe ResultsTableBuilder do
           'fib' => {
             'warmup' => [0.1],
             'bench' => [0.100, 0.101, 0.099],
+            'bench_itrs_per_run' => [1, 1, 1],
+            'rss' => 1024 * 1024 * 10
+          }
+        },
+        'ruby-yjit' => {
+          'fib' => {
+            'warmup' => [0.05],
+            'bench' => [0.050, 0.051, 0.049],
+            'bench_itrs_per_run' => [1, 1, 1],
+            'rss' => 1024 * 1024 * 12
+          }
+        }
+      }
+
+      builder = ResultsTableBuilder.new(
+        executable_names: executable_names,
+        bench_data: bench_data,
+        include_pvalue: true
+      )
+
+      table, _format = builder.build
+      assert_includes table[0], 'p-value'
+      assert_includes table[0], 'sig'
+      ratio_col_idx = table[0].index('ruby/ruby-yjit')
+      assert_match(/\(\*{1,3}\)/, table[1][ratio_col_idx])
+    end
+
+    it 'does not mark iterations of one process as significant' do
+      executable_names = ['ruby', 'ruby-yjit']
+      bench_data = {
+        'ruby' => {
+          'fib' => {
+            'warmup' => [0.1],
+            'bench' => [0.100, 0.101, 0.099],
             'rss' => 1024 * 1024 * 10
           }
         },
@@ -542,7 +578,69 @@ describe ResultsTableBuilder do
       assert_includes table[0], 'p-value'
       assert_includes table[0], 'sig'
       ratio_col_idx = table[0].index('ruby/ruby-yjit')
-      assert_match(/\(\*{1,3}\)/, table[1][ratio_col_idx])
+      assert_equal '2.000', table[1][ratio_col_idx]
+      assert_equal 'N/A', table[1][ratio_col_idx + 1]
+    end
+
+    it 'tests the timing and GC ratios on the per-process means of --runs' do
+      bench_data = {
+        'ruby-base' => { 'fib' => { 'warmup' => [0.1, 0.1], 'warmup_itrs_per_run' => [1, 1],
+          'bench' => [1.0, 1.9, 2.0, 2.1], 'bench_itrs_per_run' => [1, 3], 'rss' => 1,
+          'gc_marking_time_bench' => [20.0, 20.5, 21.0, 21.5], 'gc_sweeping_time_bench' => [10.0, 10.0, 10.0, 10.0] } },
+        'ruby-exp' => { 'fib' => { 'warmup' => [0.1, 0.1], 'warmup_itrs_per_run' => [1, 1],
+          'bench' => [2.9, 3.1, 4.9, 5.1], 'bench_itrs_per_run' => [2, 2], 'rss' => 1,
+          'gc_marking_time_bench' => [10.0, 10.0, 11.0, 11.0], 'gc_sweeping_time_bench' => [10.0, 10.0, 10.0, 10.0] } }
+      }
+
+      table, _format, gc_tables = ResultsTableBuilder.new(
+        executable_names: ['ruby-base', 'ruby-exp'], bench_data: bench_data, include_pvalue: true
+      ).build
+
+      ratio_col_idx = table[0].index('ruby-base/ruby-exp')
+      assert_equal '0.438', table[1][ratio_col_idx]
+      assert_equal '0.199', table[1][ratio_col_idx + 1]
+      ratios = gc_tables.first[:rows]
+      assert_equal '1.976 (**)', ratios[1][ratios[0].index('mark/iter')]
+    end
+
+    it 'leaves out benchmarks without GC activity with --runs' do
+      gc = { 'gc_marking_time_bench' => [0.0, 0.0], 'gc_sweeping_time_bench' => [0.0, 0.0],
+        'gc_count_bench' => [0, 0], 'gc_major_count_bench' => [0, 0], 'gc_minor_count_bench' => [0, 0] }
+      run = { 'warmup' => [0.1, 0.1], 'warmup_itrs_per_run' => [1, 1], 'bench' => [0.1, 0.1], 'bench_itrs_per_run' => [1, 1], 'rss' => 1 }
+      bench_data = { 'ruby-base' => { 'fib' => run.merge(gc) }, 'ruby-exp' => { 'fib' => run.merge(gc) } }
+
+      _table, _format, gc_tables = ResultsTableBuilder.new(executable_names: ['ruby-base', 'ruby-exp'], bench_data: bench_data).build
+
+      assert_nil gc_tables
+    end
+
+    it 'does not mark GC ratios of one process as significant' do
+      bench_data = {
+        'ruby-base' => { 'fib' => { 'warmup' => [0.1], 'bench' => [0.1, 0.1, 0.1], 'rss' => 1,
+          'gc_marking_time_bench' => [20.0, 21.0, 19.0], 'gc_sweeping_time_bench' => [10.0, 10.0, 10.0] } },
+        'ruby-exp' => { 'fib' => { 'warmup' => [0.1], 'bench' => [0.1, 0.1, 0.1], 'rss' => 1,
+          'gc_marking_time_bench' => [10.0, 11.0, 9.0], 'gc_sweeping_time_bench' => [10.0, 10.0, 10.0] } }
+      }
+
+      _table, _format, gc_tables = ResultsTableBuilder.new(
+        executable_names: ['ruby-base', 'ruby-exp'], bench_data: bench_data, include_pvalue: true
+      ).build
+
+      ratios = gc_tables.first[:rows]
+      assert_equal '2.000', ratios[1][ratios[0].index('mark/iter')]
+    end
+
+    it 'averages the first iteration over the processes of --runs' do
+      bench_data = {
+        'ruby' => { 'fib' => { 'warmup' => [0.3, 0.2, 0.1, 0.2], 'warmup_itrs_per_run' => [2, 2],
+          'bench' => [0.1, 0.1], 'bench_itrs_per_run' => [1, 1], 'rss' => 1 } },
+        'ruby-yjit' => { 'fib' => { 'warmup' => [0.2, 0.1, 0.2, 0.1], 'warmup_itrs_per_run' => [2, 2],
+          'bench' => [0.1, 0.1], 'bench_itrs_per_run' => [1, 1], 'rss' => 1 } }
+      }
+
+      table, _format = ResultsTableBuilder.new(executable_names: ['ruby', 'ruby-yjit'], bench_data: bench_data).build
+
+      assert_in_delta 1.0, table[1][table[0].index('ruby-yjit 1st itr')], 1e-9
     end
 
     it 'handles only headline benchmarks' do

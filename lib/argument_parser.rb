@@ -25,6 +25,7 @@ class ArgumentParser
     :with_pre_init,
     :pvalue,
     :interleave,
+    :runs,
     :zjit_stats,
     keyword_init: true
   )
@@ -153,12 +154,18 @@ class ArgumentParser
         args.rss = true
       end
 
-      opts.on("--pvalue", "show p-value and significance columns for each comparison") do
+      opts.on("--pvalue", "show p-value and significance columns for each comparison (needs --runs=N with N >= 2)") do
         args.pvalue = true
       end
 
       opts.on("--interleave", "run benchmarks interleaved across executables to reduce thermal drift") do
         args.interleave = true
+      end
+
+      opts.on("--runs=N", Integer, "run each benchmark in N processes per executable, interleaved; --pvalue compares the per-process means (default: 1)") do |n|
+        abort "--runs must be at least 1" if n < 1
+        args.runs = n
+        args.interleave = true if n > 1
       end
 
       opts.on("--graph", "generate a graph image of benchmark results") do
@@ -257,6 +264,7 @@ class ArgumentParser
       rss: false,
       pvalue: false,
       interleave: false,
+      runs: 1,
       zjit_stats: [],
       graph: false,
       no_pinning: false,
