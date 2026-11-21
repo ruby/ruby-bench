@@ -1,12 +1,12 @@
 require_relative '../misc/stats'
 require_relative 'row_layout'
+require_relative 'metric'
 require 'yaml'
 
 class ResultsTableBuilder
-  SECONDS_TO_MS = 1000.0
   BYTES_TO_MIB = 1024.0 * 1024.0
 
-  attr_reader :bench_names
+  attr_reader :bench_names, :metric
 
   def initialize(executable_names:, bench_data:, include_rss: false, include_pvalue: false, zjit_stats: [], row_layout: FlatRowLayout.new)
     @executable_names = executable_names
@@ -20,6 +20,7 @@ class ResultsTableBuilder
     @other_names = executable_names[1..]
     @row_layout = row_layout
     @bench_names = compute_bench_names
+    @metric = Metric.for(bench_data.values.flat_map(&:values).select { |d| d.is_a?(Hash) })
   end
 
   def include_gc?
@@ -55,7 +56,7 @@ class ResultsTableBuilder
     header = ["bench", *@row_layout.extra_header_columns]
 
     @executable_names.each do |name|
-      header << "#{name} (ms)"
+      header << "#{name} (#{@metric.unit})"
       header << "RSS (MiB)" if @include_rss
       @zjit_stats.each { |stat| header << stat }
     end
@@ -405,8 +406,8 @@ class ResultsTableBuilder
   end
 
   def build_stat_cells(bench_name)
-    t0s = extract_first_iteration_times(bench_name)
-    times_no_warmup = extract_benchmark_times(bench_name)
+    t0s = extract_metric(bench_name) { |data| @metric.first_iteration(data) }
+    times_no_warmup = extract_metric(bench_name) { |data| @metric.bench(data) }
     rsss = extract_rss_values(bench_name)
     rss_series = @rss_has_samples ? extract_rss_series(bench_name) : nil
 
@@ -432,14 +433,14 @@ class ResultsTableBuilder
   end
 
   def build_base_columns(row, base_t, base_rss, zjit_stat_values, exe_index)
-    row << format_time_with_stddev(base_t)
+    row << format_mean_with_stddev(base_t)
     row << base_rss if @include_rss
     zjit_stat_values.each { |_stat, values| row << format_stat(values[exe_index]) }
   end
 
   def build_comparison_columns(row, other_ts, other_rss_cells, zjit_stat_values)
     other_ts.each_with_index do |other_t, i|
-      row << format_time_with_stddev(other_t)
+      row << format_mean_with_stddev(other_t)
       row << other_rss_cells[i] if @include_rss
       zjit_stat_values.each { |_stat, values| row << format_stat(values[i + 1]) }
     end
@@ -450,14 +451,14 @@ class ResultsTableBuilder
     value.to_s.gsub(/(\d)(?=(\d{3})+(?!\d))/, '\1,')
   end
 
-  def format_time_with_stddev(values)
+  def format_mean_with_stddev(values)
     return "N/A" if values.nil? || values.empty?
     "%.1f ± %.1f%%" % [mean(values), stddev_percent(values)]
   end
 
   def build_ratio_columns(row, base_t0, other_t0s, base_t, other_ts)
-    ratio_1sts = other_t0s.map { |other_t0| base_t0 / other_t0 }
-    row.concat(ratio_1sts)
+    # Metrics without warmup values have no first iteration to compare.
+    row.concat(other_t0s.map { |other_t0| base_t0 / other_t0 if base_t0 && other_t0 })
 
     other_ts.each do |other_t|
       pval = @include_pvalue ? Stats.welch_p_value(base_t, other_t) : nil
@@ -615,17 +616,8 @@ class ResultsTableBuilder
     end
   end
 
-  def extract_first_iteration_times(bench_name)
-    @executable_names.map do |name|
-      data = bench_data_for(name, bench_name)
-      (data['warmup'][0] || data['bench'][0]) * SECONDS_TO_MS
-    end
-  end
-
-  def extract_benchmark_times(bench_name)
-    @executable_names.map do |name|
-      bench_data_for(name, bench_name)['bench'].map { |v| v * SECONDS_TO_MS }
-    end
+  def extract_metric(bench_name)
+    @executable_names.map { |name| yield bench_data_for(name, bench_name) }
   end
 
   # Numeric RSS (MiB) per executable, used for the RSS ratio. When per-iteration
@@ -657,7 +649,7 @@ class ResultsTableBuilder
   def rss_cell(mean_value, series)
     return mean_value unless @rss_has_samples
     if series && !series.empty?
-      format_time_with_stddev(series)
+      format_mean_with_stddev(series)
     else
       "%.1f" % mean_value
     end

@@ -229,6 +229,18 @@ describe RactorBreakdown do
       refute r0.key?('results_by_ractors')
     end
 
+    it 'keeps each count\'s own metric series' do
+      blobs = [0, 2].to_h do |count|
+        blob = child_blob(count, warmup: [1.0], bench: [1.0], rss: 100, zjit_calls: 1)
+        [count, blob.merge('metrics' => { 'ir' => { 'bench' => [count * 10] } }, 'primary_metric' => 'ir')]
+      end
+      exe = RactorBreakdown.expand({ 'ruby' => { 'r' => RactorBreakdown.merge(blobs) } }).bench_data['ruby']
+
+      assert_equal({ 'ir' => { 'bench' => [0] } }, exe["r\x000"]['metrics'])
+      assert_equal({ 'ir' => { 'bench' => [20] } }, exe["r\x002"]['metrics'])
+      assert_equal 'ir', exe["r\x002"]['primary_metric']
+    end
+
     it 'keeps scenario memory data keyed by count and the base RSS per process' do
       scenario_blob = lambda do |count, retained|
         {

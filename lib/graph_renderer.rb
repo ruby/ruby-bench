@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../misc/stats'
+require_relative 'metric'
 require 'json'
 begin
   require 'gruff'
@@ -26,12 +27,13 @@ class GraphRenderer
   class << self
     def render(json_path, png_path, title_font_size: 16.0, legend_font_size: 12.0, marker_font_size: 10.0)
       ruby_descriptions, data, baseline, bench_names = load_benchmark_data(json_path)
+      metric = Metric.for(data.values.flat_map(&:values))
 
       graph = Gruff::Bar.new(DEFAULT_WIDTH)
-      configure_graph(graph, ruby_descriptions, bench_names, title_font_size, legend_font_size, marker_font_size)
+      configure_graph(graph, metric, ruby_descriptions, bench_names, title_font_size, legend_font_size, marker_font_size)
 
       ruby_descriptions.each do |ruby, description|
-        speedups = calculate_speedups(data, baseline, ruby, bench_names)
+        speedups = calculate_speedups(metric, data, baseline, ruby, bench_names)
         graph.data "#{ruby}: #{description}", speedups
       end
       graph.write(png_path)
@@ -50,8 +52,8 @@ class GraphRenderer
       [ruby_descriptions, data, baseline, bench_names]
     end
 
-    def configure_graph(graph, ruby_descriptions, bench_names, title_font_size, legend_font_size, marker_font_size)
-      graph.title = "Speedup ratio relative to #{ruby_descriptions.keys.first}"
+    def configure_graph(graph, metric, ruby_descriptions, bench_names, title_font_size, legend_font_size, marker_font_size)
+      graph.title = "#{metric.ratio_title} relative to #{ruby_descriptions.keys.first}"
       graph.title_font_size = title_font_size
       graph.theme = THEME
       graph.labels = bench_names.map.with_index { |bench, index| [index, bench] }.to_h
@@ -62,10 +64,10 @@ class GraphRenderer
       graph.marker_font_size = marker_font_size
     end
 
-    def calculate_speedups(data, baseline, ruby, bench_names)
+    def calculate_speedups(metric, data, baseline, ruby, bench_names)
       bench_names.map { |bench|
-        baseline_times = data.fetch(baseline).fetch(bench).fetch("bench")
-        times = data.fetch(ruby).fetch(bench).fetch("bench")
+        baseline_times = metric.bench(data.fetch(baseline).fetch(bench))
+        times = metric.bench(data.fetch(ruby).fetch(bench))
         Stats.new(baseline_times).mean / Stats.new(times).mean
       }
     end
