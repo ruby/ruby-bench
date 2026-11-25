@@ -110,6 +110,70 @@ describe GCStats do
     end
   end
 
+  describe '.marking_times_since' do
+    def record(seq, major, mark)
+      { GC_SEQUENCE: seq, GC_FLAGS: { major_by: major }, GC_MARK_WALL_TIME: mark }
+    end
+
+    it 'splits the marking time of each new collection into minor and major' do
+      records = [record(5, nil, 0.001), record(6, :oldgen, 0.020), record(7, nil, 0.003)]
+
+      minor, major, seq = GCStats.marking_times_since(4, records: records, marking: false)
+
+      assert_equal [1.0, 3.0], minor.map { |ms| ms.round(6) }
+      assert_equal [20.0], major.map { |ms| ms.round(6) }
+      assert_equal 7, seq
+    end
+
+    it 'leaves a collection that is still marking for the next call' do
+      records = [record(5, nil, 0.001), record(6, :nofree, 0.004)]
+
+      minor, major, seq = GCStats.marking_times_since(4, records: records, marking: true)
+
+      assert_equal [1.0], minor.map { |ms| ms.round(6) }
+      assert_equal [], major
+      assert_equal 5, seq
+    end
+
+    it 'reports nothing rather than a partial list when records were dropped' do
+      minor, major, seq = GCStats.marking_times_since(4, records: [record(9, nil, 0.001)], marking: false)
+
+      assert_nil minor
+      assert_nil major
+      assert_equal 9, seq
+    end
+
+    it 'takes every record on the first call, whatever its sequence number' do
+      minor, _major, seq = GCStats.marking_times_since(nil, records: [record(9, nil, 0.002)], marking: false)
+
+      assert_equal [2.0], minor.map { |ms| ms.round(6) }
+      assert_equal 9, seq
+    end
+
+    it 'splits real minor and major collections' do
+      skip 'GC::Profiler.raw_data(since:) is new in Ruby 4.1' unless GCStats.collection_records_supported?
+
+      was_enabled = GC::Profiler.enabled?
+      GC::Profiler.enable
+      # A pending major (GC.latest_gc_info(:need_major_by)) would turn the minor into a major.
+      GC.start(full_mark: true, immediate_mark: true, immediate_sweep: true)
+      _, _, seq = GCStats.marking_times_since(nil)
+      GC.start(full_mark: false, immediate_mark: true, immediate_sweep: true)
+      GC.start(full_mark: true, immediate_mark: true, immediate_sweep: true)
+      minor, major, = GCStats.marking_times_since(seq)
+
+      assert_equal 1, minor.size
+      assert_equal 1, major.size
+      assert_operator major.first, :>, 0.0
+    ensure
+      GC::Profiler.disable unless was_enabled
+    end
+
+    it 'keeps the sequence when no collection finished' do
+      assert_equal [[], [], 4], GCStats.marking_times_since(4, records: [], marking: false)
+    end
+  end
+
   describe '.aggregate' do
     it 'raises ArgumentError for an empty sample set' do
       error = assert_raises(ArgumentError) { GCStats.aggregate([]) }

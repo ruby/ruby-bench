@@ -581,6 +581,12 @@ data when it is zero or `N/A` in every row.
   Ractors started, so each cycle counts once in the sum. Single-executable
   reports also show `GC ms/worker`, which divides each iteration's worker-sum
   GC time by its sampled worker count, then averages.
+* On Ruby 4.1 and newer, `--harness=gc` also records the marking time of
+  each collection from `GC::Profiler`. `mark ms/minor` and `mark ms/major`
+  (and the `mark/minor` and `mark/major` ratios) average it per iteration,
+  then over iterations, so a major GC in one iteration does not move the
+  minor column. Root-marking changes show up there more clearly than in
+  `mark/iter`.
 * `compacts*` shows the main Ractor's
   `GC.stat(:compact_count)` delta. Every global compacting cycle increments
   it in every object space, so it is not summed across workers.
