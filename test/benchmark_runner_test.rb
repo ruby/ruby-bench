@@ -10,23 +10,24 @@ require 'yaml'
 
 describe BenchmarkRunner do
   describe '.ruby_bench_revision' do
-    def git(dir, *args)
-      system('git', '-C', dir, '-c', 'user.name=t', '-c', 'user.email=t@t', *args, out: File::NULL, err: File::NULL) or raise "git #{args.join(' ')} failed"
+    def git(dir, *args, env: {})
+      system(env, 'git', '-C', dir, '-c', 'user.name=t', '-c', 'user.email=t@t', *args, out: File::NULL, err: File::NULL) or raise "git #{args.join(' ')} failed"
     end
 
-    it 'returns the HEAD commit, with -dirty only when tracked files change' do
+    it 'returns the HEAD commit date and short sha, with -dirty only when tracked files change' do
       Dir.mktmpdir do |dir|
         git(dir, 'init', '-q')
         File.write(File.join(dir, 'a.rb'), "1\n")
         git(dir, 'add', 'a.rb')
-        git(dir, 'commit', '-q', '-m', 'init')
+        # The committer date is shown in UTC, so this commit is dated 2026-11-20
+        git(dir, 'commit', '-q', '-m', 'init', env: { 'GIT_COMMITTER_DATE' => '2026-11-19T22:00:00-05:00' })
         head = IO.popen(['git', '-C', dir, 'rev-parse', 'HEAD'], &:read).strip
 
         File.write(File.join(dir, 'untracked.txt'), "x\n")
-        assert_equal head, BenchmarkRunner.ruby_bench_revision(dir)
+        assert_equal "2026-11-20 #{head[0, 10]}", BenchmarkRunner.ruby_bench_revision(dir)
 
         File.write(File.join(dir, 'a.rb'), "2\n")
-        assert_equal "#{head}-dirty", BenchmarkRunner.ruby_bench_revision(dir)
+        assert_equal "2026-11-20 #{head[0, 10]}-dirty", BenchmarkRunner.ruby_bench_revision(dir)
       end
     end
 
@@ -415,6 +416,24 @@ describe BenchmarkRunner do
       assert_includes result, 'Legend:'
       assert_includes result, '- ruby-base/ruby-yjit: ratio of ruby-base/ruby-yjit time. Higher is better for ruby-yjit. Above 1 represents a speedup.'
       refute_includes result, "p < 0.001"
+    end
+
+    it 'prints the ruby-bench revision before the Ruby descriptions' do
+      ruby_descriptions = {
+        'before' => 'ruby 3.3.0',
+        'after' => 'ruby 3.4.0'
+      }
+      table = [
+        ['bench', 'before (ms)', 'stddev (%)', 'after (ms)', 'stddev (%)'],
+        ['fib', '100.0', '5.0', '50.0', '3.0']
+      ]
+      format = ['%s', '%.1f', '%.1f', '%.1f', '%.1f']
+
+      result = BenchmarkRunner.build_output_text(
+        ruby_descriptions, table, format, {}, ruby_bench_revision: '2026-11-20 c54da6e016'
+      )
+
+      assert result.start_with?("ruby-bench: 2026-11-20 c54da6e016\nbefore: ruby 3.3.0\nafter: ruby 3.4.0\n\n")
     end
 
     it 'includes p-value legend when include_pvalue is true' do

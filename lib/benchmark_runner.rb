@@ -10,10 +10,13 @@ require_relative 'windows_pinning'
 # Extracted helper methods from run_benchmarks.rb for testing
 module BenchmarkRunner
   class << self
+    # Return the ruby-bench commit like `ruby -v` shows its revision: "2026-11-20 c54da6e016",
+    # using the committer date in UTC and a 10-character sha.
     def ruby_bench_revision(dir = File.expand_path('..', __dir__))
-      revision = IO.popen(['git', '-C', dir, 'rev-parse', 'HEAD'], err: File::NULL, &:read).strip
-      return 'unknown' unless $?.success? && !revision.empty?
+      timestamp, sha = IO.popen(['git', '-C', dir, 'log', '-1', '--format=%ct %H'], err: File::NULL, &:read).split
+      return 'unknown' unless $?.success? && sha
 
+      revision = "#{Time.at(Integer(timestamp)).utc.strftime('%Y-%m-%d')} #{sha[0, 10]}"
       clean = system('git', '-C', dir, 'diff', '--quiet', 'HEAD', out: File::NULL, err: File::NULL)
       clean ? revision : "#{revision}-dirty"
     rescue SystemCallError
@@ -65,10 +68,10 @@ module BenchmarkRunner
 
       output_str = +""
 
+      output_str << "ruby-bench: #{ruby_bench_revision}\n" if ruby_bench_revision
       ruby_descriptions.each do |key, value|
         output_str << "#{key}: #{value}\n"
       end
-      output_str << "ruby-bench: #{ruby_bench_revision}\n" if ruby_bench_revision
 
       output_str << "\n"
       sections ||= [{ table: table, format: format, failures: bench_failures, include_gc: include_gc, gc_tables: gc_tables, memory_tables: memory_tables }]
