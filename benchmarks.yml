@@ -74,6 +74,8 @@ addressable-to-s:
   desc: addressable URI to string conversion
 binarytrees:
   desc: binarytrees from the Computer Language Benchmarks Game.
+blog:
+  desc: blog is Sam Ruby's create-blog app on Rails 8.1 with the rails new defaults, reading, creating, updating and deleting articles and comments with validations and Turbo broadcasts, and rolling back each iteration.
 blurhash:
   desc: blurhash (blurred preview image) calculation
   ractor: true
