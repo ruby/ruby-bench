@@ -74,25 +74,49 @@ module BenchmarkRunner
       bench_harnesses = suite.benchmarks.each_with_object({}) do |entry, h|
         h[entry.name] = suite.harness_for(entry.name)
       end
+      if args.runs > 1 && bench_harnesses.value?(BenchmarkSuite::RACTOR_HARNESS)
+        abort "--runs does not support the Ractor harness yet: its per-Ractor-count results are not merged across processes"
+      end
+      if args.pvalue && bench_harnesses.value?("callgrind")
+        abort "--pvalue does not support the callgrind harness: it tests wall times, which Valgrind slows and distorts. Compare the instruction counts in the profiles instead"
+      end
+      if args.pvalue && args.runs < 2
+        warn "#{BOLD}WARNING: --pvalue needs --runs=N with N >= 2. Iterations of one process are not independent samples, so p-values will be N/A.#{RESET}"
+      end
 
       if args.interleave
         args.executables.each_key { |name| bench_data[name] = {} }
         entries = suite.benchmarks
 
-        entries.each_with_index do |entry, idx|
-          # Alternate executable order to cancel cache-warming bias
-          exes = ruby_descriptions.keys
-          exes = exes.reverse if idx.odd?
+        runs = args.runs
+        rounds = 0
 
-          exes.each do |name|
-            puts("Running benchmark \"#{entry.name}\" [#{name}] (#{idx+1}/#{entries.length})")
-            result = suite.run_benchmark(entry, ruby: args.executables[name], ruby_description: ruby_descriptions[name])
-            if result[:data]
-              bench_data[name][entry.name] = result[:data]
-            else
-              bench_failures[name] ||= {}
-              bench_failures[name][entry.name] = result[:failure]
+        entries.each_with_index do |entry, idx|
+          blobs = Hash.new { |h, name| h[name] = [] }
+
+          runs.times do |run|
+            # Alternate executable order to cancel cache-warming bias
+            exes = ruby_descriptions.keys
+            exes = exes.reverse if rounds.odd?
+            rounds += 1
+
+            exes.each do |name|
+              next if bench_failures[name]&.key?(entry.name)
+
+              run_label = runs > 1 ? ", run #{run + 1}/#{runs}" : ""
+              puts("Running benchmark \"#{entry.name}\" [#{name}] (#{idx+1}/#{entries.length}#{run_label})")
+              result = suite.run_benchmark(entry, ruby: args.executables[name], ruby_description: ruby_descriptions[name])
+              if result[:data]
+                blobs[name] << result[:data]
+              else
+                bench_failures[name] ||= {}
+                bench_failures[name][entry.name] = result[:failure]
+              end
             end
+          end
+
+          blobs.each do |name, runs_data|
+            bench_data[name][entry.name] = BenchmarkRunner.merge_runs(runs_data) unless bench_failures[name]&.key?(entry.name)
           end
         end
       else
