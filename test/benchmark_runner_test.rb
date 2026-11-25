@@ -19,8 +19,7 @@ describe BenchmarkRunner do
         git(dir, 'init', '-q')
         File.write(File.join(dir, 'a.rb'), "1\n")
         git(dir, 'add', 'a.rb')
-        # The committer date is shown in UTC, so this commit is dated 2026-11-20
-        git(dir, 'commit', '-q', '-m', 'init', env: { 'GIT_COMMITTER_DATE' => '2026-11-19T22:00:00-05:00' })
+        git(dir, 'commit', '-q', '-m', 'init', env: { 'GIT_COMMITTER_DATE' => '2026-11-20T03:00:00Z' })
         head = IO.popen(['git', '-C', dir, 'rev-parse', 'HEAD'], &:read).strip
 
         File.write(File.join(dir, 'untracked.txt'), "x\n")
