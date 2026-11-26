@@ -16,6 +16,8 @@ end
 
 def run_benchmark(_num_itrs_hint, **, &block)
   times = []
+  side_exit_counts = []
+  side_exit_total = RubyVM::ZJIT.stats(:side_exit_count) || 0
   rss_samples = []
   marking_times = []
   sweeping_times = []
@@ -80,6 +82,10 @@ def run_benchmark(_num_itrs_hint, **, &block)
     gc_heap_deltas << sample["gc_stat_heap_delta"]
     gc_total_time_ns << sample["gc_total_time_ns"]
     total_time += time
+
+    side_exit_now = RubyVM::ZJIT.stats(:side_exit_count) || 0
+    side_exit_counts << side_exit_now - side_exit_total
+    side_exit_total = side_exit_now
   end until num_itrs >= WARMUP_ITRS + MIN_BENCH_ITRS and total_time >= MIN_BENCH_TIME
 
   warmup_range = 0...WARMUP_ITRS
@@ -108,6 +114,8 @@ def run_benchmark(_num_itrs_hint, **, &block)
     extra["gc_total_time_warmup"] = gc_total_time_ms[warmup_range]
     extra["gc_total_time_bench"] = gc_total_time_ms[bench_range]
   end
+  extra["side_exit_count_warmup"] = side_exit_counts[warmup_range]
+  extra["side_exit_count_bench"] = side_exit_counts[bench_range]
 
   # Snapshot heap utilisation after benchmark
   if GC.respond_to?(:stat_heap)
